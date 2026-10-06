@@ -8,6 +8,7 @@ use PDO;
 final class DisputeService
 {
     private const OPEN_STATUSES=['warning_needs_response','warning_under_review','needs_response','under_review'];
+    private const BLOCKING_STATUSES=['warning_needs_response','warning_under_review','needs_response','under_review','lost'];
 
     public function __construct(private readonly PDO $db) {}
 
@@ -81,9 +82,9 @@ final class DisputeService
 
     public function activeForOrder(int $orderId): array
     {
-        $marks=implode(',',array_fill(0,count(self::OPEN_STATUSES),'?'));
+        $marks=implode(',',array_fill(0,count(self::BLOCKING_STATUSES),'?'));
         $s=$this->db->prepare("SELECT * FROM stripe_disputes WHERE order_id=? AND status IN ({$marks}) ORDER BY updated_at DESC");
-        $s->execute([$orderId,...self::OPEN_STATUSES]);return $s->fetchAll();
+        $s->execute([$orderId,...self::BLOCKING_STATUSES]);return $s->fetchAll();
     }
 
     public function hasBlockingDispute(int $orderId): bool
