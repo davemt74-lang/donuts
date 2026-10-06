@@ -4,7 +4,7 @@ require dirname(__DIR__).'/src/bootstrap.php';
 
 use FudgeDonuts\{AdminAuthService,Database};
 
-if(empty($_SESSION['admin']) || ($_SESSION['admin_role']??'')!=='super_admin'){http_response_code(403);exit('Forbidden');}
+require_admin_roles(['super_admin']);
 $db=Database::connection();$auth=new AdminAuthService($db);$error='';$notice='';
 
 if($_SERVER['REQUEST_METHOD']==='POST'){
