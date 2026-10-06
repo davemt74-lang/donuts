@@ -120,12 +120,12 @@ final class AnalyticsService
         ON CONFLICT(visitor_id) DO UPDATE SET
           last_seen_at=CURRENT_TIMESTAMP,
           last_landing_path=CASE WHEN excluded.last_referrer_host<>'' OR excluded.last_utm_source<>'' OR excluded.last_utm_medium<>'' OR excluded.last_utm_campaign<>'' OR excluded.last_utm_content<>'' OR excluded.last_utm_term<>'' THEN excluded.last_landing_path ELSE analytics_visitors.last_landing_path END,
-          last_referrer_host=CASE WHEN excluded.last_referrer_host<>'' THEN excluded.last_referrer_host ELSE analytics_visitors.last_referrer_host END,
-          last_utm_source=CASE WHEN excluded.last_utm_source<>'' THEN excluded.last_utm_source ELSE analytics_visitors.last_utm_source END,
-          last_utm_medium=CASE WHEN excluded.last_utm_medium<>'' THEN excluded.last_utm_medium ELSE analytics_visitors.last_utm_medium END,
-          last_utm_campaign=CASE WHEN excluded.last_utm_campaign<>'' THEN excluded.last_utm_campaign ELSE analytics_visitors.last_utm_campaign END,
-          last_utm_content=CASE WHEN excluded.last_utm_content<>'' THEN excluded.last_utm_content ELSE analytics_visitors.last_utm_content END,
-          last_utm_term=CASE WHEN excluded.last_utm_term<>'' THEN excluded.last_utm_term ELSE analytics_visitors.last_utm_term END");
+          last_referrer_host=CASE WHEN excluded.last_referrer_host<>'' OR excluded.last_utm_source<>'' OR excluded.last_utm_medium<>'' OR excluded.last_utm_campaign<>'' OR excluded.last_utm_content<>'' OR excluded.last_utm_term<>'' THEN excluded.last_referrer_host ELSE analytics_visitors.last_referrer_host END,
+          last_utm_source=CASE WHEN excluded.last_referrer_host<>'' OR excluded.last_utm_source<>'' OR excluded.last_utm_medium<>'' OR excluded.last_utm_campaign<>'' OR excluded.last_utm_content<>'' OR excluded.last_utm_term<>'' THEN excluded.last_utm_source ELSE analytics_visitors.last_utm_source END,
+          last_utm_medium=CASE WHEN excluded.last_referrer_host<>'' OR excluded.last_utm_source<>'' OR excluded.last_utm_medium<>'' OR excluded.last_utm_campaign<>'' OR excluded.last_utm_content<>'' OR excluded.last_utm_term<>'' THEN excluded.last_utm_medium ELSE analytics_visitors.last_utm_medium END,
+          last_utm_campaign=CASE WHEN excluded.last_referrer_host<>'' OR excluded.last_utm_source<>'' OR excluded.last_utm_medium<>'' OR excluded.last_utm_campaign<>'' OR excluded.last_utm_content<>'' OR excluded.last_utm_term<>'' THEN excluded.last_utm_campaign ELSE analytics_visitors.last_utm_campaign END,
+          last_utm_content=CASE WHEN excluded.last_referrer_host<>'' OR excluded.last_utm_source<>'' OR excluded.last_utm_medium<>'' OR excluded.last_utm_campaign<>'' OR excluded.last_utm_content<>'' OR excluded.last_utm_term<>'' THEN excluded.last_utm_content ELSE analytics_visitors.last_utm_content END,
+          last_utm_term=CASE WHEN excluded.last_referrer_host<>'' OR excluded.last_utm_source<>'' OR excluded.last_utm_medium<>'' OR excluded.last_utm_campaign<>'' OR excluded.last_utm_content<>'' OR excluded.last_utm_term<>'' THEN excluded.last_utm_term ELSE analytics_visitors.last_utm_term END");
         $s->execute([
           $visitorId,$path,$a['referrer_host'],$a['utm_source'],$a['utm_medium'],$a['utm_campaign'],$a['utm_content'],$a['utm_term'],
           $path,$a['referrer_host'],$a['utm_source'],$a['utm_medium'],$a['utm_campaign'],$a['utm_content'],$a['utm_term']
