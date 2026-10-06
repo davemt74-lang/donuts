@@ -15,18 +15,20 @@ final class CustomerCrmService
         if($query===''){
             $sql="SELECT email FROM (
                 SELECT lower(email) email,MAX(created_at) last_seen FROM orders GROUP BY lower(email)
-                UNION ALL
-                SELECT lower(email) email,created_at last_seen FROM users
+                UNION ALL SELECT lower(email) email,created_at last_seen FROM users
+                UNION ALL SELECT lower(email) email,MAX(created_at) last_seen FROM support_tickets GROUP BY lower(email)
+                UNION ALL SELECT lower(purchaser_email) email,MAX(created_at) last_seen FROM gift_card_purchases GROUP BY lower(purchaser_email)
             ) GROUP BY email ORDER BY MAX(last_seen) DESC LIMIT {$limit}";
             foreach($this->db->query($sql)->fetchAll(PDO::FETCH_COLUMN) as $email)$emails[]=(string)$email;
         }else{
             $needle='%'.strtolower($query).'%';
             $s=$this->db->prepare("SELECT email FROM (
                 SELECT lower(email) email FROM users WHERE lower(email) LIKE ? OR lower(first_name||' '||last_name) LIKE ?
-                UNION
-                SELECT lower(email) email FROM orders WHERE lower(email) LIKE ? OR lower(first_name||' '||last_name) LIKE ? OR lower(order_number) LIKE ?
+                UNION SELECT lower(email) email FROM orders WHERE lower(email) LIKE ? OR lower(first_name||' '||last_name) LIKE ? OR lower(order_number) LIKE ?
+                UNION SELECT lower(email) email FROM support_tickets WHERE lower(email) LIKE ? OR lower(customer_name) LIKE ? OR lower(ticket_number) LIKE ?
+                UNION SELECT lower(purchaser_email) email FROM gift_card_purchases WHERE lower(purchaser_email) LIKE ? OR lower(recipient_email) LIKE ?
             ) LIMIT {$limit}");
-            $s->execute([$needle,$needle,$needle,$needle,$needle]);$emails=array_map('strval',$s->fetchAll(PDO::FETCH_COLUMN));
+            $s->execute([$needle,$needle,$needle,$needle,$needle,$needle,$needle,$needle,$needle,$needle]);$emails=array_map('strval',$s->fetchAll(PDO::FETCH_COLUMN));
         }
         $out=[];foreach(array_values(array_unique($emails)) as $email)$out[]=$this->summary($email);
         usort($out,fn($a,$b)=>strcmp((string)$b['last_order_at'],(string)$a['last_order_at']));
@@ -97,12 +99,19 @@ final class CustomerCrmService
     {
         $u=$this->db->prepare('SELECT id,first_name,last_name,created_at FROM users WHERE lower(email)=?');$u->execute([$email]);$user=$u->fetch();
         $o=$this->db->prepare('SELECT first_name,last_name FROM orders WHERE lower(email)=? ORDER BY id DESC LIMIT 1');$o->execute([$email]);$order=$o->fetch();
+        $support=$this->db->prepare('SELECT customer_name FROM support_tickets WHERE lower(email)=? ORDER BY id DESC LIMIT 1');$support->execute([$email]);$supportName=(string)($support->fetchColumn()?:'');
+        $gift=$this->db->prepare('SELECT purchaser_email FROM gift_card_purchases WHERE lower(purchaser_email)=? ORDER BY id DESC LIMIT 1');$gift->execute([$email]);$giftMatch=$gift->fetchColumn();
+        if(!$user && !$order && $supportName==='' && $giftMatch===false) throw new \InvalidArgumentException('Customer not found.');
+        $first=(string)($user['first_name']??$order['first_name']??'');$last=(string)($user['last_name']??$order['last_name']??'');
+        if($first==='' && $supportName!==''){
+            $parts=preg_split('/\s+/',trim($supportName),2)?:[];$first=(string)($parts[0]??'');$last=(string)($parts[1]??'');
+        }
         return [
             'email'=>$email,
             'user_id'=>$user?(int)$user['id']:null,
             'registered'=>$user!==false,
-            'first_name'=>(string)($user['first_name']??$order['first_name']??''),
-            'last_name'=>(string)($user['last_name']??$order['last_name']??''),
+            'first_name'=>$first,
+            'last_name'=>$last,
             'account_created_at'=>(string)($user['created_at']??''),
         ];
     }
