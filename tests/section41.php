@@ -17,4 +17,5 @@ $health=$obs->health();assert($health['status']==='degraded');assert($health['op
 $db->exec("INSERT INTO admin_users(email,password_hash,first_name,last_name,role) VALUES('admin@example.com','x','A','D','super_admin')");$adminId=(int)$db->lastInsertId();
 $obs->resolve($id,$adminId);assert($obs->stats()['open']===0);assert($obs->health()['status']==='ok');
 $critical=$obs->record('critical','database_integrity','Integrity failed',['path'=>'database']);assert($critical>0);assert($obs->health()['status']==='unhealthy');
+$self=$obs->record('critical','operations_health','Store operational health is unhealthy.',['status'=>'unhealthy']);assert($self>0);$obs->resolve($critical,$adminId);assert($obs->health()['status']==='ok');assert($obs->resolveSystemType('operations_health')===1);
 echo "Section 41 checks passed\n";
