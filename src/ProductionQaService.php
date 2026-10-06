@@ -67,7 +67,6 @@ final class ProductionQaService
     {
         $work=$this->workOrder($workOrderId);
         $planned=(int)$work['planned_quantity'];$actual=$work['actual_quantity']!==null?(int)$work['actual_quantity']:null;
-        $waste=(int)$this->db->prepare('SELECT COALESCE(SUM(quantity),0) FROM production_waste_events WHERE work_order_id=?')->execute([$workOrderId]);
         $s=$this->db->prepare('SELECT COALESCE(SUM(quantity),0) FROM production_waste_events WHERE work_order_id=?');$s->execute([$workOrderId]);$waste=(int)$s->fetchColumn();
         $variance=$actual===null?null:$actual-$planned;
         $variancePct=($actual!==null&&$planned>0)?round(($variance/$planned)*100,1):null;
@@ -83,6 +82,24 @@ final class ProductionQaService
         $q->execute([$since,$this->yieldWarningPercent()]);$yieldWarnings=(int)$q->fetchColumn();
         $failed=(int)$this->db->query("SELECT COUNT(DISTINCT work_order_id) FROM production_quality_checks WHERE result='fail'")->fetchColumn();
         return ['waste_units'=>$waste,'waste_by_reason'=>$byReason,'yield_warnings'=>$yieldWarnings,'failed_qa_work_orders'=>$failed];
+    }
+
+    public function details(int $workOrderId): array
+    {
+        $work=$this->workOrder($workOrderId);
+        $status=$this->status($workOrderId);
+        return ['work_order'=>$work,'qa'=>$status,'waste'=>$this->wasteForWorkOrder($workOrderId),'yield'=>$this->yield($workOrderId)];
+    }
+
+    public function queue(int $limit=100): array
+    {
+        $limit=max(1,min(300,$limit));
+        $rows=$this->db->query("SELECT w.*,f.name flavor_name FROM production_work_orders w JOIN flavors f ON f.id=w.flavor_id WHERE w.status IN ('in_progress','completed') ORDER BY CASE w.status WHEN 'in_progress' THEN 0 ELSE 1 END,w.scheduled_date DESC,w.id DESC LIMIT {$limit}")->fetchAll();
+        foreach($rows as &$row){
+            $qa=$this->status((int)$row['id']);$yield=$this->yield((int)$row['id']);
+            $row['qa_ok']=$qa['ok'];$row['qa_missing']=count($qa['missing']);$row['qa_failed']=count($qa['failed']);$row['waste_units']=$yield['waste'];$row['variance_percent']=$yield['variance_percent'];
+        }
+        unset($row);return $rows;
     }
 
     public function yieldWarningPercent(): int
