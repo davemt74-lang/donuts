@@ -144,6 +144,13 @@ final class BatchTraceabilityService
             if(in_array($a['status'],['hold','recalled'],true)) return ['ok'=>false,'reason'=>'An assigned production batch is on hold or recalled.'];
             if(strtotime((string)$a['produced_at'])>time()) return ['ok'=>false,'reason'=>'An assigned production batch has a future production timestamp.'];
             if(!empty($a['best_by_date']) && (string)$a['best_by_date']<gmdate('Y-m-d')) return ['ok'=>false,'reason'=>'An assigned production batch is past its best-by date.'];
+            try{
+                $ingredientRisk=(new IngredientTraceabilityService($this->db))->batchRisk((int)$a['batch_id']);
+                if(!$ingredientRisk['ok']) return ['ok'=>false,'reason'=>$ingredientRisk['reason']];
+            }catch(\PDOException $e){
+                $message=strtolower($e->getMessage());
+                if(!str_contains($message,'production_batch_ingredients') && !str_contains($message,'ingredient_lots')) throw $e;
+            }
             $fid=(int)$a['flavor_id'];$totals[$fid]=($totals[$fid]??0)+(int)$a['quantity'];
         }
         ksort($totals);
