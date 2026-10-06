@@ -50,8 +50,8 @@ final class ReleaseAuditService
     {
         return [
             'public/index.php','public/cart.php','public/checkout.php','public/pay.php','public/stripe-webhook.php',
-            'public/admin.php','public/admin-audit.php','public/setup-admin.php','public/health.php','public/sitemap.php','public/order-status.php','public/unsubscribe.php','public/admin-marketing.php',
-            'scripts/migrate.php','scripts/preflight.php','scripts/send-notifications.php','scripts/recover-reservations.php','DEPLOYMENT.md',
+            'public/admin.php','public/admin-audit.php','public/admin-backups.php','public/setup-admin.php','public/health.php','public/sitemap.php','public/order-status.php','public/unsubscribe.php','public/admin-marketing.php',
+            'scripts/migrate.php','scripts/preflight.php','scripts/backup-database.php','scripts/restore-database.php','scripts/send-notifications.php','scripts/recover-reservations.php','DEPLOYMENT.md',
         ];
     }
 
