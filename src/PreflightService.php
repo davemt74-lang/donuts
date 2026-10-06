@@ -47,6 +47,11 @@ final class PreflightService
             $checks[]=$this->check('checkout_hold_minutes',$holdMinutes>=30 && $holdMinutes<=120,'CHECKOUT_HOLD_MINUTES must be between 30 and 120');
             $trackingDays=(int)\env('ORDER_TRACKING_LINK_DAYS','90');
             $checks[]=$this->check('order_tracking_link_days',$trackingDays>=1 && $trackingDays<=365,'ORDER_TRACKING_LINK_DAYS must be between 1 and 365');
+            $backupDays=(int)\env('BACKUP_RETENTION_DAYS','14');$backupMax=(int)\env('BACKUP_MAX_FILES','60');
+            $checks[]=$this->check('backup_retention_days',$backupDays>=1 && $backupDays<=365,'BACKUP_RETENTION_DAYS must be between 1 and 365');
+            $checks[]=$this->check('backup_max_files',$backupMax>=2 && $backupMax<=500,'BACKUP_MAX_FILES must be between 2 and 500');
+            $backupDir=dirname(__DIR__).'/storage/backups';if(!is_dir($backupDir))@mkdir($backupDir,0770,true);
+            $checks[]=$this->check('backup_dir',is_dir($backupDir)&&is_writable($backupDir),'storage/backups must be writable');
             $transport=strtolower((string)\env('MAIL_TRANSPORT','log'));
             $checks[]=$this->check('mail_transport',in_array($transport,['smtp','mail'],true),'Production MAIL_TRANSPORT must be smtp or mail');
             $checks[]=$this->check('mail_from',filter_var((string)\env('MAIL_FROM',''),FILTER_VALIDATE_EMAIL)!==false,'MAIL_FROM must be a valid email address');
