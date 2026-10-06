@@ -2,10 +2,10 @@
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
 
-use FudgeDonuts\{CartService,CatalogRepository,Database,DiscountService,PackBuilderService};
+use FudgeDonuts\{CartService,CatalogRepository,Database,DiscountService,PackBuilderService,PresetPackService};
 
 $catalog=new CatalogRepository(Database::connection());
-$cart=new CartService(new PackBuilderService($catalog),new DiscountService(Database::connection()));
+$cart=new CartService(new PackBuilderService($catalog),new DiscountService(Database::connection()),new PresetPackService($catalog));
 
 if($_SERVER['REQUEST_METHOD']==='POST'){
     verify_csrf($_POST['_csrf']??null);
