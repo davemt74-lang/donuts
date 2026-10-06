@@ -14,18 +14,20 @@ if(isset($_POST['login'])){
     $email=(string)($_POST['email']??'');
     $security=new SecurityService($db);
     try{
-        $security->assertLoginAllowed('admin',$email,5,1800);
+        $client=SecurityService::clientIdentifier();
+        $security->assertLoginAllowed('admin',$email,5,1800);$security->assertLoginAllowed('admin-ip',$client,20,1800);
         $adminUser=$adminAuth->authenticate($email,(string)($_POST['password']??''));
         if(!$adminUser){
-            $security->recordLoginFailure('admin',$email,5,1800);
+            $security->recordLoginFailure('admin',$email,5,1800);$security->recordLoginFailure('admin-ip',$client,20,1800);
             $audit->record(null,'login_failed','admin',$email,'Administrator sign-in failed.',[],[],$email);
             $error='Email or password is incorrect.';
         }else{
-            $security->clearLoginFailures('admin',$email);
+            $security->clearLoginFailures('admin',$email);$security->clearLoginFailures('admin-ip',$client);
             session_regenerate_id(true);
             $_SESSION['admin']=true;
             $_SESSION['admin_id']=(int)$adminUser['id'];
             $_SESSION['admin_role']=(string)$adminUser['role'];
+            SecurityService::initializeAuthSession($_SESSION,'admin');rotate_csrf_token();
             header('Location: '.($adminUser['role']==='fulfillment'?'/admin-orders.php':'/admin.php'));exit;
         }
     }catch(Throwable $e){http_response_code(429);$error=$e->getMessage();}
@@ -34,8 +36,8 @@ if(isset($_POST['logout'])){
     verify_csrf($_POST['_csrf']??null);
     $logoutAdminId=!empty($_SESSION['admin_id'])?(int)$_SESSION['admin_id']:null;
     if($logoutAdminId)$audit->record($logoutAdminId,'logout','admin',$logoutAdminId,'Administrator signed out.');
-    unset($_SESSION['admin'],$_SESSION['admin_id'],$_SESSION['admin_role']);
-    session_regenerate_id(true);
+    unset($_SESSION['admin'],$_SESSION['admin_id'],$_SESSION['admin_role'],$_SESSION['admin_authenticated_at'],$_SESSION['admin_last_activity']);
+    session_regenerate_id(true);rotate_csrf_token();
     header('Location: /admin.php');exit;
 }
 if(empty($_SESSION['admin'])){
