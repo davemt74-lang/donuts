@@ -29,6 +29,7 @@ final class AdminAuthService
             }
             $id=$this->insertAdmin($data,'super_admin',null);
             $this->db->commit();
+            $this->audit($id,'admin_account_created','admin',$id,'Initial Super Admin created.');
             return $id;
         } catch (\Throwable $e) {
             if($this->db->inTransaction()) $this->db->rollBack();
@@ -41,7 +42,9 @@ final class AdminAuthService
         if(!in_array($role,['super_admin','admin','fulfillment'],true)){
             throw new \InvalidArgumentException('Invalid administrator role.');
         }
-        return $this->insertAdmin($data,$role,$createdBy);
+        $id=$this->insertAdmin($data,$role,$createdBy);
+        $this->audit($createdBy,'admin_account_changed','admin',$id,'Administrator created with role '.$role,[],['email'=>strtolower(trim((string)($data['email']??''))),'role'=>$role,'active'=>1]);
+        return $id;
     }
 
     public function authenticate(string $email,string $password): ?array
@@ -59,6 +62,7 @@ final class AdminAuthService
         $u=$this->db->prepare('UPDATE admin_users SET last_login_at=CURRENT_TIMESTAMP WHERE id=?');
         $u->execute([(int)$admin['id']]);
         unset($admin['password_hash']);
+        $this->audit((int)$admin['id'],'login_success','admin',(int)$admin['id'],'Administrator signed in.');
         return $admin;
     }
 
@@ -86,8 +90,10 @@ final class AdminAuthService
             if((int)$s->fetchColumn()===0) throw new \InvalidArgumentException('At least one active Super Admin is required.');
         }
 
+        $before=$target;
         $s=$this->db->prepare('UPDATE admin_users SET active=?,updated_at=CURRENT_TIMESTAMP WHERE id=?');
         $s->execute([$active?1:0,$id]);
+        $this->audit($actorId,'admin_account_changed','admin',$id,$active?'Administrator enabled.':'Administrator disabled.',$before,['active'=>$active?1:0]);
     }
 
     public function changePassword(int $id,string $currentPassword,string $newPassword): void
@@ -98,6 +104,7 @@ final class AdminAuthService
         $this->validatePassword($newPassword);
         $u=$this->db->prepare('UPDATE admin_users SET password_hash=?,updated_at=CURRENT_TIMESTAMP WHERE id=?');
         $u->execute([password_hash($newPassword,PASSWORD_DEFAULT),$id]);
+        $this->audit($id,'password_changed','admin',$id,'Administrator changed their password.');
     }
 
     private function insertAdmin(array $data,string $role,?int $createdBy): int
@@ -121,6 +128,15 @@ final class AdminAuthService
             throw $e;
         }
         return (int)$this->db->lastInsertId();
+    }
+
+    private function audit(?int $adminId,string $action,string $entityType='',string|int|null $entityId=null,string $summary='',array $before=[],array $after=[]): void
+    {
+        try{
+            (new AdminAuditService($this->db))->record($adminId,$action,$entityType,$entityId,$summary,$before,$after);
+        }catch(\PDOException $e){
+            if(!str_contains(strtolower($e->getMessage()),'admin_audit_log')) throw $e;
+        }
     }
 
     private function validatePassword(string $password): void
