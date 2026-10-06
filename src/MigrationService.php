@@ -15,15 +15,19 @@ final class MigrationService
     public function status(): array
     {
         $files=$this->files();$applied=$this->applied();$rows=[];$pending=0;$drift=0;
+        $seen=[];
         foreach($files as $path){
-            $name=basename($path);$checksum=hash_file('sha256',$path);$record=$applied[$name]??null;
+            $name=basename($path);$seen[$name]=true;$checksum=hash_file('sha256',$path);$record=$applied[$name]??null;
             $state='pending';
-            if($record){
-                $state=hash_equals((string)$record['checksum'],$checksum)?'applied':'drift';
-            }
+            if($record)$state=hash_equals((string)$record['checksum'],$checksum)?'applied':'drift';
             if($state==='pending')$pending++;
             if($state==='drift')$drift++;
             $rows[]=['file'=>$name,'checksum'=>$checksum,'state'=>$state,'applied_at'=>$record['applied_at']??null];
+        }
+        foreach($applied as $name=>$record){
+            if(isset($seen[$name]))continue;
+            $drift++;
+            $rows[]=['file'=>$name,'checksum'=>(string)$record['checksum'],'state'=>'missing','applied_at'=>$record['applied_at']??null];
         }
         return ['migrations'=>$rows,'pending'=>$pending,'drift'=>$drift,'applied'=>count($applied)];
     }
