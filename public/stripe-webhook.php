@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
-use FudgeDonuts\{AnalyticsService,CostAccountingService,Database,DisputeService,GiftCardService,InventoryService,NotificationService,OrderService,PaymentRepository,PromotionService,StripeService,TaxService};
+use FudgeDonuts\{AnalyticsService,CheckoutRecoveryService,CostAccountingService,Database,DisputeService,GiftCardService,InventoryService,NotificationService,OrderService,PaymentRepository,PromotionService,StripeService,TaxService};
 
 $payload=file_get_contents('php://input')?:'';
 $signature=(string)($_SERVER['HTTP_STRIPE_SIGNATURE']??'');
@@ -92,6 +92,7 @@ if(is_array($object) && !empty($object['id'])){
                 if((env('ANALYTICS_ENABLED','0')??'0')==='1'){
                     try{(new AnalyticsService($db))->recordPurchase($orderId);}catch(Throwable){}
                 }
+                try{(new CheckoutRecoveryService($db,(string)env('APP_KEY',''),(string)env('APP_URL','http://127.0.0.1:8080'),(int)env('CHECKOUT_RECOVERY_DAYS','7')))->markConvertedByOrder($orderId);}catch(Throwable){}
             }
         }else{
             $payments->markReviewByProviderSession((string)$object['id']);
