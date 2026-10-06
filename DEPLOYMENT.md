@@ -56,3 +56,15 @@ php scripts/restore-database.php --file=store-YYYYMMDD-HHMMSS-xxxxxx.sqlite --co
 ```
 
 The restore command creates a pre-restore backup, enables maintenance mode, checkpoints and closes SQLite, validates the staged database, swaps it into place, runs a final integrity check, and only then removes maintenance mode.
+
+
+## Operations monitoring
+Schedule the operational health worker every 5 minutes:
+
+```bash
+php scripts/check-operations.php
+```
+
+Set `ALERT_EMAIL` to an operations mailbox to receive deduplicated health alerts through the transactional email outbox. `OBSERVABILITY_RETENTION_DAYS` controls resolved-event retention. Runtime errors also fall back to `storage/logs/app.log` if the database is unavailable.
+
+The public `/health.php` endpoint exposes only readiness status, database availability, a request ID, and timestamp. Detailed operational state is available to administrators at `/admin-operations.php`.
