@@ -22,9 +22,15 @@ final class AdminService
 
     public function __construct(private readonly PDO $db) {}
 
-    public function orders(int $limit=100): array
+    public function orders(int $limit=100,?string $status=null): array
     {
         $limit=max(1,min(500,$limit));
+        if($status!==null && $status!==''){
+            $allowed=array_keys(self::ORDER_TRANSITIONS);
+            if(!in_array($status,$allowed,true)) throw new \InvalidArgumentException('Invalid order status filter.');
+            $s=$this->db->prepare("SELECT * FROM orders WHERE status=? ORDER BY id DESC LIMIT {$limit}");
+            $s->execute([$status]);return $s->fetchAll();
+        }
         return $this->db->query("SELECT * FROM orders ORDER BY id DESC LIMIT {$limit}")->fetchAll();
     }
 
