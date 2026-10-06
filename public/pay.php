@@ -52,7 +52,7 @@ if((string)$order['status']==='pending_payment' && !empty($order['stripe_checkou
         if($stripeStatus==='expired'){
             $payments->markFailedByProviderSession($existingId);
             $orderService->markPaymentFailedByStripeSession($existingId,'Stripe Checkout session expired before retry.');
-            $inventory->releaseOrder((int)$order['id']);
+            $inventory->releaseOrder((int)$order['id']);$giftCards->releaseForOrder((int)$order['id']);
             $order=$orderService->preparePaymentAttempt((int)$order['id']);
         }else{
             \FudgeDonuts\HttpResponseService::send(
@@ -91,11 +91,24 @@ $taxService->snapshotOrder((int)$order['id']);
 
 $giftCardId=(int)($_SESSION['gift_card_id']??0);
 $giftApplication=null;$calculatedTax=0;$stripeCharge=(int)$order['total_cents'];
-if($giftCardId>0){
-    $calculatedTax=$taxService->calculateExclusiveForOrder($stripe,$order);
-    $taxService->recordCalculated((int)$order['id'],$calculatedTax);
-    $giftApplication=$giftCards->reserveForOrder($giftCardId,(int)$order['id'],(int)$order['total_cents']+$calculatedTax);
-    $stripeCharge=max(0,(int)$order['total_cents']+$calculatedTax-(int)$giftApplication['reserved_cents']);
+try{
+    if($giftCardId>0){
+        $calculatedTax=$taxService->calculateExclusiveForOrder($stripe,$order);
+        $taxService->recordCalculated((int)$order['id'],$calculatedTax);
+        $giftApplication=$giftCards->reserveForOrder($giftCardId,(int)$order['id'],(int)$order['total_cents']+$calculatedTax);
+        $stripeCharge=max(0,(int)$order['total_cents']+$calculatedTax-(int)$giftApplication['reserved_cents']);
+    }
+}catch(Throwable $e){
+    $inventory->releaseOrder((int)$order['id']);$giftCards->releaseForOrder((int)$order['id']);
+    $orderService->markPaymentInitializationFailed((int)$order['id'],'Gift card or tax calculation failed before payment initialization.');
+    \FudgeDonuts\ObservabilityService::captureThrowable($e,dirname(__DIR__),'gift_card_tender_initialization_failure');
+    \FudgeDonuts\HttpResponseService::send(
+        503,
+        'We couldn’t prepare this gift card payment.',
+        'No new payment was started. Return to checkout, remove the gift card if needed, or contact support.',
+        [['label'=>'Return to checkout','href'=>'/checkout-review.php'],['label'=>'Contact support','href'=>'/contact.php']],
+        \FudgeDonuts\ObservabilityService::requestId()
+    );
 }
 
 if($giftApplication && $stripeCharge===0){
