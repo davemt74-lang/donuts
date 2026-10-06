@@ -318,3 +318,9 @@ The required checks currently cover appearance/finish, portion/size, allergen-la
 Use **Admin → Batch Allocation** for Preparing and Ready orders that do not yet have production-batch traceability. Automatic allocation uses first-expire-first-out: earliest best-by date first, then oldest production time.
 
 The allocator skips held, recalled, expired, future-dated, depleted, or ingredient-unsafe batches. It may split one flavor requirement across multiple safe batches. The final assignment still runs through the canonical batch-assignment transaction, which revalidates exact flavor quantities and remaining inventory before consuming any batch quantity. If the full order cannot be satisfied, no partial assignment is written.
+
+
+## Finished-goods aging and expiry
+Schedule `php scripts/process-finished-goods-aging.php` on the cadence configured by `JOB_FINISHED_GOODS_AGING_INTERVAL_MINUTES` (60 minutes by default).
+
+The worker places expired active production batches on hold and raises operational warnings for expired or near-expiry finished goods. **Admin → Aging** controls the warning horizon and records explicit dispositions for expired, quality, damage, donation, sample, or other removals. Disposition only consumes unassigned remaining batch quantity; assigned order quantities are already outside `quantity_remaining` and remain protected by shipment traceability checks.
