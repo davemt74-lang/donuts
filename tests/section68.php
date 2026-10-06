@@ -38,4 +38,10 @@ $svc->setHold($expired,true);$expiredRelease=false;try{$svc->setHold($expired,fa
 
 $duplicate=false;try{$svc->createLot(['ingredient_name'=>'Cocoa','supplier_name'=>'Supplier A','supplier_lot_code'=>'COCOA-1','received_at'=>gmdate('Y-m-d H:i:s',time()-86400)],$aid);}catch(InvalidArgumentException){$duplicate=true;}assert($duplicate);
 
+$blockedBatch=$batchSvc->createBatch(['batch_code'=>'ING-BLOCKED','flavor_id'=>$fid,'produced_at'=>$produced,'best_by_date'=>$best,'quantity_produced'=>5],$aid);
+$heldLot=$svc->createLot(['ingredient_name'=>'Butter','supplier_name'=>'Supplier E','supplier_lot_code'=>'BUTTER-HOLD','received_at'=>gmdate('Y-m-d H:i:s',time()-2*86400),'best_by_date'=>gmdate('Y-m-d',time()+20*86400)],$aid);
+$svc->linkBatch($blockedBatch,$heldLot,null,'',$aid);$svc->setHold($heldLot,true);
+$db->exec("INSERT INTO orders(order_number,checkout_fingerprint,status,email,first_name,last_name,line1,city,region,postal_code,fulfillment_code,fulfillment_name,fulfillment_type,subtotal_cents,total_cents) VALUES('FD-ING2','ing2','preparing','buyer2@example.com','Buyer','Two','2 Main','Phoenix','AZ','85002','standard','Standard','shipping',1000,1000)");$order2=(int)$db->lastInsertId();$s->execute([$order2,'custom',1,1,1000,1000,$cfg]);
+$assignmentBlocked=false;try{$batchSvc->assignOrder($order2,[$blockedBatch=>1],$aid);}catch(InvalidArgumentException){$assignmentBlocked=true;}assert($assignmentBlocked);
+
 echo "Section 68 checks passed\n";
