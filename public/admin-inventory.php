@@ -1,12 +1,12 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
-use FudgeDonuts\{Database,InventoryService};
+use FudgeDonuts\{AdminAuditService,Database,InventoryService};
 require_admin_roles(['super_admin','admin','fulfillment']);
-$svc=new InventoryService(Database::connection());$error='';
+$db=Database::connection();$svc=new InventoryService($db);$audit=new AdminAuditService($db);$error='';
 if($_SERVER['REQUEST_METHOD']==='POST'){
  verify_csrf($_POST['_csrf']??null);
- try{$svc->setInventory((int)$_POST['flavor_id'],!empty($_POST['track_inventory']),(int)$_POST['stock_on_hand'],(int)$_POST['low_stock_threshold']);header('Location: /admin-inventory.php');exit;}catch(Throwable $e){$error=$e->getMessage();}
+ try{$flavorId=(int)$_POST['flavor_id'];$before=null;foreach($svc->rows() as $row)if((int)$row['id']===$flavorId){$before=$row;break;}$svc->setInventory($flavorId,!empty($_POST['track_inventory']),(int)$_POST['stock_on_hand'],(int)$_POST['low_stock_threshold']);$after=null;foreach($svc->rows() as $row)if((int)$row['id']===$flavorId){$after=$row;break;}$audit->record((int)$_SESSION['admin_id'],'inventory_updated','flavor',$flavorId,'Flavor inventory updated.',$before?:[],$after?:[]);header('Location: /admin-inventory.php');exit;}catch(Throwable $e){$error=$e->getMessage();}
 }
 $rows=$svc->rows();$reservationStats=$svc->reservationStats();
 ?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/assets/app.css"><title>Inventory · Admin</title></head><body class="admin-body">
