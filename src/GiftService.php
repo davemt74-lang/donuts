@@ -7,7 +7,7 @@ use PDO;
 
 final class GiftService
 {
-    public function __construct(private readonly PDO $db) {}
+    public function __construct(private readonly ?PDO $db = null) {}
 
     public function normalizeCheckout(array $data): array
     {
@@ -33,6 +33,7 @@ final class GiftService
 
     public function persist(int $orderId,array $checkout): void
     {
+        if(!$this->db) throw new \\RuntimeException('Gift persistence requires a database connection.');
         $s=$this->db->prepare('INSERT OR REPLACE INTO order_gift_options(order_id,hide_price,packaging,requested_delivery_date,recipient_email) VALUES(?,?,?,?,?)');
         $s->execute([
             $orderId,!empty($checkout['hide_price'])?1:0,
@@ -44,6 +45,7 @@ final class GiftService
 
     public function forOrder(int $orderId): ?array
     {
+        if(!$this->db) throw new \\RuntimeException('Gift lookup requires a database connection.');
         $s=$this->db->prepare('SELECT * FROM order_gift_options WHERE order_id=?');$s->execute([$orderId]);return $s->fetch()?:null;
     }
 }
