@@ -112,3 +112,9 @@ The application emits CSP, frame-denial, MIME-sniffing, referrer, permissions, c
 
 ## Reverse proxy boundary
 Leave `TRUST_PROXY_HEADERS=0` unless TLS is terminated by a trusted reverse proxy that overwrites `X-Forwarded-Proto`. Set it to `1` only in that controlled topology; direct client-supplied forwarded headers are otherwise ignored.
+
+
+## Tax configuration
+Configure Stripe tax behavior in **Admin → Tax**. The store currently certifies exclusive tax only, so Stripe tax is added after the server-calculated pre-tax order total and then reconciled against the Stripe Checkout result.
+
+If Stripe Automatic Tax is enabled, configure the required business tax registrations in Stripe separately. Optionally set a Stripe product tax code such as `txcd_99999999`; leaving it blank uses Stripe's configured default tax treatment.
