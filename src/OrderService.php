@@ -32,6 +32,11 @@ final class OrderService
             }
             if(!empty($cart['discounts'])) (new PromotionService($this->db))->recordOrderDiscounts($orderId,$cart['discounts']);
             if(!empty($checkout['is_gift'])) (new GiftService($this->db))->persist($orderId,$checkout);
+            if(!empty($checkout['terms_accepted'])){
+                $content=new ContentService($this->db);
+                $consent=$this->db->prepare('INSERT INTO order_consents(order_id,terms_accepted,terms_version,privacy_version,refund_policy_version) VALUES(?,?,?,?,?)');
+                $consent->execute([$orderId,1,$content->get('terms_version','unknown'),$content->get('privacy_version','unknown'),$content->get('refund_policy_version','unknown')]);
+            }
             $this->event($orderId,'created','Order created from validated checkout.');
             $this->db->commit();
             return $this->find($orderId);
