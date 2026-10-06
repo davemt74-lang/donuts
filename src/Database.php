@@ -22,7 +22,16 @@ final class Database
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             PDO::ATTR_EMULATE_PREPARES => false,
         ]);
-        if (str_starts_with((string)$dsn, 'sqlite:')) self::$pdo->exec('PRAGMA foreign_keys = ON');
+        if (str_starts_with((string)$dsn, 'sqlite:')) {
+            self::$pdo->exec('PRAGMA foreign_keys = ON');
+            self::$pdo->exec('PRAGMA busy_timeout = 5000');
+            self::$pdo->exec('PRAGMA temp_store = MEMORY');
+            self::$pdo->exec('PRAGMA cache_size = -20000');
+            if ((string)$dsn !== 'sqlite::memory:') {
+                self::$pdo->exec('PRAGMA journal_mode = WAL');
+                self::$pdo->exec('PRAGMA synchronous = NORMAL');
+            }
+        }
         return self::$pdo;
     }
 
