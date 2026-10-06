@@ -28,6 +28,12 @@ final class CatalogRepository
         return $s->fetch() ?: null;
     }
 
+    public function flavorBySlug(string $slug,bool $activeOnly=true): ?array
+    {
+        $sql='SELECT * FROM flavors WHERE slug=?'.($activeOnly?' AND active=1':'');
+        $s=$this->db->prepare($sql);$s->execute([$slug]);return $s->fetch()?:null;
+    }
+
     public function packBySize(int $size): ?array
     {
         $s = $this->db->prepare('SELECT * FROM pack_sizes WHERE size = ? AND active = 1');
