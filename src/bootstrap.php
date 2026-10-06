@@ -97,7 +97,7 @@ if(!\FudgeDonuts\SecurityService::touchAuthSession(
     (int)env('USER_SESSION_IDLE_MINUTES','120'),
     (int)env('USER_SESSION_MAX_HOURS','168')
 )){
-    unset($_SESSION['user_id'],$_SESSION['user_authenticated_at'],$_SESSION['user_last_activity']);
+    unset($_SESSION['user_id'],$_SESSION['user_authenticated_at'],$_SESSION['user_last_activity'],$_SESSION['loyalty_points']);
     $sessionExpired=true;
 }
 if($sessionExpired) session_regenerate_id(true);
