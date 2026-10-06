@@ -142,6 +142,13 @@ final class OrderService
         }catch(\Throwable $e){if($this->db->inTransaction())$this->db->rollBack();throw $e;}
     }
 
+    public function markSettlementReview(int $orderId,string $reason): void
+    {
+        $s=$this->db->prepare("UPDATE orders SET status='payment_review',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status IN ('pending_payment','paid')");
+        $s->execute([$orderId]);
+        if($s->rowCount()) $this->event($orderId,'payment_review',$reason);
+    }
+
     public function markPaymentReviewByStripeSession(string $sessionId,string $reason=''): void
     {
         $s=$this->db->prepare("UPDATE orders SET status='payment_review',updated_at=CURRENT_TIMESTAMP WHERE stripe_checkout_session_id=? AND status='pending_payment'");
