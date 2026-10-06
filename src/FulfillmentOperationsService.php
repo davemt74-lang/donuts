@@ -48,6 +48,13 @@ final class FulfillmentOperationsService
         return $this->fulfillmentRows('pickup',$status);
     }
 
+    public static function csvCell(string $value): string
+    {
+        $value=str_replace(["\r","\n"],' ',trim($value));
+        if($value!=='' && in_array($value[0],['=','+','-','@'],true)) $value="'".$value;
+        return $value;
+    }
+
     public function packingSlip(int $orderId): array
     {
         $s=$this->db->prepare('SELECT * FROM orders WHERE id=?');$s->execute([$orderId]);$order=$s->fetch();
