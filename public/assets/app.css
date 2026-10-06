@@ -65,3 +65,5 @@
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}.quick-action-grid a:hover{transform:none}}
 
 .production-plan-panel{margin-top:22px}.production-plan-controls{margin:14px 0 18px;align-items:end}.production-plan-controls label{display:grid;gap:5px}.production-risk{display:inline-block;padding:5px 8px;border-radius:999px;font-size:.76rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em}.production-risk-stable{background:#dcefdc;color:#27592c}.production-risk-untracked{background:#e8edf5;color:#394f6d}.production-risk-medium,.production-risk-low-stock{background:#fff1c9;color:#6c4a00}.production-risk-high{background:#f7dfc8;color:#7c3b12}.production-risk-critical{background:#f5dddd;color:#8b2d25}
+
+.cost-editor-list{display:grid;gap:10px}.cost-editor-list .inline-admin{justify-content:space-between;border-bottom:1px solid #eaded3;padding:10px 0}.cost-editor-list .inline-admin:last-child{border-bottom:0}.cost-editor-list strong{min-width:140px}
