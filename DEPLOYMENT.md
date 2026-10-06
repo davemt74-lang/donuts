@@ -210,3 +210,13 @@ Gift-card codes are generated from cryptographically secure random bytes, stored
 At order checkout, gift cards behave as payment tender rather than discounts. Tax is calculated on the full taxable order before stored value is applied. A gift card can cover part or all of the order; any Stripe remainder is reconciled together with the reserved gift-card amount before fulfillment begins.
 
 Refunds return value to the original tenders. The refundable gift-card portion is restored first, and any remainder is sent back through Stripe. Retry keys prevent a repeated refund operation from crediting gift-card value twice. Admin → Gift Cards shows outstanding stored-value liability, reserved value, balances, and enable/disable controls without exposing full codes.
+
+
+## Loyalty and rewards
+Rewards are account-based promotional discounts, not payment tender. Configure earning and redemption economics in **Admin → Rewards**.
+
+Points are reserved when payment begins, released if checkout expires or fails, and permanently redeemed only after payment reconciliation succeeds. Points are earned from merchandise subtotal after discounts; shipping and tax do not earn points.
+
+Refunds proportionally restore points that were redeemed on the refunded order and proportionally reverse points earned from that order. A customer balance may become negative after a refund if previously earned points were already spent; future redemptions remain unavailable until new earnings bring the balance back above zero. This prevents refund-driven rewards arbitrage.
+
+Manual Admin adjustments require a reason and are written to both the rewards ledger and Admin audit log. Customer privacy exports include rewards balance/history; closing the login account removes the redeemable loyalty account while preserving order-linked audit rows without retaining the deleted login identity.
