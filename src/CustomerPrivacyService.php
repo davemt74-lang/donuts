@@ -31,6 +31,9 @@ final class CustomerPrivacyService
         }
         unset($order);
 
+        $loyaltyAccount=$this->safeRow('SELECT points_balance,reserved_points,lifetime_earned_points,lifetime_redeemed_points,created_at,updated_at FROM loyalty_accounts WHERE user_id=?',[$userId]);
+        $loyaltyLedger=$this->safeRows('SELECT order_id,refund_id,entry_type,points,balance_after_points,note,created_at FROM loyalty_ledger WHERE user_id=? ORDER BY id',[$userId]);
+
         $marketing=$this->safeRow('SELECT id,email,status,created_at,updated_at FROM newsletter_subscribers WHERE lower(email)=?',[strtolower((string)$user['email'])]);
         if($marketing){
             $marketing['consent_events']=$this->safeRows('SELECT action,source,created_at FROM newsletter_consent_events WHERE subscriber_id=? ORDER BY id',[(int)$marketing['id']]);
@@ -50,6 +53,7 @@ final class CustomerPrivacyService
             'addresses'=>$addresses,
             'saved_boxes'=>$savedBoxes,
             'orders'=>$orders,
+            'rewards'=>['account'=>$loyaltyAccount,'ledger'=>$loyaltyLedger],
             'marketing'=>$marketing,
         ];
         $this->record($userId,(string)$user['email'],'data_export',['orders'=>count($orders),'addresses'=>count($addresses)]);
