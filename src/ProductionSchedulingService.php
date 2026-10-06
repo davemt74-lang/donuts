@@ -93,9 +93,9 @@ final class ProductionSchedulingService
 
         $this->db->beginTransaction();
         try{
-            $b=$this->db->prepare("INSERT INTO production_batches(batch_code,flavor_id,produced_at,best_by_date,quantity_produced,quantity_remaining,status,notes,created_by) VALUES(?,?,CURRENT_TIMESTAMP,?,?,?,?,?,?,?)");
+            $b=$this->db->prepare("INSERT INTO production_batches(batch_code,flavor_id,produced_at,best_by_date,quantity_produced,quantity_remaining,status,notes,created_by) VALUES(?,?,CURRENT_TIMESTAMP,?,?,?,'active',?,?)");
             $notes='Completed from production work order '.$work['work_order_number'].($work['notes']!==''?' — '.$work['notes']:'');
-            $b->execute([$batchCode,(int)$work['flavor_id'],$bestByDate,$actualQuantity,$actualQuantity,'active',$notes,$adminId]);
+            $b->execute([$batchCode,(int)$work['flavor_id'],$bestByDate,$actualQuantity,$actualQuantity,$notes,$adminId]);
             $batchId=(int)$this->db->lastInsertId();
 
             try{(new RecipeService($this->db))->snapshotBatch($batchId);}catch(\PDOException $e){
