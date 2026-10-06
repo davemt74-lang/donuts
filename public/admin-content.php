@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
-use FudgeDonuts\{ContentService,Database};
+use FudgeDonuts\{AdminAuditService,ContentService,Database};
 require_admin_roles(['super_admin','admin']);
-$svc=new ContentService(Database::connection());$error='';
-if($_SERVER['REQUEST_METHOD']==='POST'){verify_csrf($_POST['_csrf']??null);try{foreach((array)($_POST['content']??[]) as $k=>$v)$svc->set((string)$k,trim((string)$v));header('Location: /admin-content.php');exit;}catch(Throwable $e){$error=$e->getMessage();}}
+$db=Database::connection();$svc=new ContentService($db);$audit=new AdminAuditService($db);$error='';
+if($_SERVER['REQUEST_METHOD']==='POST'){verify_csrf($_POST['_csrf']??null);try{$incoming=(array)($_POST['content']??[]);$before=[];foreach(array_keys($incoming) as $k)$before[(string)$k]=$svc->get((string)$k);foreach($incoming as $k=>$v)$svc->set((string)$k,trim((string)$v));$audit->record((int)$_SESSION['admin_id'],'content_updated','site_content','storefront','Storefront content and policies updated.',$before,$incoming);header('Location: /admin-content.php');exit;}catch(Throwable $e){$error=$e->getMessage();}}
 $fields=['hero_title','hero_subtitle','story_title','story_body','seo_title','seo_description','contact_email','faq_shipping','faq_allergens','faq_gifts','terms_title','terms_body','privacy_title','privacy_body','refund_title','refund_body','shipping_policy_title','shipping_policy_body','terms_version','privacy_version','refund_policy_version'];
 ?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/assets/app.css"><title>Content · Admin</title></head><body class="admin-body">
 <header class="admin-topbar"><a class="admin-brand" href="/admin.php">Fudge Donuts <span>Admin</span></a><nav><a href="/admin.php">Dashboard</a><a href="/admin-flavors.php">Flavors</a><a href="/admin-packs.php">Packs</a><a href="/admin-orders.php">Orders</a><a href="/admin-inventory.php">Inventory</a><a href="/admin-promotions.php">Promotions</a><a class="active" href="/admin-content.php">Content</a><a href="/admin-reports.php">Reports</a><a href="/admin-notifications.php">Email</a></nav></header>
