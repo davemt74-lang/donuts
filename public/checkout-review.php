@@ -19,8 +19,10 @@ $resetPaymentAttempt=function() use($db,$giftCards): void {
             $sid=(string)($order['stripe_checkout_session_id']??'');
             if($sid!=='' && $order['status']==='pending_payment'){
                 $stripe=new StripeService((string)env('STRIPE_SECRET_KEY',''),(string)env('STRIPE_WEBHOOK_SECRET',''));
-                $session=$stripe->retrieveCheckoutSession($sid);
-                if(($session['status']??'')==='open')$stripe->expireCheckoutSession($sid);
+                $session=$stripe->retrieveCheckoutSession($sid);$stripeStatus=(string)($session['status']??'');
+                if($stripeStatus==='complete') throw new RuntimeException('Payment already completed. Refresh the payment status before changing checkout options.');
+                if($stripeStatus==='open')$stripe->expireCheckoutSession($sid);
+                elseif($stripeStatus!=='expired') throw new RuntimeException('Existing payment session could not be safely reset.');
                 $payments->markFailedByProviderSession($sid);
                 $orderService->markPaymentFailedByStripeSession($sid,'Checkout tender or fulfillment changed.');
             }
