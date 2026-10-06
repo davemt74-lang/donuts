@@ -15,7 +15,10 @@ $svc->setStatus($batch,'released');assert($svc->batch($batch)['status']==='relea
 $db->exec("INSERT INTO orders(order_number,checkout_fingerprint,status,email,first_name,last_name,line1,city,region,postal_code,fulfillment_code,fulfillment_name,fulfillment_type,subtotal_cents,total_cents) VALUES('FD-BATCH','batchorder','preparing','buyer@example.com','Buyer','One','1 Main','Phoenix','AZ','85001','standard','Standard','shipping',1000,1000)");
 $order=(int)$db->lastInsertId();
 $svc->assignOrder($order,$batch,$aid);assert(count($svc->batchesForOrder($order))===1);assert(count($svc->affectedOrders($batch))===1);
-$svc->setStatus($batch,'recalled','Packaging seal issue');$b=$svc->batch($batch);assert($b['status']==='recalled');assert($b['recall_reason']==='Packaging seal issue');assert(count($svc->recallNotificationTargets($batch))===1);
+$db->exec("INSERT INTO orders(order_number,checkout_fingerprint,status,email,first_name,last_name,line1,city,region,postal_code,fulfillment_code,fulfillment_name,fulfillment_type,subtotal_cents,total_cents) VALUES('FD-BATCH2','batchorder2','ready','buyer2@example.com','Buyer','Two','2 Main','Phoenix','AZ','85002','standard','Standard','shipping',1000,1000)");
+$order2=(int)$db->lastInsertId();$svc->assignOrder($order2,$batch,$aid);
+$list=$svc->list();assert((int)$list[0]['order_count']===2);assert((int)$list[0]['total_units']===36);
+$svc->setStatus($batch,'recalled','Packaging seal issue');$b=$svc->batch($batch);assert($b['status']==='recalled');assert($b['recall_reason']==='Packaging seal issue');assert(count($svc->recallNotificationTargets($batch))===2);
 
 $db->exec("UPDATE orders SET status='shipped' WHERE id={$order}");
 $blocked=false;try{$svc->removeOrderBatch($order,$batch);}catch(InvalidArgumentException){$blocked=true;}assert($blocked);
