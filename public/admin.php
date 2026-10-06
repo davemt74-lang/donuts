@@ -4,11 +4,26 @@ require dirname(__DIR__) . '/src/bootstrap.php';
 
 use FudgeDonuts\CatalogRepository;
 use FudgeDonuts\Database;
+use FudgeDonuts\SecurityService;
 
 $expected = (string)env('ADMIN_PASSWORD', '');
 if (isset($_POST['login'])) {
     verify_csrf($_POST['_csrf'] ?? null);
-    if ($expected !== '' && hash_equals($expected, (string)($_POST['password'] ?? ''))) $_SESSION['admin'] = true;
+    $db = Database::connection();
+    $security = new SecurityService($db);
+    $subject = (string)($_SERVER['REMOTE_ADDR'] ?? 'unknown');
+    try {
+        $security->assertLoginAllowed('admin',$subject,5,1800);
+        if ($expected !== '' && hash_equals($expected, (string)($_POST['password'] ?? ''))) {
+            $security->clearLoginFailures('admin',$subject);
+            session_regenerate_id(true);
+            $_SESSION['admin'] = true;
+        } else {
+            $security->recordLoginFailure('admin',$subject,5,1800);
+        }
+    } catch (Throwable) {
+        http_response_code(429);
+    }
 }
 if (isset($_POST['logout'])) { verify_csrf($_POST['_csrf'] ?? null); unset($_SESSION['admin']); }
 if (empty($_SESSION['admin'])) {
