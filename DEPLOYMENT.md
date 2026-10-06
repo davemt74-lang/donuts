@@ -218,3 +218,9 @@ Subscribe the production Stripe webhook endpoint to `charge.dispute.created`, `c
 Admin → Disputes links chargebacks to orders or gift-card purchases. Open and lost disputes block further fulfillment and manual refunds on affected orders. Disputed gift-card purchases disable the issued stored-value card while the dispute is open or lost and reactivate any remaining balance only when Stripe closes the dispute in the store's favor.
 
 Evidence submission and dispute acceptance remain in Stripe Dashboard; the store records and enforces the operational state locally.
+
+
+## Customer CRM
+Admin → Customers unifies registered customers, guest buyers, support-only contacts, and gift-card purchasers by normalized email identity. Profiles show lifetime order value, refunds, order history, support context, gift-card purchases, internal notes, and service tags.
+
+CRM notes and tags are internal service metadata. They are included in registered-customer privacy exports and automatically purged during account closure. Do not use CRM notes for sensitive profiling or information unrelated to customer service and store operations.

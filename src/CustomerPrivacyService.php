@@ -31,6 +31,11 @@ final class CustomerPrivacyService
         }
         unset($order);
 
+        $emailHash=hash('sha256',strtolower(trim((string)$user['email'])));
+        $crm=[
+            'tags'=>$this->safeRows('SELECT tag,created_at FROM customer_tags WHERE customer_email_hash=? ORDER BY tag',[$emailHash]),
+            'notes'=>$this->safeRows('SELECT note,created_at FROM customer_admin_notes WHERE customer_email_hash=? ORDER BY id',[$emailHash]),
+        ];
         $marketing=$this->safeRow('SELECT id,email,status,created_at,updated_at FROM newsletter_subscribers WHERE lower(email)=?',[strtolower((string)$user['email'])]);
         if($marketing){
             $marketing['consent_events']=$this->safeRows('SELECT action,source,created_at FROM newsletter_consent_events WHERE subscriber_id=? ORDER BY id',[(int)$marketing['id']]);
@@ -50,6 +55,7 @@ final class CustomerPrivacyService
             'addresses'=>$addresses,
             'saved_boxes'=>$savedBoxes,
             'orders'=>$orders,
+            'crm'=>$crm,
             'marketing'=>$marketing,
         ];
         $this->record($userId,(string)$user['email'],'data_export',['orders'=>count($orders),'addresses'=>count($addresses)]);
@@ -86,6 +92,7 @@ final class CustomerPrivacyService
             $s=$this->db->prepare('UPDATE orders SET user_id=NULL WHERE user_id=?');$s->execute([$userId]);
             $this->safeExecute('DELETE FROM password_reset_tokens WHERE user_id=?',[$userId]);
             $this->safeExecute('DELETE FROM saved_boxes WHERE user_id=?',[$userId]);
+            try{(new CustomerCrmService($this->db))->purgeInternalData($email);}catch(\Throwable){}
             $s=$this->db->prepare('DELETE FROM addresses WHERE user_id=?');$s->execute([$userId]);
             $s=$this->db->prepare('DELETE FROM users WHERE id=?');$s->execute([$userId]);
             if($s->rowCount()!==1) throw new \RuntimeException('Account changed before closure completed.');
