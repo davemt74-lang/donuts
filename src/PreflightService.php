@@ -92,6 +92,10 @@ final class PreflightService
             }catch(\Throwable $e){
                 $checks[]=$this->check('tax_settings',false,'Tax settings: '.$e->getMessage());
             }
+            $productionHistory=(int)\env('PRODUCTION_HISTORY_DAYS','28');
+            $productionSafety=(int)\env('PRODUCTION_SAFETY_DAYS','2');
+            $checks[]=$this->check('production_history_days',$productionHistory>=7 && $productionHistory<=180,'PRODUCTION_HISTORY_DAYS must be between 7 and 180');
+            $checks[]=$this->check('production_safety_days',$productionSafety>=0 && $productionSafety<=30,'PRODUCTION_SAFETY_DAYS must be between 0 and 30');
             $analyticsEnabled=(string)\env('ANALYTICS_ENABLED','0');
             $checks[]=$this->check('analytics_enabled',in_array($analyticsEnabled,['0','1'],true),'ANALYTICS_ENABLED must be 0 or 1');
             $analyticsDays=(int)\env('ANALYTICS_RETENTION_DAYS','180');

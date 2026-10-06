@@ -176,3 +176,9 @@ Anonymous conversion attribution is disabled by default. Set `ANALYTICS_ENABLED=
 When enabled, the storefront creates a random 128-bit first-party visitor identifier and records only funnel events, page paths, referrer host, UTM campaign fields, and attributed order revenue. It does not store names, email addresses, postal addresses, raw IP addresses, or third-party tracking identifiers.
 
 `ANALYTICS_RETENTION_DAYS` controls event retention. The Operations worker prunes expired anonymous events. Admin → Reports shows the 30-day funnel and attributed acquisition sources.
+
+
+## Production planning
+Admin → Inventory includes a production forecast built from actual paid/fulfilled flavor demand plus current on-hand and reserved stock.
+
+`PRODUCTION_HISTORY_DAYS` controls the default demand lookback and `PRODUCTION_SAFETY_DAYS` adds a configurable safety-stock buffer. Operators can change the forecast horizon interactively and export the current production plan as CSV.
