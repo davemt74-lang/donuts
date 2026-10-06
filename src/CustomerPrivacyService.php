@@ -11,6 +11,12 @@ final class CustomerPrivacyService
 
     public function __construct(private readonly PDO $db) {}
 
+    public function verifyPassword(int $userId,string $password): bool
+    {
+        $user=$this->userWithPassword($userId);
+        return $user!==null && password_verify($password,(string)$user['password_hash']);
+    }
+
     public function exportData(int $userId): array
     {
         $user=$this->userWithPassword($userId);
