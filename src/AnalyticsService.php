@@ -21,8 +21,12 @@ final class AnalyticsService
         $this->db->beginTransaction();
         try{
             $this->upsertVisitor($visitorId,$path,$attr);
-            $s=$this->db->prepare('INSERT INTO analytics_events(visitor_id,event_name,path) VALUES(?,?,?)');
-            $s->execute([$visitorId,$event,$path]);
+            $rate=$this->db->prepare("SELECT COUNT(*) FROM analytics_events WHERE visitor_id=? AND created_at>=datetime('now','-10 minutes')");
+            $rate->execute([$visitorId]);
+            if((int)$rate->fetchColumn()<120){
+                $s=$this->db->prepare('INSERT INTO analytics_events(visitor_id,event_name,path) VALUES(?,?,?)');
+                $s->execute([$visitorId,$event,$path]);
+            }
             $this->db->commit();
         }catch(\Throwable $e){if($this->db->inTransaction())$this->db->rollBack();throw $e;}
     }
@@ -115,7 +119,7 @@ final class AnalyticsService
         ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ON CONFLICT(visitor_id) DO UPDATE SET
           last_seen_at=CURRENT_TIMESTAMP,
-          last_landing_path=CASE WHEN excluded.last_landing_path<>'' THEN excluded.last_landing_path ELSE analytics_visitors.last_landing_path END,
+          last_landing_path=CASE WHEN excluded.last_referrer_host<>'' OR excluded.last_utm_source<>'' OR excluded.last_utm_medium<>'' OR excluded.last_utm_campaign<>'' OR excluded.last_utm_content<>'' OR excluded.last_utm_term<>'' THEN excluded.last_landing_path ELSE analytics_visitors.last_landing_path END,
           last_referrer_host=CASE WHEN excluded.last_referrer_host<>'' THEN excluded.last_referrer_host ELSE analytics_visitors.last_referrer_host END,
           last_utm_source=CASE WHEN excluded.last_utm_source<>'' THEN excluded.last_utm_source ELSE analytics_visitors.last_utm_source END,
           last_utm_medium=CASE WHEN excluded.last_utm_medium<>'' THEN excluded.last_utm_medium ELSE analytics_visitors.last_utm_medium END,
