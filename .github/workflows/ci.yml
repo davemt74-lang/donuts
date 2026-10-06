@@ -120,3 +120,12 @@ jobs:
         run: php -d zend.assertions=1 -d assert.exception=1 tests/section50.php
       - name: Section 51
         run: php -d zend.assertions=1 -d assert.exception=1 tests/section51.php
+      - name: Section 52
+        run: |
+          rm -f storage/ci-http.sqlite storage/ci-http.sqlite-wal storage/ci-http.sqlite-shm
+          DB_DSN=sqlite:storage/ci-http.sqlite OBSERVABILITY_ENABLED=0 php scripts/migrate.php
+          DB_DSN=sqlite:storage/ci-http.sqlite APP_URL=http://127.0.0.1:8099 OBSERVABILITY_ENABLED=0 php -S 127.0.0.1:8099 -t public > storage/ci-http-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
+          sleep 1
+          DB_DSN=sqlite:storage/ci-http.sqlite APP_URL=http://127.0.0.1:8099 SMOKE_BASE_URL=http://127.0.0.1:8099 OBSERVABILITY_ENABLED=0 php scripts/http-smoke.php

@@ -140,3 +140,13 @@ The application explicitly marks session-backed and mutating routes as `private,
 Shared CSS and JavaScript URLs are versioned from the deployed file modification time so browsers can safely retain cached assets across requests while receiving a new URL after a deployment.
 
 At the web-server or CDN layer, enable gzip/Brotli compression for HTML/CSS/JS/JSON and set static image caching independently from dynamic PHP responses. Do not override application `private, no-store` headers on cart, checkout, account, admin, payment, support or other session-backed routes.
+
+
+## HTTP smoke certification
+Before production release, run the real HTTP smoke suite against a migrated environment:
+
+```bash
+SMOKE_BASE_URL=https://your-store.example php scripts/http-smoke.php
+```
+
+It verifies the homepage, active flavor page, FAQ, pack builder, cart, empty-checkout redirect, support page, first-admin setup behavior, Admin redirect, health endpoint, security headers, and public/private cache boundaries. It does not submit a live Stripe payment.
