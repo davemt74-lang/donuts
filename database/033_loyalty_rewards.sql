@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS loyalty_accounts (
 
 CREATE TABLE IF NOT EXISTS order_loyalty_redemptions (
   order_id INTEGER PRIMARY KEY,
-  user_id INTEGER NOT NULL,
+  user_id INTEGER NULL,
   reserved_points INTEGER NOT NULL DEFAULT 0,
   redeemed_points INTEGER NOT NULL DEFAULT 0,
   restored_points INTEGER NOT NULL DEFAULT 0,
@@ -28,13 +28,13 @@ CREATE TABLE IF NOT EXISTS order_loyalty_redemptions (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE,
-  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE SET NULL
 );
 CREATE INDEX IF NOT EXISTS idx_order_loyalty_user ON order_loyalty_redemptions(user_id,order_id);
 
 CREATE TABLE IF NOT EXISTS loyalty_ledger (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL,
+  user_id INTEGER NULL,
   order_id INTEGER NULL,
   refund_id INTEGER NULL,
   entry_type VARCHAR(32) NOT NULL CHECK(entry_type IN ('earn','redeem','refund_restore','refund_reversal','adjustment')),
@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS loyalty_ledger (
   event_key VARCHAR(190) NOT NULL UNIQUE,
   note VARCHAR(500) NOT NULL DEFAULT '',
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE SET NULL,
   FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE SET NULL,
   FOREIGN KEY(refund_id) REFERENCES refund_records(id) ON DELETE SET NULL
 );
