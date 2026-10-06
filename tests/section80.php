@@ -14,6 +14,7 @@ $svc=new PackagingPurchasingService($db);$item=$svc->saveSupplierItem(['supplier
 assert($item>0);
 $inv->adjust((int)$box['id'],0,'Start empty',$admin);$rec=$svc->recommendations();$row=array_values(array_filter($rec['rows'],fn($r)=>$r['sku']==='BOX-6'))[0];assert($row['supplier_item']['supplier_name']==='Box Co');assert($row['recommended_order_quantity']>=50);
 $po=$svc->createPurchaseOrder($supplier,[['supplier_item_id'=>$item,'quantity_ordered'=>75]],gmdate('Y-m-d',time()+86400),'Restock boxes',$admin);$svc->markOrdered($po);
+$afterOrder=$svc->recommendations();assert(count(array_filter($afterOrder['rows'],fn($r)=>$r['sku']==='BOX-6'))===0);
 $detail=$svc->purchaseOrder($po);assert($detail['status']==='ordered');$line=$detail['items'][0];
 $svc->receive((int)$line['id'],25,gmdate('Y-m-d H:i:s'),'Partial receipt',$admin);$detail=$svc->purchaseOrder($po);assert($detail['status']==='partially_received');assert((int)$detail['items'][0]['quantity_received']===25);
 $stock=array_values(array_filter($inv->materials(),fn($m)=>$m['sku']==='BOX-6'))[0];assert((int)$stock['stock_on_hand']===25);
