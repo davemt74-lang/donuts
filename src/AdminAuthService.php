@@ -21,6 +21,12 @@ final class AdminAuthService
             if ((int)$this->db->query('SELECT COUNT(*) FROM admin_users')->fetchColumn() > 0) {
                 throw new \RuntimeException('Administrator setup is already complete.');
             }
+            try {
+                $lock=$this->db->prepare("INSERT INTO installation_state(state_key) VALUES('admin_setup')");
+                $lock->execute();
+            } catch (\PDOException) {
+                throw new \RuntimeException('Administrator setup is already complete.');
+            }
             $id=$this->insertAdmin($data,'super_admin',null);
             $this->db->commit();
             return $id;
