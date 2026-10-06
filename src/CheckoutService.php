@@ -13,6 +13,7 @@ final class CheckoutService
         foreach($required as $field) if(trim((string)($data[$field]??''))==='') throw new \InvalidArgumentException('Complete all required checkout fields.');
         $giftMessage=trim((string)($data['gift_message']??''));
         if(mb_strlen($giftMessage)>300) throw new \InvalidArgumentException('Gift message must be 300 characters or fewer.');
+        if(empty($data['terms_accepted'])) throw new \InvalidArgumentException('You must agree to the Terms of Service and Refund Policy to continue.');
         $gift=(new GiftService())->normalizeCheckout($data);
         return [
             'email'=>$email,
@@ -31,6 +32,7 @@ final class CheckoutService
             'gift_packaging'=>$gift['gift_packaging'],
             'gift_delivery_date'=>$gift['gift_delivery_date'],
             'gift_recipient_email'=>$gift['gift_recipient_email'],
+            'terms_accepted'=>true,
         ];
     }
 }
