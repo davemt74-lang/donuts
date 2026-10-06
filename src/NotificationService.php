@@ -24,6 +24,14 @@ final class NotificationService
         $this->queue((string)$order['email'],$subject,$body,'order-status:'.$order['id'].':'.$status);
     }
 
+    public function queuePasswordReset(string $email,string $firstName,string $url,string $expiresAt): void
+    {
+        $subject='Reset your Fudge Donuts password';
+        $name=trim($firstName)!==''?$firstName:'there';
+        $body="Hi {$name},\n\nUse this secure link to reset your Fudge Donuts password:\n{$url}\n\nThis link expires at {$expiresAt} UTC. If you did not request a reset, you can ignore this email.";
+        $this->queue($email,$subject,$body,'password-reset:'.hash('sha256',$url));
+    }
+
     public function queue(string $recipient,string $subject,string $body,string $idempotencyKey): void
     {
         if(!filter_var($recipient,FILTER_VALIDATE_EMAIL)) throw new \InvalidArgumentException('Invalid notification recipient.');
