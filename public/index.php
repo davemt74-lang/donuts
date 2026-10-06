@@ -31,7 +31,7 @@ $flavors = $catalog->flavors();
 </div></section>
 <section id="flavors" class="section alt"><p class="eyebrow">Current flavors</p><h2>Pick your favorites</h2><div class="grid flavors">
 <?php foreach ($flavors as $flavor): ?>
-<article class="flavor"><img src="<?=htmlspecialchars($flavor['image_path'] ?: '/images/placeholder.png')?>" alt=""><h3><?=htmlspecialchars($flavor['name'])?></h3><p><?=htmlspecialchars($flavor['description'])?></p><?php if ((int)$flavor['surcharge_cents']): ?><small>+<?=money((int)$flavor['surcharge_cents'])?> each</small><?php endif; ?></article>
+<article class="flavor"><a class="flavor-image-link" href="/flavor.php?slug=<?=urlencode($flavor['slug'])?>"><img src="<?=htmlspecialchars($flavor['image_path'] ?: '/images/placeholder.png')?>" alt="<?=htmlspecialchars($flavor['name'])?>"></a><h3><a href="/flavor.php?slug=<?=urlencode($flavor['slug'])?>"><?=htmlspecialchars($flavor['name'])?></a></h3><p><?=htmlspecialchars($flavor['description'])?></p><?php if ((int)$flavor['surcharge_cents']): ?><small>+<?=money((int)$flavor['surcharge_cents'])?> each</small><?php endif; ?><?php if(trim((string)$flavor['allergens'])!==''):?><small class="allergen-summary">Allergens: <?=htmlspecialchars($flavor['allergens'])?></small><?php endif;?></article>
 <?php endforeach; ?>
 </div></section>
 <section class="gift"><img src="/images/gift-box.png" alt="Fudge Donuts gift box"><div><p class="eyebrow">Send something better</p><h2>A gift people actually want to open.</h2><p>Gift messaging will be available during checkout.</p></div></section>
