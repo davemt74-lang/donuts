@@ -10,17 +10,64 @@ if(empty($_SESSION['checkout'])||empty($_SESSION['fulfillment'])){header('Locati
 
 $db=Database::connection();$catalog=new CatalogRepository($db);
 $cart=(new CartService(new PackBuilderService($catalog),new DiscountService($db),new PresetPackService($catalog)))->summary($_SESSION,$_SESSION['coupon']??null);
+if(empty($cart['items'])){header('Location: /cart.php');exit;}
+
 $shipping=(new ShippingService($db))->quote((string)$_SESSION['fulfillment']['code'],(string)$_SESSION['checkout']['postal_code'],$cart['total_cents']);
 $inventory=new InventoryService($db);$inventory->validateCart($cart);
 $orderService=new OrderService($db);
-$order=$orderService->create(!empty($_SESSION['user_id'])?(int)$_SESSION['user_id']:null,$cart,$_SESSION['checkout'],$shipping);
-$order=$orderService->preparePaymentAttempt((int)$order['id']);
-$payments=new PaymentRepository($db);
-$payment=$payments->createSession(!empty($_SESSION['user_id'])?(int)$_SESSION['user_id']:null,(int)$order['total_cents'],['order_id'=>$order['id'],'order_number'=>$order['order_number']]);
+$_SESSION['checkout_attempt_token'] ??= bin2hex(random_bytes(32));
+$order=$orderService->create(
+    !empty($_SESSION['user_id'])?(int)$_SESSION['user_id']:null,
+    $cart,
+    $_SESSION['checkout'],
+    $shipping,
+    (string)$_SESSION['checkout_attempt_token']
+);
+$_SESSION['active_order_id']=(int)$order['id'];
 
 $base=rtrim((string)env('APP_URL','http://127.0.0.1:8080'),'/');
-$inventory->reserveOrder((int)$order['id'],$cart);
+$payments=new PaymentRepository($db);
 $stripe=new StripeService((string)env('STRIPE_SECRET_KEY',''),(string)env('STRIPE_WEBHOOK_SECRET',''));
+
+if(in_array((string)$order['status'],['paid','payment_review'],true)){
+    $sid=(string)($order['stripe_checkout_session_id']??'');
+    if($sid!==''){header('Location: '.$base.'/payment-success.php?session_id='.rawurlencode($sid),true,303);exit;}
+    header('Location: /account.php',true,303);exit;
+}
+
+if((string)$order['status']==='pending_payment' && !empty($order['stripe_checkout_session_id'])){
+    $existingId=(string)$order['stripe_checkout_session_id'];
+    try{
+        $existing=$stripe->retrieveCheckoutSession($existingId);
+        $stripeStatus=(string)($existing['status']??'');
+        if($stripeStatus==='open' && !empty($existing['url'])){
+            header('Location: '.(string)$existing['url'],true,303);exit;
+        }
+        if($stripeStatus==='complete'){
+            header('Location: '.$base.'/payment-success.php?session_id='.rawurlencode($existingId),true,303);exit;
+        }
+        if($stripeStatus==='expired'){
+            $payments->markFailedByProviderSession($existingId);
+            $orderService->markPaymentFailedByStripeSession($existingId,'Stripe Checkout session expired before retry.');
+            $inventory->releaseOrder((int)$order['id']);
+            $order=$orderService->preparePaymentAttempt((int)$order['id']);
+        }else{
+            http_response_code(503);exit('Existing payment session could not be safely resumed. Please try again shortly.');
+        }
+    }catch(Throwable $e){
+        http_response_code(503);exit('Existing payment session could not be verified. Please try again shortly.');
+    }
+}else{
+    $order=$orderService->preparePaymentAttempt((int)$order['id']);
+}
+
+$payment=$payments->createSession(!empty($_SESSION['user_id'])?(int)$_SESSION['user_id']:null,(int)$order['total_cents'],[
+    'order_id'=>$order['id'],
+    'order_number'=>$order['order_number'],
+    'checkout_attempt'=>hash('sha256',(string)$_SESSION['checkout_attempt_token']),
+]);
+
+$inventory->reserveOrder((int)$order['id'],$cart);
 try{
   $session=$stripe->createCheckoutSession([
     'mode'=>'payment',
