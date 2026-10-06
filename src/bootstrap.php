@@ -69,3 +69,20 @@ function money(int $cents): string
 {
     return '$' . number_format($cents / 100, 2);
 }
+
+function admin_has_role(array $roles): bool
+{
+    return !empty($_SESSION['admin']) && isset($_SESSION['admin_role']) && in_array((string)$_SESSION['admin_role'],$roles,true);
+}
+
+function require_admin_roles(array $roles): void
+{
+    if(empty($_SESSION['admin'])){
+        header('Location: /admin.php');
+        exit;
+    }
+    if(!admin_has_role($roles)){
+        http_response_code(403);
+        exit('Forbidden');
+    }
+}
