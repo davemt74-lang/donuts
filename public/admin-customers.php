@@ -39,7 +39,7 @@ catch(Throwable $e){$error=$e->getMessage();$rows=[];$stats=['customers'=>0,'acc
 </tbody></table></div></section>
 
 <?php if($profile):?><aside class="dashboard-panel customer-profile-panel">
-<div class="panel-head"><div><p class="eyebrow"><?=htmlspecialchars($profile['customer_type'])?> customer</p><h2><?=htmlspecialchars($profile['account']?trim($profile['account']['first_name'].' '.$profile['account']['last_name']):($rows[array_search($profile['email'],array_column($rows,'email'),true)]['display_name']??'Customer'))?></h2><p><?=htmlspecialchars($profile['email'])?></p></div></div>
+<div class="panel-head"><div><p class="eyebrow"><?=htmlspecialchars($profile['customer_type'])?> customer</p><h2><?=htmlspecialchars($profile['display_name'])?></h2><p><?=htmlspecialchars($profile['email'])?></p></div></div>
 <div class="customer-profile-metrics"><div><span>Orders</span><strong><?=(int)$profile['order_count']?></strong></div><div><span>Revenue</span><strong><?=money((int)$profile['lifetime_cents'])?></strong></div><div><span>Last order</span><strong><?=htmlspecialchars((string)($profile['last_order_at']??'—'))?></strong></div></div>
 
 <section><h3>Orders</h3><div class="customer-mini-list"><?php if(!$profile['orders']):?><p class="muted">No orders.</p><?php endif;?><?php foreach($profile['orders'] as $o):?><a href="/admin-order.php?id=<?=(int)$o['id']?>"><span><strong><?=htmlspecialchars($o['order_number'])?></strong><small><?=htmlspecialchars($o['created_at'])?> · <?=htmlspecialchars(str_replace('_',' ',$o['status']))?></small></span><b><?=money((int)$o['total_cents'])?></b></a><?php endforeach;?></div></section>
