@@ -58,8 +58,8 @@ final class JobMonitorService
         $stale=0;$failing=0;$critical=0;
         foreach($this->jobs() as $job){
             if($job['stale'])$stale++;
-            if((int)$job['consecutive_failures']>0)$failing++;
-            if((int)$job['consecutive_failures']>=3)$critical++;
+            if(!$job['running_fresh'] && (int)$job['consecutive_failures']>0)$failing++;
+            if(!$job['running_fresh'] && (int)$job['consecutive_failures']>=3)$critical++;
         }
         return ['stale'=>$stale,'failing'=>$failing,'critical'=>$critical];
     }
