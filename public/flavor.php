@@ -6,7 +6,17 @@ use FudgeDonuts\{CatalogRepository,Database,SeoService};
 $catalog=new CatalogRepository(Database::connection());
 $slug=trim((string)($_GET['slug']??''));
 $flavor=$catalog->flavorBySlug($slug);
-if(!$flavor){http_response_code(404);exit('Flavor not found');}
+if(!$flavor){
+    \FudgeDonuts\HttpResponseService::send(
+        404,
+        'That flavor isn’t available.',
+        'The flavor link may be old, seasonal, or no longer active.',
+        [
+            ['label'=>'See current flavors','href'=>'/#flavors'],
+            ['label'=>'Build a box','href'=>'/builder.php?size=12']
+        ]
+    );
+}
 $seo=new SeoService($catalog,(string)env('APP_URL','https://example.com'));$schema=json_encode($seo->flavorSchema($flavor),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);$canonical=$seo->canonical('/flavor.php?slug='.rawurlencode($slug));
 ?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><?=htmlspecialchars($flavor['name'])?> · Fudge Donuts</title><meta name="description" content="<?=htmlspecialchars($flavor['description'])?>"><link rel="canonical" href="<?=htmlspecialchars($canonical)?>"><meta property="og:title" content="<?=htmlspecialchars($flavor['name'])?> · Fudge Donuts"><meta property="og:description" content="<?=htmlspecialchars($flavor['description'])?>"><meta property="og:type" content="product"><meta property="og:url" content="<?=htmlspecialchars($canonical)?>"><meta property="og:image" content="<?=htmlspecialchars($seo->canonical($flavor['image_path']?:'/images/placeholder.png'))?>"><script type="application/ld+json"><?=$schema?></script><link rel="stylesheet" href="<?=htmlspecialchars(asset_url('/assets/app.css'))?>"></head><body>
 <a class="skip-link" href="#main-content">Skip to main content</a>

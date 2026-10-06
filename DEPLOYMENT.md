@@ -150,3 +150,9 @@ SMOKE_BASE_URL=https://your-store.example php scripts/http-smoke.php
 ```
 
 It verifies the homepage, active flavor page, FAQ, pack builder, cart, empty-checkout redirect, support page, first-admin setup behavior, Admin redirect, health endpoint, security headers, and public/private cache boundaries. It does not submit a live Stripe payment.
+
+
+## Branded error recovery
+Customer-facing maintenance, expired-form, missing-product, payment-recovery, permission, and unexpected server failures render safe branded pages instead of raw framework or exception output.
+
+Unexpected production errors include an operational request reference that can be matched in Admin → Operations or the fallback application log. Error responses are marked no-store. Do not replace these handlers with raw exception messages in production.

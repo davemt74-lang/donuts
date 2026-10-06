@@ -31,15 +31,29 @@ final class ObservabilityService
 
         set_exception_handler(static function(Throwable $e) use($root): void {
             self::captureThrowable($e,$root,'uncaught_exception');
-            if(PHP_SAPI!=='cli'){
-                http_response_code(500);
-                if((\env('APP_ENV','development')??'development')==='production'){
-                    echo 'Something went wrong. Reference: '.htmlspecialchars(self::requestId());
-                }else{
-                    echo htmlspecialchars($e->getMessage());
-                }
-            }else{
+            if(PHP_SAPI==='cli'){
                 fwrite(STDERR,$e->getMessage()."\n");
+                return;
+            }
+            $production=(\env('APP_ENV','development')??'development')==='production';
+            try{
+                HttpResponseService::send(
+                    500,
+                    'Something went wrong.',
+                    $production
+                        ? 'We hit an unexpected problem while loading this page. Try again, and use the reference below if you contact support.'
+                        : $e->getMessage(),
+                    [
+                        ['label'=>'Return to store','href'=>'/'],
+                        ['label'=>'Contact support','href'=>'/contact.php']
+                    ],
+                    self::requestId()
+                );
+            }catch(Throwable){
+                http_response_code(500);
+                header('Content-Type: text/plain; charset=UTF-8');
+                echo 'Something went wrong. Reference: '.self::requestId();
+                exit;
             }
         });
 

@@ -129,3 +129,5 @@ jobs:
           trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
           sleep 1
           DB_DSN=sqlite:storage/ci-http.sqlite APP_URL=http://127.0.0.1:8099 SMOKE_BASE_URL=http://127.0.0.1:8099 OBSERVABILITY_ENABLED=0 php scripts/http-smoke.php
+      - name: Section 53
+        run: php -d zend.assertions=1 -d assert.exception=1 tests/section53.php
