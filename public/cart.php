@@ -39,5 +39,5 @@ $summary=$cart->summary($_SESSION,$_SESSION['coupon']??null);
 <?php foreach($summary['discounts'] as $d):?><div class="discount"><span><?=htmlspecialchars($d['name'])?></span><strong>−<?=money($d['amount_cents'])?></strong></div><?php endforeach;?>
 <div class="total"><span>Total</span><strong><?=money($summary['total_cents'])?></strong></div>
 <form method="post" class="coupon"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>"><input type="hidden" name="action" value="coupon"><input name="code" placeholder="Promo code" value="<?=htmlspecialchars((string)($_SESSION['coupon']??''))?>"><button class="button secondary">Apply</button></form>
-<div class="checkout-note">Checkout is added in the checkout section.</div></aside></div><?php endif;?>
+<a class="button checkout" href="/checkout.php">Checkout</a></aside></div><?php endif;?>
 </main></body></html>
