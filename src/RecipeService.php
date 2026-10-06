@@ -151,7 +151,7 @@ final class RecipeService
             COALESCE((SELECT SUM(pc.quantity_used) FROM production_batch_ingredients pc WHERE pc.ingredient_lot_id=l.id AND pc.batch_id=?),0) current_batch_used,
             CASE WHEN l.quantity_received IS NULL THEN 0 ELSE l.quantity_received-COALESCE((SELECT SUM(p.quantity_used) FROM production_batch_ingredients p WHERE p.ingredient_lot_id=l.id AND p.batch_id<>?),0)-COALESCE((SELECT SUM(pc.quantity_used) FROM production_batch_ingredients pc WHERE pc.ingredient_lot_id=l.id AND pc.batch_id=?),0) END available_quantity
             FROM ingredient_lots l
-            WHERE lower(l.ingredient_name)=lower(?) AND l.quantity_unit=? AND l.status='active' AND l.quantity_received IS NOT NULL
+            WHERE lower(l.ingredient_name)=lower(?) AND lower(l.quantity_unit)=lower(?) AND l.status='active' AND l.quantity_received IS NOT NULL
               AND l.received_at<=? AND (l.best_by_date IS NULL OR l.best_by_date>=date(?))
             ORDER BY CASE WHEN l.best_by_date IS NULL THEN 1 ELSE 0 END,l.best_by_date,l.received_at,l.id");
         $s->execute([$batchId,$batchId,$batchId,$ingredient,$unit,$producedAt,$producedAt]);return $s->fetchAll();
@@ -161,7 +161,7 @@ final class RecipeService
     {
         $out=[];$seen=[];
         foreach($components as $c){
-            $name=mb_substr(trim((string)($c['ingredient_name']??'')),0,190);$unit=mb_substr(trim((string)($c['quantity_unit']??'')),0,32);
+            $name=mb_substr(trim((string)($c['ingredient_name']??'')),0,190);$unit=mb_strtolower(mb_substr(trim((string)($c['quantity_unit']??'')),0,32));
             $qty=(float)($c['quantity_per_donut']??0);
             if($name===''&&$qty<=0&&$unit==='')continue;
             if($name===''||$unit===''||$qty<=0)throw new \InvalidArgumentException('Every recipe ingredient needs a name, positive quantity per donut, and unit.');
