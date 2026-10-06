@@ -1,6 +1,12 @@
 <?php
 declare(strict_types=1);
 
+error_reporting(E_ALL);
+if ((getenv('APP_ENV') ?: 'development') === 'production') {
+    ini_set('display_errors','0');
+    ini_set('log_errors','1');
+}
+
 $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
 session_name('fudge_donuts_session');
 session_set_cookie_params([
