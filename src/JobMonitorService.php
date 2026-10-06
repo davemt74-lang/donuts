@@ -12,11 +12,27 @@ final class JobMonitorService
     public function start(string $key,string $description,int $expectedMinutes): int
     {
         $key=$this->key($key);$description=mb_substr(trim($description),0,190);$expectedMinutes=max(1,min(10080,$expectedMinutes));
-        $s=$this->db->prepare("INSERT INTO scheduled_jobs(job_key,description,expected_interval_minutes,last_started_at) VALUES(?,?,?,CURRENT_TIMESTAMP)
-            ON CONFLICT(job_key) DO UPDATE SET description=excluded.description,expected_interval_minutes=excluded.expected_interval_minutes,last_started_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP");
-        $s->execute([$key,$description,$expectedMinutes]);
-        $r=$this->db->prepare("INSERT INTO scheduled_job_runs(job_key,status) VALUES(?,'running')");$r->execute([$key]);
-        return (int)$this->db->lastInsertId();
+        $this->db->beginTransaction();
+        try{
+            $s=$this->db->prepare("INSERT INTO scheduled_jobs(job_key,description,expected_interval_minutes) VALUES(?,?,?)
+                ON CONFLICT(job_key) DO UPDATE SET description=excluded.description,expected_interval_minutes=excluded.expected_interval_minutes,updated_at=CURRENT_TIMESTAMP");
+            $s->execute([$key,$description,$expectedMinutes]);
+
+            $q=$this->db->prepare("SELECT id,started_at FROM scheduled_job_runs WHERE job_key=? AND status='running' ORDER BY id DESC LIMIT 1");
+            $q->execute([$key]);$running=$q->fetch();
+            if($running){
+                $age=max(0,time()-(strtotime((string)$running['started_at'])?:time()));
+                if($age<=($expectedMinutes*60*2)) throw new \RuntimeException('Scheduled job is already running.');
+                $u=$this->db->prepare("UPDATE scheduled_job_runs SET status='failed',finished_at=CURRENT_TIMESTAMP,duration_ms=?,message='Recovered stale overlapping run before new start.' WHERE id=? AND status='running'");
+                $u->execute([$age*1000,(int)$running['id']]);
+                $f=$this->db->prepare("UPDATE scheduled_jobs SET last_failed_at=CURRENT_TIMESTAMP,last_duration_ms=?,last_message='Recovered stale overlapping run before new start.',consecutive_failures=consecutive_failures+1,updated_at=CURRENT_TIMESTAMP WHERE job_key=?");
+                $f->execute([$age*1000,$key]);
+            }
+
+            $u=$this->db->prepare("UPDATE scheduled_jobs SET last_started_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE job_key=?");$u->execute([$key]);
+            $r=$this->db->prepare("INSERT INTO scheduled_job_runs(job_key,status) VALUES(?,'running')");$r->execute([$key]);
+            $id=(int)$this->db->lastInsertId();$this->db->commit();return $id;
+        }catch(\Throwable $e){if($this->db->inTransaction())$this->db->rollBack();throw $e;}
     }
 
     public function succeed(int $runId,string $message=''): void
@@ -66,8 +82,9 @@ final class JobMonitorService
 
     public function abandonStuckRuns(): int
     {
-        $s=$this->db->prepare("UPDATE scheduled_job_runs SET status='failed',finished_at=CURRENT_TIMESTAMP,message='Worker did not finish before stale-run recovery.' WHERE status='running' AND started_at<datetime('now','-2 hours')");
-        $s->execute();return $s->rowCount();
+        $rows=$this->db->query("SELECT id FROM scheduled_job_runs WHERE status='running' AND started_at<datetime('now','-2 hours')")->fetchAll();
+        $count=0;foreach($rows as $row){try{$this->fail((int)$row['id'],'Worker did not finish before stale-run recovery.');$count++;}catch(\Throwable){}}
+        return $count;
     }
 
     private function finish(int $runId,string $status,string $message): void
