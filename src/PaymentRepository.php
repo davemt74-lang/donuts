@@ -34,6 +34,24 @@ final class PaymentRepository
         return ['id'=>(int)$this->db->lastInsertId(),'public_token'=>$token,'idempotency_key'=>$idempotency];
     }
 
+    public function markFailed(int $id,string $reason=''): void
+    {
+        $s=$this->db->prepare("UPDATE payment_sessions SET status='failed',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status IN ('pending','redirected')");
+        $s->execute([$id]);
+    }
+
+    public function markCompletedByProviderSession(string $providerSessionId): void
+    {
+        $s=$this->db->prepare("UPDATE payment_sessions SET status='completed',updated_at=CURRENT_TIMESTAMP WHERE provider_session_id=?");
+        $s->execute([$providerSessionId]);
+    }
+
+    public function markFailedByProviderSession(string $providerSessionId): void
+    {
+        $s=$this->db->prepare("UPDATE payment_sessions SET status='failed',updated_at=CURRENT_TIMESTAMP WHERE provider_session_id=? AND status<>'completed'");
+        $s->execute([$providerSessionId]);
+    }
+
     public function attachProviderSession(int $id,string $providerSessionId): void
     {
         $s=$this->db->prepare("UPDATE payment_sessions SET provider_session_id=?,status='redirected',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='pending'");
