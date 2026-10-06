@@ -1,0 +1,55 @@
+CREATE TABLE IF NOT EXISTS orders (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  order_number VARCHAR(40) NOT NULL UNIQUE,
+  checkout_fingerprint VARCHAR(64) NOT NULL UNIQUE,
+  user_id INTEGER NULL,
+  status VARCHAR(32) NOT NULL DEFAULT 'pending_payment',
+  email VARCHAR(190) NOT NULL,
+  first_name VARCHAR(100) NOT NULL,
+  last_name VARCHAR(100) NOT NULL,
+  line1 VARCHAR(190) NOT NULL,
+  line2 VARCHAR(190) NOT NULL DEFAULT '',
+  city VARCHAR(120) NOT NULL,
+  region VARCHAR(80) NOT NULL,
+  postal_code VARCHAR(20) NOT NULL,
+  country VARCHAR(2) NOT NULL DEFAULT 'US',
+  phone VARCHAR(40) NOT NULL DEFAULT '',
+  is_gift INTEGER NOT NULL DEFAULT 0,
+  gift_message TEXT NOT NULL DEFAULT '',
+  fulfillment_code VARCHAR(64) NOT NULL,
+  fulfillment_name VARCHAR(120) NOT NULL,
+  fulfillment_type VARCHAR(32) NOT NULL,
+  subtotal_cents INTEGER NOT NULL,
+  discount_cents INTEGER NOT NULL DEFAULT 0,
+  shipping_cents INTEGER NOT NULL DEFAULT 0,
+  tax_cents INTEGER NOT NULL DEFAULT 0,
+  total_cents INTEGER NOT NULL,
+  currency VARCHAR(3) NOT NULL DEFAULT 'usd',
+  stripe_checkout_session_id VARCHAR(190) NULL UNIQUE,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id);
+CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+
+CREATE TABLE IF NOT EXISTS order_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  order_id INTEGER NOT NULL,
+  kind VARCHAR(32) NOT NULL,
+  pack_size INTEGER NOT NULL,
+  quantity INTEGER NOT NULL,
+  unit_price_cents INTEGER NOT NULL,
+  line_total_cents INTEGER NOT NULL,
+  configuration_json TEXT NOT NULL,
+  FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS order_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  order_id INTEGER NOT NULL,
+  event_type VARCHAR(64) NOT NULL,
+  note TEXT NOT NULL DEFAULT '',
+  payload TEXT NOT NULL DEFAULT '',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE
+);
