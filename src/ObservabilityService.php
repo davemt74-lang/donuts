@@ -124,10 +124,16 @@ final class ObservabilityService
         $failedMail=(int)$this->db->query("SELECT COUNT(*) FROM notification_outbox WHERE status='failed'")->fetchColumn();
         $expiredReservations=(int)$this->db->query("SELECT COUNT(*) FROM inventory_reservation_leases WHERE status='active' AND expires_at<=CURRENT_TIMESTAMP")->fetchColumn();
         $paymentReview=(int)$this->db->query("SELECT COUNT(*) FROM orders WHERE status='payment_review'")->fetchColumn();
-        $critical=(int)$this->db->query("SELECT COUNT(*) FROM operational_events WHERE resolved_at IS NULL AND severity='critical'")->fetchColumn();
-        $errors=(int)$this->db->query("SELECT COUNT(*) FROM operational_events WHERE resolved_at IS NULL AND severity='error'")->fetchColumn();
+        $critical=(int)$this->db->query("SELECT COUNT(*) FROM operational_events WHERE resolved_at IS NULL AND severity='critical' AND event_type<>'operations_health'")->fetchColumn();
+        $errors=(int)$this->db->query("SELECT COUNT(*) FROM operational_events WHERE resolved_at IS NULL AND severity='error' AND event_type<>'operations_health'")->fetchColumn();
         $status=($critical>0)?'unhealthy':(($failedMail+$expiredReservations+$paymentReview+$errors)>0?'degraded':'ok');
         return ['status'=>$status,'failed_email'=>$failedMail,'expired_reservations'=>$expiredReservations,'payment_review'=>$paymentReview,'open_errors'=>$errors,'open_critical'=>$critical];
+    }
+
+    public function resolveSystemType(string $type): int
+    {
+        $s=$this->db->prepare("UPDATE operational_events SET resolved_at=CURRENT_TIMESTAMP WHERE event_type=? AND resolved_at IS NULL");
+        $s->execute([$type]);return $s->rowCount();
     }
 
     public function prune(int $days=90): int
