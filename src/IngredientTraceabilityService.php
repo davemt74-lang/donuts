@@ -118,6 +118,16 @@ final class IngredientTraceabilityService
 
     public function batchRisk(int $batchId): array
     {
+        try{
+            $coverage=(new RecipeService($this->db))->coverage($batchId);
+            if($coverage['controlled'] && !$coverage['complete']){
+                $names=array_map(fn($m)=>(string)$m['ingredient_name'],$coverage['missing']);
+                return ['ok'=>false,'linked'=>false,'reason'=>'Recipe-controlled batch is missing required ingredient provenance: '.implode(', ',$names).'.'];
+            }
+        }catch(\PDOException $e){
+            $msg=strtolower($e->getMessage());
+            if(!str_contains($msg,'batch_recipe_requirements') && !str_contains($msg,'flavor_recipes')) throw $e;
+        }
         $lots=$this->ingredientsForBatch($batchId);
         if(!$lots) return ['ok'=>true,'linked'=>false,'reason'=>''];
         foreach($lots as $lot){
