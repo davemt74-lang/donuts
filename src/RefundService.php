@@ -21,6 +21,9 @@ final class RefundService
 
     public function create(int $orderId,int $amountCents,string $reason,?int $adminId): int
     {
+        if((new DisputeService($this->db))->hasBlockingDispute($orderId)){
+            throw new \RuntimeException('This order has an open Stripe dispute. Resolve the dispute before issuing a manual refund.');
+        }
         $available=$this->refundableCents($orderId);
         if($amountCents<=0 || $amountCents>$available) throw new \InvalidArgumentException('Refund amount exceeds the refundable balance.');
 

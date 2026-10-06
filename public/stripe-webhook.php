@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
-use FudgeDonuts\{AnalyticsService,CostAccountingService,Database,GiftCardService,InventoryService,NotificationService,OrderService,PaymentRepository,PromotionService,StripeService,TaxService};
+use FudgeDonuts\{AnalyticsService,CostAccountingService,Database,DisputeService,GiftCardService,InventoryService,NotificationService,OrderService,PaymentRepository,PromotionService,StripeService,TaxService};
 
 $payload=file_get_contents('php://input')?:'';
 $signature=(string)($_SERVER['HTTP_STRIPE_SIGNATURE']??'');
@@ -16,11 +16,31 @@ $isNew=$payments->recordEvent('stripe',(string)$event['id'],(string)$event['type
 if(!$isNew){http_response_code(200);echo 'ok';exit;}
 
 $object=$event['data']['object']??[];
-$orderService=new OrderService($db);$giftCards=new GiftCardService($db,(string)env('APP_KEY',''));
+$orderService=new OrderService($db);$giftCards=new GiftCardService($db,(string)env('APP_KEY',''));$disputes=new DisputeService($db);
+
+if(is_array($object) && str_starts_with((string)$event['type'],'charge.dispute.')){
+    try{
+        $dispute=$disputes->recordStripeEvent($object,(string)$event['type']);
+        $alertEmail=trim((string)env('ALERT_EMAIL',''));
+        if($alertEmail!=='' && filter_var($alertEmail,FILTER_VALIDATE_EMAIL) && $disputes->isOpenStatus((string)$dispute['status'])){
+            $subject='Stripe dispute '.(string)$dispute['status'].' · '.((string)($dispute['order_number']??'')?:'Gift card payment');
+            $body="Dispute: {$dispute['stripe_dispute_id']}\nStatus: {$dispute['status']}\nAmount: ".money((int)$dispute['amount_cents'])."\nReason: {$dispute['reason']}";
+            if(!empty($dispute['order_number']))$body.="\nOrder: {$dispute['order_number']}";
+            if(!empty($dispute['evidence_due_at']))$body.="\nEvidence due: {$dispute['evidence_due_at']} UTC";
+            (new NotificationService($db))->queue($alertEmail,$subject,$body,'stripe-dispute:'.$dispute['stripe_dispute_id'].':'.$dispute['status']);
+        }
+    }catch(Throwable $e){
+        \FudgeDonuts\ObservabilityService::captureThrowable($e,dirname(__DIR__),'stripe_dispute_processing_failure');
+        http_response_code(500);exit('Dispute processing failed');
+    }
+    $payments->markEventProcessed('stripe',(string)$event['id']);http_response_code(200);echo 'ok';exit;
+}
+
 if(is_array($object) && !empty($object['id'])){
     $giftPurchase=$giftCards->purchaseByStripeSession((string)$object['id']);
     if($giftPurchase){
         if($event['type']==='checkout.session.completed' && ($object['payment_status']??'')==='paid'){
+            $disputes->attachGiftPurchasePaymentIntent((int)$giftPurchase['id'],(string)($object['payment_intent']??''));
             $issued=$giftCards->activatePurchase((int)$giftPurchase['id'],(string)$object['id'],(int)($object['amount_total']??0),strtolower((string)($object['currency']??'')));
             $notifications=new NotificationService($db);
             $recipientBody="You received a Fudge Donuts gift card.\n\nAmount: ".money((int)$issued['card']['initial_balance_cents'])."\nGift card code: ".$issued['code'];
