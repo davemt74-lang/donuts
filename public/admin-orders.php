@@ -28,7 +28,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
 }
 $statusFilter=trim((string)($_GET['status']??''));
 try{$orders=$admin->orders(200,$statusFilter?:null);}catch(Throwable $e){$error=$e->getMessage();$statusFilter='';$orders=$admin->orders();}
-?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/assets/app.css"><title>Orders · Admin</title></head><body class="admin-body">
+?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="<?=htmlspecialchars(asset_url('/assets/app.css'))?>"><title>Orders · Admin</title></head><body class="admin-body">
 <header class="admin-topbar"><a class="admin-brand" href="/admin.php">Fudge Donuts <span>Admin</span></a><nav><a href="/admin.php">Dashboard</a><a href="/admin-flavors.php">Flavors</a><a href="/admin-packs.php">Packs</a><a class="active" href="/admin-orders.php">Orders</a><a href="/admin-support.php">Support</a><a href="/admin-inventory.php">Inventory</a><a href="/admin-shipping.php">Shipping</a><a href="/admin-tax.php">Tax</a><a href="/admin-reports.php">Reports</a><a href="/admin-operations.php">Operations</a></nav></header>
 <main class="admin-shell">
 <div class="admin-page-head"><div><p class="eyebrow">Operations</p><h1>Orders</h1></div><div class="admin-quick-actions"><a class="button secondary" href="/admin-fulfillment.csv.php?type=shipping&status=ready">Export ready shipping CSV</a><a class="button secondary" href="/admin-pickup-sheet.php?status=ready" target="_blank">Print pickup sheet</a></div></div>

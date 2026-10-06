@@ -20,7 +20,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
         header('Location: /admin.php');exit;
     }catch(Throwable $e){$error=$e->getMessage();}
 }
-?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Create Store Administrator · Fudge Donuts</title><link rel="stylesheet" href="/assets/app.css"></head><body>
+?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Create Store Administrator · Fudge Donuts</title><link rel="stylesheet" href="<?=htmlspecialchars(asset_url('/assets/app.css'))?>"></head><body>
 <main class="section narrow setup-card"><p class="eyebrow">First-time setup</p><h1>Create your administrator</h1><p>This form is available only until the first administrator is created.</p>
 <?php if($error):?><div class="notice error"><?=htmlspecialchars($error)?></div><?php endif;?>
 <form method="post" class="admin-form"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>">

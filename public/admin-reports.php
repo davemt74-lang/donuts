@@ -5,7 +5,7 @@ use FudgeDonuts\{Database,ReportingService};
 require_admin_roles(['super_admin','admin']);
 $r=new ReportingService(Database::connection());
 $overview=$r->overview($_GET['start']??null,$_GET['end']??null);$statuses=$r->byStatus();$packs=$r->packPerformance();$flavors=$r->flavorPerformance();$daily=$r->dailySales(30);
-?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/assets/app.css"><title>Reports · Admin</title></head><body class="admin-body">
+?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="<?=htmlspecialchars(asset_url('/assets/app.css'))?>"><title>Reports · Admin</title></head><body class="admin-body">
 <header class="admin-topbar"><a class="admin-brand" href="/admin.php">Fudge Donuts <span>Admin</span></a><nav><a href="/admin.php">Dashboard</a><a href="/admin-flavors.php">Flavors</a><a href="/admin-packs.php">Packs</a><a href="/admin-orders.php">Orders</a><a href="/admin-inventory.php">Inventory</a><a href="/admin-shipping.php">Shipping</a><a href="/admin-tax.php">Tax</a><a href="/admin-promotions.php">Promotions</a><a href="/admin-content.php">Content</a><a class="active" href="/admin-reports.php">Reports</a></nav></header>
 <main class="admin-shell"><p class="eyebrow">Performance</p><h1>Store reports</h1>
 <form method="get" class="inline-admin"><input type="date" name="start" value="<?=htmlspecialchars((string)($_GET['start']??''))?>"><input type="date" name="end" value="<?=htmlspecialchars((string)($_GET['end']??''))?>"><button class="button secondary">Filter</button><a class="button" href="/admin-report.csv.php">Export CSV</a></form>

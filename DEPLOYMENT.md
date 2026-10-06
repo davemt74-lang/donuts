@@ -156,3 +156,9 @@ It verifies the homepage, active flavor page, FAQ, pack builder, cart, empty-che
 Customer-facing maintenance, expired-form, missing-product, payment-recovery, permission, and unexpected server failures render safe branded pages instead of raw framework or exception output.
 
 Unexpected production errors include an operational request reference that can be matched in Admin → Operations or the fallback application log. Error responses are marked no-store. Do not replace these handlers with raw exception messages in production.
+
+
+## Runtime performance
+File-backed SQLite runs with WAL journaling, a 5-second busy timeout, NORMAL synchronous mode, an in-memory temp store, and an approximately 20MB page cache. Production preflight verifies the concurrency-critical settings.
+
+The bundled Apache `public/.htaccess` enables compression where `mod_deflate` is available. Versioned CSS/JS/font assets may be cached for one year with `immutable`; storefront images use a seven-day cache window. If a CDN is added, preserve the application cache headers rather than replacing private/no-store responses.
