@@ -108,3 +108,5 @@ After migrations, configure fulfillment in **Admin → Shipping**. Set active sh
 Production sessions force the Secure and HttpOnly cookie flags with SameSite=Lax. Configure `ADMIN_SESSION_IDLE_MINUTES`, `ADMIN_SESSION_MAX_HOURS`, `USER_SESSION_IDLE_MINUTES`, and `USER_SESSION_MAX_HOURS` to match the deployment policy.
 
 The application emits CSP, frame-denial, MIME-sniffing, referrer, permissions, cross-origin resource, and HSTS headers in production. Keep `APP_URL` on HTTPS; authenticated responses are marked private/no-store.
+
+Leave `TRUST_PROXY_HEADERS=0` unless the app is deployed behind a trusted reverse proxy that terminates TLS and overwrites `X-Forwarded-Proto`. Set it to `1` only in that controlled proxy topology.
