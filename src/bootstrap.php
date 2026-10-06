@@ -23,11 +23,6 @@ function env(string $key, ?string $default = null): ?string
 error_reporting(E_ALL);
 $environment=(string)env('APP_ENV','development');
 $maintenanceLock=dirname(__DIR__).'/storage/maintenance.lock';
-if(PHP_SAPI!=='cli' && is_file($maintenanceLock)){
-    http_response_code(503);
-    header('Retry-After: 60');
-    exit('Store maintenance in progress.');
-}
 if($environment==='production'){
     ini_set('display_errors','0');
     ini_set('log_errors','1');
@@ -40,6 +35,18 @@ spl_autoload_register(static function (string $class): void {
     $path=__DIR__.'/'.str_replace('\\','/',$relative).'.php';
     if(is_file($path)) require $path;
 });
+
+if(PHP_SAPI!=='cli' && is_file($maintenanceLock)){
+    \FudgeDonuts\HttpResponseService::send(
+        503,
+        'We’ll be right back.',
+        'The store is temporarily unavailable while we finish a maintenance task. Please try again in a minute.',
+        [['label'=>'Try the store again','href'=>'/']],
+        null,
+        false,
+        60
+    );
+}
 
 ini_set('session.use_strict_mode','1');
 ini_set('session.use_only_cookies','1');
@@ -125,8 +132,16 @@ function rotate_csrf_token(): void
 function verify_csrf(?string $token): void
 {
     if(!$token || !hash_equals($_SESSION['_csrf']??'',$token)){
-        http_response_code(419);
-        exit('Invalid CSRF token');
+        if(PHP_SAPI==='cli') throw new \RuntimeException('Invalid CSRF token');
+        \FudgeDonuts\HttpResponseService::send(
+            419,
+            'Your session has expired.',
+            'For your security, this form can’t be submitted anymore. Return to the page and try again.',
+            [
+                ['label'=>'Return to store','href'=>'/'],
+                ['label'=>'View cart','href'=>'/cart.php']
+            ]
+        );
     }
 }
 
@@ -160,7 +175,13 @@ function require_admin_roles(array $roles): void
     $_SESSION['admin_role']=(string)$admin['role'];
     \FudgeDonuts\SecurityService::applyPrivateCacheHeaders();
     if(!in_array((string)$admin['role'],$roles,true)){
-        http_response_code(403);
-        exit('Forbidden');
+        \FudgeDonuts\HttpResponseService::send(
+            403,
+            'Access not available.',
+            'Your administrator account does not have permission to open this area.',
+            [['label'=>'Back to Admin','href'=>'/admin.php']],
+            null,
+            true
+        );
     }
 }
