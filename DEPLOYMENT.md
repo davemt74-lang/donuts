@@ -244,3 +244,9 @@ Admin → Recovery shows active, restored, converted, expired, and reminder acti
 Configure each active flavor in **Admin → Food Compliance** before launch. A profile cannot be published until ingredient statement, allergen statement, storage instructions, shelf life, and net weight are complete. Published flavor pages show that controlled compliance profile; incomplete profiles remain unpublished.
 
 Printable internal product labels are available from the compliance dashboard. The shared-kitchen notice is operational product information and should be reviewed against your actual kitchen processes and applicable food-labeling requirements before production use.
+
+
+## Production batch traceability
+Use **Admin → Batches** to create a production lot for each flavor production run, including production time, best-by date and produced quantity. Assign exact lot quantities to orders while they are **Preparing** or **Ready**. Shipping is blocked when traceability is missing or when an assigned lot is on hold or recalled.
+
+A recall marks the lot unavailable, identifies every assigned order, and queues customer notices through the transactional email outbox. Review the affected-order list and support queue as part of the recall workflow.
