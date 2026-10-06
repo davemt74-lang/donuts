@@ -1,9 +1,11 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
-use FudgeDonuts\{AuthService,Database};
+use FudgeDonuts\{AuthService,Database,SecurityService};
 
-$auth=new AuthService(Database::connection());
+$db=Database::connection();
+$auth=new AuthService($db);
+$security=new SecurityService($db);
 $action=(string)($_GET['action']??'');
 $error='';
 
@@ -16,8 +18,11 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
    session_regenerate_id(true);$_SESSION['user_id']=$id;header('Location: /account.php');exit;
   }
   if($mode==='login'){
-   $user=$auth->login((string)($_POST['email']??''),(string)($_POST['password']??''));
-   if(!$user) throw new InvalidArgumentException('Email or password is incorrect.');
+   $email=(string)($_POST['email']??'');
+   $security->assertLoginAllowed('account',$email);
+   $user=$auth->login($email,(string)($_POST['password']??''));
+   if(!$user){$security->recordLoginFailure('account',$email);throw new InvalidArgumentException('Email or password is incorrect.');}
+   $security->clearLoginFailures('account',$email);
    session_regenerate_id(true);$_SESSION['user_id']=(int)$user['id'];header('Location: /account.php');exit;
   }
   if($mode==='logout'){unset($_SESSION['user_id']);session_regenerate_id(true);header('Location: /');exit;}

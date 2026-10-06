@@ -1,6 +1,15 @@
 <?php
 declare(strict_types=1);
 
+$secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+session_name('fudge_donuts_session');
+session_set_cookie_params([
+    'lifetime' => 0,
+    'path' => '/',
+    'secure' => $secure,
+    'httponly' => true,
+    'samesite' => 'Lax',
+]);
 session_start();
 
 spl_autoload_register(static function (string $class): void {
@@ -14,6 +23,8 @@ spl_autoload_register(static function (string $class): void {
         require $path;
     }
 });
+
+\FudgeDonuts\SecurityService::applyHeaders();
 
 function env(string $key, ?string $default = null): ?string
 {
