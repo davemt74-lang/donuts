@@ -80,6 +80,8 @@ final class PackagingInventoryService
     {
         if($quantity<0 || $quantity>1000) throw new \InvalidArgumentException('Packaging requirement must be between 0 and 1000.');
         if($quantity===0){$s=$this->db->prepare('DELETE FROM pack_packaging_requirements WHERE pack_size_id=? AND material_id=?');$s->execute([$packId,$materialId]);return;}
+        $p=$this->db->prepare('SELECT 1 FROM pack_sizes WHERE id=?');$p->execute([$packId]);if(!$p->fetchColumn()) throw new \InvalidArgumentException('Pack size not found.');
+        if(!$this->material($materialId)) throw new \InvalidArgumentException('Packaging material not found.');
         $s=$this->db->prepare('INSERT INTO pack_packaging_requirements(pack_size_id,material_id,quantity_per_box) VALUES(?,?,?) ON CONFLICT(pack_size_id,material_id) DO UPDATE SET quantity_per_box=excluded.quantity_per_box');
         $s->execute([$packId,$materialId,$quantity]);
     }
@@ -105,7 +107,9 @@ final class PackagingInventoryService
                 if(!$m || !(int)$m['active'] || (int)$m['stock_on_hand']<$qty) throw new \RuntimeException('Insufficient packaging: '.$need['name'].'.');
             }
             $dec=$this->db->prepare('UPDATE packaging_materials SET stock_on_hand=stock_on_hand-?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND active=1 AND stock_on_hand>=?');
-            $ins=$this->db->prepare("INSERT INTO order_packaging_allocations(order_id,material_id,quantity,status) VALUES(?,?,?,'reserved')");
+            $ins=$this->db->prepare("INSERT INTO order_packaging_allocations(order_id,material_id,quantity,status) VALUES(?,?,?,'reserved')
+                ON CONFLICT(order_id,material_id) DO UPDATE SET quantity=excluded.quantity,status='reserved',reserved_at=CURRENT_TIMESTAMP,consumed_at=NULL,released_at=NULL
+                WHERE order_packaging_allocations.status='released'");
             foreach($needs as $need){
                 $mid=(int)$need['material_id'];$qty=(int)$need['quantity'];$before=$this->material($mid);
                 $dec->execute([$qty,$mid,$qty]);if($dec->rowCount()!==1) throw new \RuntimeException('Packaging inventory changed during reservation.');
