@@ -23,6 +23,7 @@ final class CustomerAccountService
         if(!$order) return null;
         $i=$this->db->prepare('SELECT * FROM order_items WHERE order_id=? ORDER BY id');
         $i->execute([$orderId]);$order['items']=$i->fetchAll();
+        try{$f=$this->db->prepare('SELECT * FROM order_fulfillment_details WHERE order_id=?');$f->execute([$orderId]);$order['fulfillment_details']=$f->fetch()?:null;}catch(\Throwable){$order['fulfillment_details']=null;}
         return $order;
     }
 
