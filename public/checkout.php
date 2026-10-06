@@ -36,7 +36,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
  }catch(Throwable $e){$error=$e->getMessage();}
 }
 $value=fn(string $k)=>htmlspecialchars((string)($_POST[$k]??$default[$k]??($k==='email'?($user['email']??''):'')));
-?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Checkout · Fudge Donuts</title><link rel="stylesheet" href="<?=htmlspecialchars(asset_url('/assets/app.css'))?>"></head><body>
+?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Checkout · Fudge Donuts</title><link rel="stylesheet" href="<?=htmlspecialchars(asset_url('/assets/app.css'))?>"><?=analytics_script()?></head><body>
 <a class="skip-link" href="#main-content">Skip to main content</a>
 <header class="nav"><a class="brand" href="/">Fudge Donuts</a><nav><a href="/cart.php">Back to cart</a></nav></header>
 <main id="main-content" tabindex="-1" class="section checkout-page"><section><p class="eyebrow">Checkout</p><h1>Where should we send them?</h1><?php if($error):?><div class="notice error" role="alert"><?=htmlspecialchars($error)?></div><?php endif;?>
