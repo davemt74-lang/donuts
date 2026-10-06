@@ -9,6 +9,13 @@ final class PerformanceService
         '/flavor.php','/story.php','/faq.php','/policy.php','/sitemap.php'
     ];
 
+    public static function canSkipSession(string $method,string $uri,bool $hasSessionCookie): bool
+    {
+        if($hasSessionCookie)return false;
+        $method=strtoupper($method);$path=parse_url($uri,PHP_URL_PATH)?:'/';
+        return in_array($method,['GET','HEAD'],true) && in_array($path,self::PUBLIC_READ_ONLY,true);
+    }
+
     public static function policy(string $method,string $uri,bool $authenticated=false): array
     {
         $method=strtoupper($method);$path=parse_url($uri,PHP_URL_PATH)?:'/';
