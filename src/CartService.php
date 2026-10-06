@@ -7,7 +7,8 @@ final class CartService
 {
     public function __construct(
         private readonly PackBuilderService $builder,
-        private readonly DiscountService $discounts
+        private readonly DiscountService $discounts,
+        private readonly ?PresetPackService $presets = null
     ) {}
 
     public function addCustomBox(array &$session, int $size, array $selections, int $quantity=1): string
@@ -23,6 +24,25 @@ final class CartService
                 'kind'=>'custom',
                 'size'=>$size,
                 'selections'=>$this->selectionMap($box),
+                'quantity'=>$quantity,
+            ];
+        }
+        return $key;
+    }
+
+    public function addPresetBox(array &$session,string $slug,int $quantity=1): string
+    {
+        if(!$this->presets) throw new \RuntimeException('Preset pack service is unavailable.');
+        $quantity=max(1,min(24,$quantity));
+        $box=$this->presets->buildBySlug($slug);
+        $key=hash('sha256','preset|'.$box['preset_id']);
+        $session['cart'] ??= [];
+        if(isset($session['cart'][$key])){
+            $session['cart'][$key]['quantity']=min(24,(int)$session['cart'][$key]['quantity']+$quantity);
+        }else{
+            $session['cart'][$key]=[
+                'kind'=>'preset',
+                'slug'=>$box['preset_slug'],
                 'quantity'=>$quantity,
             ];
         }
@@ -45,9 +65,16 @@ final class CartService
     {
         $items=[];$subtotal=0;$units=0;
         foreach(($session['cart']??[]) as $key=>$stored){
-            if(($stored['kind']??'')!=='custom') continue;
+            $kind=(string)($stored['kind']??'');
+            if($kind==='custom'){
+                $box=$this->builder->build((int)$stored['size'],(array)$stored['selections']);
+            }elseif($kind==='preset'){
+                if(!$this->presets) throw new \RuntimeException('Preset pack service is unavailable.');
+                $box=$this->presets->buildBySlug((string)($stored['slug']??''));
+            }else{
+                continue;
+            }
             $qty=max(1,min(24,(int)($stored['quantity']??1)));
-            $box=$this->builder->build((int)$stored['size'],(array)$stored['selections']);
             $line=$box['total_cents']*$qty;
             $subtotal+=$line;$units+=$qty;
             $items[]=['key'=>$key,'quantity'=>$qty,'box'=>$box,'line_total_cents'=>$line];
