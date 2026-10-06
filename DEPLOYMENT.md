@@ -68,3 +68,14 @@ php scripts/check-operations.php
 Set `ALERT_EMAIL` to an operations mailbox to receive deduplicated health alerts through the transactional email outbox. `OBSERVABILITY_RETENTION_DAYS` controls resolved-event retention. Runtime errors also fall back to `storage/logs/app.log` if the database is unavailable.
 
 The public `/health.php` endpoint exposes only readiness status, database availability, a request ID, and timestamp. Detailed operational state is available to administrators at `/admin-operations.php`.
+
+
+## Scheduled worker heartbeat expectations
+The production scheduler should match these defaults:
+
+- `send-notifications.php`: every 5 minutes
+- `recover-reservations.php`: every 5 minutes
+- `check-operations.php`: every 5 minutes
+- `backup-database.php scheduled`: every 24 hours
+
+The matching `JOB_*_INTERVAL_MINUTES` values are used for stale-worker detection. Admin → Operations shows last success, failure streaks, active runs and stale jobs. Overlapping copies of the same worker are blocked automatically.

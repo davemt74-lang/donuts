@@ -2,7 +2,7 @@
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
 
-use FudgeDonuts\{AdminAuditService,Database,ObservabilityService};
+use FudgeDonuts\{AdminAuditService,Database,JobMonitorService,ObservabilityService};
 require_admin_roles(['super_admin','admin']);
 
 $db=Database::connection();$svc=new ObservabilityService($db);$audit=new AdminAuditService($db);$error='';$notice='';
@@ -17,7 +17,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
 }
 $severity=trim((string)($_GET['severity']??''));$openOnly=($_GET['open']??'1')!=='0';
 try{$rows=$svc->recent(250,$severity?:null,$openOnly);}catch(Throwable $e){$error=$e->getMessage();$severity='';$rows=$svc->recent(250,null,$openOnly);}
-$stats=$svc->stats();$health=$svc->health();
+$stats=$svc->stats();$health=$svc->health();$jobs=(new JobMonitorService($db))->jobs();
 ?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Operations · Fudge Donuts Admin</title><link rel="stylesheet" href="/assets/app.css"></head><body class="admin-body">
 <header class="admin-topbar"><a class="admin-brand" href="/admin.php">Fudge Donuts <span>Admin</span></a><nav><a href="/admin.php">Dashboard</a><a href="/admin-orders.php">Orders</a><a href="/admin-inventory.php">Inventory</a><a href="/admin-reports.php">Reports</a><a href="/admin-notifications.php">Email</a><a href="/admin-audit.php">Audit</a><a class="active" href="/admin-operations.php">Operations</a></nav></header>
 <main class="admin-shell">
@@ -34,7 +34,10 @@ $stats=$svc->stats();$health=$svc->health();
 <div><span>Expired reservations</span><strong><?=(int)$health['expired_reservations']?></strong></div>
 <div><span>Payment review</span><strong><?=(int)$health['payment_review']?></strong></div>
 <div><span>Open errors</span><strong><?=(int)$health['open_errors']?></strong></div>
+<div><span>Stale jobs</span><strong><?=(int)$health['stale_jobs']?></strong></div>
+<div><span>Failing jobs</span><strong><?=(int)$health['failing_jobs']?></strong></div>
 </section>
+<section class="dashboard-panel"><div class="panel-head"><div><p class="eyebrow">Scheduler</p><h2>Background jobs</h2></div></div><div class="dashboard-table-wrap"><table class="dashboard-table"><thead><tr><th>Job</th><th>Expected</th><th>Last success</th><th>Failures</th><th>Status</th></tr></thead><tbody><?php foreach($jobs as $job):?><tr><td><strong><?=htmlspecialchars($job['description'])?></strong><small><?=htmlspecialchars($job['job_key'])?></small></td><td>Every <?=(int)$job['expected_interval_minutes']?> min</td><td><?=htmlspecialchars((string)($job['last_succeeded_at']??'Never'))?></td><td><?=(int)$job['consecutive_failures']?></td><td><?php if($job['stale']):?><span class="ops-severity ops-severity-error">Stale</span><?php elseif($job['running_fresh']):?><span class="ops-severity ops-severity-info">Running</span><?php elseif((int)$job['consecutive_failures']>0):?><span class="ops-severity ops-severity-warning">Failing</span><?php else:?><span class="ops-severity ops-severity-info">Healthy</span><?php endif;?></td></tr><?php endforeach;?></tbody></table></div></section>
 <div class="order-filters"><a class="<?=!$severity?'active':''?>" href="/admin-operations.php?open=<?=$openOnly?'1':'0'?>">All</a><?php foreach(['critical','error','warning','info'] as $s):?><a class="<?=$severity===$s?'active':''?>" href="/admin-operations.php?severity=<?=$s?>&open=<?=$openOnly?'1':'0'?>"><?=htmlspecialchars(ucfirst($s))?></a><?php endforeach;?><a href="/admin-operations.php?open=<?=$openOnly?'0':'1'?>"><?=$openOnly?'Show resolved':'Open only'?></a></div>
 <section class="dashboard-panel"><div class="dashboard-table-wrap"><table class="dashboard-table"><thead><tr><th>Last seen</th><th>Severity</th><th>Event</th><th>Message</th><th>Count</th><th>Request</th><th></th></tr></thead><tbody>
 <?php if(!$rows):?><tr><td colspan="7" class="empty-cell">No operational events in this view.</td></tr><?php endif;?>
