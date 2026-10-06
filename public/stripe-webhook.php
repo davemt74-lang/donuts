@@ -22,6 +22,7 @@ if(is_array($object) && !empty($object['id'])){
         $total=(int)($object['amount_total']??0);
         $tax=(int)($object['total_details']['amount_tax']??0);
         $orderId=$orderService->idByStripeSession((string)$object['id']);
+        $payments->markCompletedByProviderSession((string)$object['id']);
         $orderService->markPaidByStripeSession((string)$object['id'],$total,$tax);
         if($orderId){
             (new InventoryService($db))->commitOrder($orderId);
@@ -30,6 +31,7 @@ if(is_array($object) && !empty($object['id'])){
         }
     }elseif(in_array($event['type'],['checkout.session.expired','checkout.session.async_payment_failed'],true)){
         $orderId=$orderService->idByStripeSession((string)$object['id']);
+        $payments->markFailedByProviderSession((string)$object['id']);
         $orderService->markPaymentFailedByStripeSession((string)$object['id'],(string)$event['type']);
         if($orderId)(new InventoryService($db))->releaseOrder($orderId);
     }
