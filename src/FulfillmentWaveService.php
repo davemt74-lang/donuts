@@ -41,6 +41,7 @@ final class FulfillmentWaveService
         $wave=$this->wave($waveId);
         if($wave['status']!=='planned') throw new \InvalidArgumentException('Only planned waves can be started.');
         foreach($wave['orders'] as $order){
+            if((int)$order['active']!==1) continue;
             if($order['status']!=='preparing') throw new \InvalidArgumentException('All wave orders must still be Preparing.');
             $this->assertSafe((int)$order['id']);
         }
@@ -52,7 +53,7 @@ final class FulfillmentWaveService
     {
         $wave=$this->wave($waveId);
         if($wave['status']!=='in_progress') throw new \InvalidArgumentException('Packing can only be changed while a wave is in progress.');
-        $member=null;foreach($wave['orders'] as $row)if((int)$row['id']===$orderId){$member=$row;break;}
+        $member=null;foreach($wave['orders'] as $row)if((int)$row['id']===$orderId && (int)$row['active']===1){$member=$row;break;}
         if(!$member) throw new \InvalidArgumentException('Order is not active in this wave.');
         if($member['status']!=='preparing') throw new \InvalidArgumentException('Only Preparing orders can be packed in a wave.');
         if($packed)$this->assertSafe($orderId);
@@ -67,6 +68,7 @@ final class FulfillmentWaveService
         if($wave['status']!=='in_progress') throw new \InvalidArgumentException('Only in-progress waves can be completed.');
         if(!$wave['orders']) throw new \InvalidArgumentException('Fulfillment wave has no active orders.');
         foreach($wave['orders'] as $order){
+            if((int)$order['active']!==1) continue;
             if(empty($order['packed_at'])) throw new \InvalidArgumentException('Every order must be marked packed before completing the wave.');
             if($order['status']!=='preparing') throw new \InvalidArgumentException('All wave orders must still be Preparing.');
             $this->assertSafe((int)$order['id']);
@@ -77,7 +79,7 @@ final class FulfillmentWaveService
             }
         }
 
-        $ids=array_map(fn($o)=>(int)$o['id'],$wave['orders']);
+        $ids=array_map(fn($o)=>(int)$o['id'],array_values(array_filter($wave['orders'],fn($o)=>(int)$o['active']===1)));
         $this->db->beginTransaction();
         try{
             $u=$this->db->prepare("UPDATE orders SET status='ready',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='preparing'");
@@ -110,7 +112,7 @@ final class FulfillmentWaveService
     {
         $s=$this->db->prepare('SELECT * FROM fulfillment_waves WHERE id=?');$s->execute([$id]);$wave=$s->fetch();
         if(!$wave) throw new \InvalidArgumentException('Fulfillment wave not found.');
-        $o=$this->db->prepare('SELECT o.*,wo.packed_at,wo.packed_by,wo.active FROM fulfillment_wave_orders wo JOIN orders o ON o.id=wo.order_id WHERE wo.wave_id=? AND wo.active=1 ORDER BY o.id');
+        $o=$this->db->prepare('SELECT o.*,wo.packed_at,wo.packed_by,wo.active FROM fulfillment_wave_orders wo JOIN orders o ON o.id=wo.order_id WHERE wo.wave_id=? ORDER BY o.id');
         $o->execute([$id]);$wave['orders']=$o->fetchAll();return $wave;
     }
 
