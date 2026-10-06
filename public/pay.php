@@ -2,7 +2,7 @@
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
 
-use FudgeDonuts\{CartService,CatalogRepository,Database,DiscountService,OrderService,PackBuilderService,PaymentRepository,ShippingService,StripeService};
+use FudgeDonuts\{CartService,CatalogRepository,Database,DiscountService,InventoryService,OrderService,PackBuilderService,PaymentRepository,ShippingService,StripeService};
 
 if($_SERVER['REQUEST_METHOD']!=='POST'){header('Location: /checkout-review.php');exit;}
 verify_csrf($_POST['_csrf']??null);
