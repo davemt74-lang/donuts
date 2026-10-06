@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 $root=dirname(__DIR__);putenv('DB_DSN=sqlite::memory:');require $root.'/src/bootstrap.php';
-use FudgeDonuts\{AdminDashboardService,Database};
+use FudgeDonuts\{AdminDashboardService,AdminService,Database};
 $db=Database::connection();foreach(['001_catalog.sql','002_discounts.sql','006_orders.sql','007_inventory.sql','009_promotions.sql'] as $f)$db->exec((string)file_get_contents($root.'/database/'.$f));
 $db->exec("INSERT INTO orders(order_number,checkout_fingerprint,status,email,first_name,last_name,line1,city,region,postal_code,fulfillment_code,fulfillment_name,fulfillment_type,subtotal_cents,discount_cents,total_cents,created_at) VALUES
 ('FD-D1','d1','paid','a@b.com','A','B','1','Phoenix','AZ','85001','standard','Standard','shipping',2500,100,2500,CURRENT_TIMESTAMP),
@@ -13,4 +13,6 @@ $s=$db->prepare("INSERT INTO order_items(order_id,kind,pack_size,quantity,unit_p
 $fid=(int)$db->query("SELECT id FROM flavors WHERE slug='smores'")->fetchColumn();$db->exec("UPDATE flavor_inventory SET track_inventory=1,stock_on_hand=4,reserved=0,low_stock_threshold=5 WHERE flavor_id={$fid}");
 $svc=new AdminDashboardService($db);$d=$svc->snapshot();
 assert($d['today']['orders']===2);assert($d['today']['revenue_cents']===6500);assert($d['fulfillment']['paid']===1);assert($d['fulfillment']['preparing']===1);assert(count($d['recent_orders'])===3);assert(count($d['low_stock'])===1);assert($d['top_flavors'][0]['units']===6);assert(count($d['daily_sales'])===30);assert($svc->percentChange(150,100)===50.0);assert($svc->percentChange(100,0)===null);
+$orders=new AdminService($db);assert(count($orders->orders(100,'paid'))===1);assert(count($orders->orders(100,'preparing'))===1);
+$bad=false;try{$orders->orders(100,'not-a-status');}catch(InvalidArgumentException){$bad=true;}assert($bad);
 echo "Section 21 checks passed\n";
