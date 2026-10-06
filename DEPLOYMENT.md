@@ -264,3 +264,19 @@ Section 67 adds safety controls on top of the production-batch workflow:
 - The affected-order CSV export uses spreadsheet-formula neutralization.
 
 Migration 038 adds database triggers preventing `quantity_remaining` from exceeding `quantity_produced` without modifying the already-applied Section 66 migration.
+
+
+## Ingredient and supplier lot traceability
+Use **Admin → Ingredients** to record supplier ingredient lots as they are received, including supplier lot code, received date, best-by date, optional received quantity/unit, and internal notes.
+
+Link supplier lots to finished production batches before those batches are used for fulfillment. Linked provenance is enforced end-to-end:
+
+- an ingredient lot received after the finished batch production time cannot be linked;
+- when a received quantity is recorded, linked usage cannot exceed that lot quantity and must use the same unit;
+- held, recalled, expired, or future-dated ingredient lots block new finished-batch assignment and block shipment of already-assigned orders;
+- ingredient provenance becomes immutable once any linked finished batch has shipped;
+- missing supplier links remain a non-blocking launch warning during rollout, so historical batches are not retroactively made unshippable.
+
+For a supplier recall, mark the ingredient lot **Recalled**, review the downstream production batches and customer orders, export the affected-order CSV if needed, then use **Queue / retry failed recall notices**. Notification keys are idempotent per ingredient lot/order and failed outbox messages are explicitly reopened for retry.
+
+This traceability workflow supports operations and customer notification; it does not replace any regulatory reporting, recall, or supplier documentation obligations that apply to the business.
