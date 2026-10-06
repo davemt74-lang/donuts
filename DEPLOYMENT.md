@@ -194,3 +194,9 @@ Gross-margin reporting uses merchandise subtotal after discounts and subtracts f
 Signed-in customers can review only flavors found in their paid/fulfilled order history. Reviews are pending by default and require approval in **Admin → Reviews** before appearing publicly.
 
 Approved reviews are identity-minimal on the storefront (shown as “Verified customer”). Only approved reviews contribute to public rating averages and Product `aggregateRating` structured data. Editing a review returns it to moderation.
+
+
+## Buy Again
+Signed-in customers can rebuild eligible historical orders from Account → Orders. Reorders never copy historical prices. Every box is rebuilt through the current pack/preset catalog, current flavor eligibility and sold-out state, current surcharges/base prices, and current tracked inventory.
+
+The entire reorder is atomic: if any historical box can no longer be built, no portion of that reorder is added to the live cart. Existing cart contents remain unchanged.
