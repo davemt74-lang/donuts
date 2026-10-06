@@ -294,3 +294,9 @@ A BOM-controlled batch with missing required ingredient provenance is blocked fr
 Manage approved vendors in **Admin → Suppliers** and purchase orders in **Admin → Purchase Orders**. Supplier items define the canonical ingredient name, unit, unit cost, lead time, and minimum order quantity.
 
 Receiving a purchase-order line creates the canonical ingredient lot in the supplier traceability ledger in the same database transaction. Partial receipts are supported, over-receipts are blocked, duplicate supplier lot codes roll back cleanly, and the PO moves through Ordered → Partially Received → Received automatically.
+
+
+## Ingredient procurement planning
+**Admin → Procurement Plan** converts the production forecast into ingredient demand using each flavor's active recipe. It subtracts usable active supplier-lot stock plus draft/ordered PO pipeline quantities, then recommends the lowest-cost active supplier item and respects its minimum order quantity and lead time.
+
+Creating a recommended draft PO recomputes the plan server-side before writing the order, so posted quantities are never trusted. Draft POs count as planned supply to prevent duplicate recommendations until they are cancelled or ordered.
