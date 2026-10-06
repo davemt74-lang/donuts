@@ -2,10 +2,10 @@
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
 
-use FudgeDonuts\{Database,GiftCardService,SecurityService,StripeService};
+use FudgeDonuts\{CatalogRepository,Database,GiftCardService,SecurityService,SeoService,StripeService};
 
 $db=Database::connection();$svc=new GiftCardService($db,(string)env('APP_KEY',''));$error='';
-$amounts=$svc->allowedAmounts();
+$amounts=$svc->allowedAmounts();$seo=new SeoService(new CatalogRepository($db),(string)env('APP_URL','https://example.com'));$canonical=$seo->canonical('/gift-cards.php');
 if($_SERVER['REQUEST_METHOD']==='POST'){
     verify_csrf($_POST['_csrf']??null);
     try{
@@ -47,7 +47,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
         $error=$e instanceof InvalidArgumentException?$e->getMessage():'Gift card checkout could not be started. Please try again.';
     }
 }
-?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Gift Cards · Fudge Donuts</title><meta name="description" content="Send a digital Fudge Donuts gift card for a future box of handcrafted fudge donuts."><link rel="stylesheet" href="<?=htmlspecialchars(asset_url('/assets/app.css'))?>"></head><body>
+?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Gift Cards · Fudge Donuts</title><meta name="description" content="Send a digital Fudge Donuts gift card for a future box of handcrafted fudge donuts."><link rel="canonical" href="<?=htmlspecialchars($canonical)?>"><meta property="og:title" content="Fudge Donuts Gift Cards"><meta property="og:description" content="Send a digital Fudge Donuts gift card for a future box of handcrafted fudge donuts."><meta property="og:type" content="website"><meta property="og:url" content="<?=htmlspecialchars($canonical)?>"><link rel="stylesheet" href="<?=htmlspecialchars(asset_url('/assets/app.css'))?>"></head><body>
 <a class="skip-link" href="#main-content">Skip to main content</a>
 <header class="nav"><a class="brand" href="/">Fudge Donuts</a><nav><a href="/#shop">Shop</a><a href="/faq.php">FAQ</a><a href="/cart.php">Cart</a></nav></header>
 <main id="main-content" tabindex="-1" class="section narrow"><p class="eyebrow">Send something sweet</p><h1>Fudge Donuts Gift Cards</h1><p>Digital gift cards are delivered by email after secure payment confirmation and can be applied to a future order.</p>
