@@ -15,7 +15,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
     }catch(Throwable $e){$error=$e->getMessage();}
 }
 $settings=$tax->settings();$regions=$tax->byRegion($_GET['start']??null,$_GET['end']??null);
-?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tax · Fudge Donuts Admin</title><link rel="stylesheet" href="/assets/app.css"></head><body class="admin-body">
+?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tax · Fudge Donuts Admin</title><link rel="stylesheet" href="<?=htmlspecialchars(asset_url('/assets/app.css'))?>"></head><body class="admin-body">
 <header class="admin-topbar"><a class="admin-brand" href="/admin.php">Fudge Donuts <span>Admin</span></a><nav><a href="/admin.php">Dashboard</a><a href="/admin-orders.php">Orders</a><a href="/admin-shipping.php">Shipping</a><a class="active" href="/admin-tax.php">Tax</a><a href="/admin-reports.php">Reports</a><a href="/admin-audit.php">Audit</a></nav></header>
 <main class="admin-shell">
 <div class="admin-page-head"><div><p class="eyebrow">Compliance</p><h1>Tax Configuration</h1><p class="admin-welcome">Control Stripe Automatic Tax behavior and review collected tax by region.</p></div></div>
