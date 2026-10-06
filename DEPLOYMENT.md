@@ -182,3 +182,9 @@ When enabled, the storefront creates a random 128-bit first-party visitor identi
 Admin → Inventory includes a production forecast built from actual paid/fulfilled flavor demand plus current on-hand and reserved stock.
 
 `PRODUCTION_HISTORY_DAYS` controls the default demand lookback and `PRODUCTION_SAFETY_DAYS` adds a configurable safety-stock buffer. Operators can change the forecast horizon interactively and export the current production plan as CSV.
+
+
+## Cost and margin accounting
+Configure flavor unit cost and pack-level packaging cost in **Admin → Costs & Margin**. Paid orders receive an immutable cost snapshot after Stripe payment reconciliation, and the missed-webhook recovery worker creates the same snapshot if it settles the order later.
+
+Gross-margin reporting uses merchandise subtotal after discounts and subtracts flavor + packaging cost. It currently excludes labor, payment processing fees, postage, rent, and other overhead. Fully refunded orders are excluded from the live margin summary while their original snapshots remain available for audit.
