@@ -20,7 +20,10 @@
     total.textContent = amount;
     cards.forEach(card => {
       const qty = card.querySelector('.qty');
+      const value = Number(qty.value || 0);
       qty.setAttribute('aria-valuenow', qty.value);
+      card.querySelector('.minus').disabled = value <= 0;
+      card.querySelector('.plus').disabled = used >= max;
     });
     submit.disabled = used !== max;
     status.textContent = used === max
