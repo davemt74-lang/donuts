@@ -1,13 +1,13 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
-use FudgeDonuts\{CatalogRepository,Database};
+use FudgeDonuts\{AdminAuditService,CatalogRepository,Database};
 require_admin_roles(['super_admin','admin']);
 
-$db=Database::connection();$repo=new CatalogRepository($db);$error='';$notice='';
+$db=Database::connection();$repo=new CatalogRepository($db);$audit=new AdminAuditService($db);$error='';$notice='';
 if(isset($_POST['save_flavor'])){
     verify_csrf($_POST['_csrf']??null);
-    try{$repo->saveFlavor($_POST);$notice='Flavor saved.';}catch(Throwable $e){$error=$e->getMessage();}
+    try{$before=!empty($_POST['id'])?($repo->flavorById((int)$_POST['id'])?:[]):[];$repo->saveFlavor($_POST);$after=$repo->flavorBySlug((string)$_POST['slug'],false)?:[];$audit->record((int)$_SESSION['admin_id'],'flavor_saved','flavor',(string)$_POST['slug'],'Flavor configuration saved.',$before,$after);$notice='Flavor saved.';}catch(Throwable $e){$error=$e->getMessage();}
 }
 $flavors=$repo->flavors(false);
 ?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/assets/app.css"><title>Flavors · Fudge Donuts Admin</title></head><body class="admin-body">
