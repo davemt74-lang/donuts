@@ -12,5 +12,21 @@ header('Content-Type: text/csv; charset=utf-8');
 header('Content-Disposition: attachment; filename="fudge-donuts-'.$type.'-'.($status?:'all').'-'.gmdate('Ymd-His').'.csv"');
 $out=fopen('php://output','wb');
 fputcsv($out,['Order','Created','Status','First Name','Last Name','Email','Address 1','Address 2','City','State/Region','Postal Code','Country','Phone','Method','Total']);
-foreach($rows as $row)fputcsv($out,[$row['order_number'],$row['created_at'],$row['status'],$row['first_name'],$row['last_name'],$row['email'],$row['line1'],$row['line2'],$row['city'],$row['region'],$row['postal_code'],$row['country'],$row['phone'],$row['fulfillment_name'],number_format(((int)$row['total_cents'])/100,2,'.','')]);
+foreach($rows as $row)fputcsv($out,[
+    FulfillmentOperationsService::csvCell((string)$row['order_number']),
+    FulfillmentOperationsService::csvCell((string)$row['created_at']),
+    FulfillmentOperationsService::csvCell((string)$row['status']),
+    FulfillmentOperationsService::csvCell((string)$row['first_name']),
+    FulfillmentOperationsService::csvCell((string)$row['last_name']),
+    FulfillmentOperationsService::csvCell((string)$row['email']),
+    FulfillmentOperationsService::csvCell((string)$row['line1']),
+    FulfillmentOperationsService::csvCell((string)$row['line2']),
+    FulfillmentOperationsService::csvCell((string)$row['city']),
+    FulfillmentOperationsService::csvCell((string)$row['region']),
+    FulfillmentOperationsService::csvCell((string)$row['postal_code']),
+    FulfillmentOperationsService::csvCell((string)$row['country']),
+    FulfillmentOperationsService::csvCell((string)$row['phone']),
+    FulfillmentOperationsService::csvCell((string)$row['fulfillment_name']),
+    number_format(((int)$row['total_cents'])/100,2,'.','')
+]);
 fclose($out);exit;
