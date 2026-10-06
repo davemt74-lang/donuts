@@ -139,10 +139,12 @@ final class ShipmentService
     private function syncOrderStatus(int $orderId): void
     {
         $s=$this->db->prepare('SELECT status FROM orders WHERE id=?');$s->execute([$orderId]);$status=(string)$s->fetchColumn();
-        if($this->allDelivered($orderId) && in_array($status,['preparing','shipped'],true)){
-            $u=$this->db->prepare("UPDATE orders SET status='delivered',updated_at=CURRENT_TIMESTAMP WHERE id=?");$u->execute([$orderId]);
+        if($this->allDelivered($orderId) && in_array($status,['preparing','ready','shipped'],true)){
+            $u=$this->db->prepare("UPDATE orders SET status='delivered',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status=?");$u->execute([$orderId,$status]);
+            if($u->rowCount()){$e=$this->db->prepare('INSERT INTO order_events(order_id,event_type,note) VALUES(?,?,?)');$e->execute([$orderId,'status_changed',$status.' → delivered (shipment completion)']);}
         }elseif($this->allShipped($orderId) && in_array($status,['paid','preparing','ready'],true)){
-            $u=$this->db->prepare("UPDATE orders SET status='shipped',updated_at=CURRENT_TIMESTAMP WHERE id=?");$u->execute([$orderId]);
+            $u=$this->db->prepare("UPDATE orders SET status='shipped',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status=?");$u->execute([$orderId,$status]);
+            if($u->rowCount()){$e=$this->db->prepare('INSERT INTO order_events(order_id,event_type,note) VALUES(?,?,?)');$e->execute([$orderId,'status_changed',$status.' → shipped (all packages shipped)']);}
         }
     }
 }
