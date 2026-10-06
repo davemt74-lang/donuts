@@ -1,0 +1,40 @@
+<?php
+declare(strict_types=1);
+require dirname(__DIR__).'/src/bootstrap.php';
+
+use FudgeDonuts\{AdminAuditService,CustomerCrmService,Database};
+require_admin_roles(['super_admin','admin']);
+
+$db=Database::connection();$svc=new CustomerCrmService($db);$audit=new AdminAuditService($db);$email=trim((string)($_GET['email']??$_POST['email']??''));$error='';$notice='';
+if($_SERVER['REQUEST_METHOD']==='POST'){
+    verify_csrf($_POST['_csrf']??null);
+    try{
+        $action=(string)($_POST['action']??'');
+        if($action==='note'){
+            $id=$svc->addNote($email,(int)$_SESSION['admin_id'],(string)($_POST['note']??''));
+            $audit->record((int)$_SESSION['admin_id'],'customer_note_added','customer',$email,'CRM note added.',[],['note_id'=>$id]);
+            $notice='Customer note added.';
+        }elseif($action==='tag'){
+            $tag=(string)($_POST['tag']??'');$svc->addTag($email,(int)$_SESSION['admin_id'],$tag);
+            $audit->record((int)$_SESSION['admin_id'],'customer_tag_added','customer',$email,'CRM tag added.',[],['tag'=>$tag]);
+            $notice='Customer tag added.';
+        }elseif($action==='remove_tag'){
+            $tag=(string)($_POST['tag']??'');$svc->removeTag($email,$tag);
+            $audit->record((int)$_SESSION['admin_id'],'customer_tag_removed','customer',$email,'CRM tag removed.',['tag'=>$tag],[]);
+            $notice='Customer tag removed.';
+        }else throw new InvalidArgumentException('Unsupported customer action.');
+    }catch(Throwable $e){$error=$e->getMessage();}
+}
+try{$customer=$svc->profile($email);}catch(Throwable $e){FudgeDonutsHttpResponseService::send(404,'Customer not found.','The customer identity could not be loaded.',[['label'=>'Back to customers','href'=>'/admin-customers.php']],null,true);}
+?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><?=htmlspecialchars($customer['email'])?> · Customer · Fudge Donuts Admin</title><link rel="stylesheet" href="<?=htmlspecialchars(asset_url('/assets/app.css'))?>"></head><body class="admin-body">
+<a class="skip-link" href="#admin-main">Skip to admin content</a><header class="admin-topbar"><a class="admin-brand" href="/admin.php">Fudge Donuts <span>Admin</span></a><nav><a href="/admin.php">Dashboard</a><a href="/admin-orders.php">Orders</a><a class="active" href="/admin-customers.php">Customers</a><a href="/admin-support.php">Support</a></nav></header>
+<main id="admin-main" tabindex="-1" class="admin-shell"><div class="admin-page-head"><div><p class="eyebrow"><?=$customer['registered']?'Registered customer':'Guest customer'?></p><h1><?=htmlspecialchars(trim($customer['first_name'].' '.$customer['last_name'])?:$customer['email'])?></h1><p class="admin-welcome"><?=htmlspecialchars($customer['email'])?></p></div><a class="button secondary" href="/admin-customers.php">Back to customers</a></div>
+<?php if($error):?><div class="notice error" role="alert"><?=htmlspecialchars($error)?></div><?php endif;?><?php if($notice):?><div class="notice" role="status"><?=htmlspecialchars($notice)?></div><?php endif;?>
+<section class="dashboard-kpis"><article class="kpi-card"><span>Orders</span><strong><?=(int)$customer['orders']?></strong><small>First <?=htmlspecialchars($customer['first_order_at']?:'—')?></small></article><article class="kpi-card"><span>Net lifetime value</span><strong><?=money((int)$customer['net_cents'])?></strong><small><?=money((int)$customer['gross_cents'])?> gross</small></article><article class="kpi-card"><span>Average order</span><strong><?=money((int)$customer['aov_cents'])?></strong><small><?=money((int)$customer['refunded_cents'])?> refunded</small></article><article class="kpi-card"><span>Active support</span><strong><?=(int)$customer['active_support']?></strong><small>Open service requests</small></article></section>
+<section class="dashboard-grid dashboard-secondary"><div class="dashboard-panel"><div class="panel-head"><div><p class="eyebrow">Service context</p><h2>Tags</h2></div></div><div class="customer-tags"><?php foreach($customer['tags'] as $tag):?><form method="post" class="chip"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>"><input type="hidden" name="email" value="<?=htmlspecialchars($email)?>"><input type="hidden" name="action" value="remove_tag"><input type="hidden" name="tag" value="<?=htmlspecialchars($tag)?>"><span><?=htmlspecialchars($tag)?></span><button class="link" aria-label="Remove <?=htmlspecialchars($tag)?> tag">×</button></form><?php endforeach;?></div><form method="post" class="inline-admin"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>"><input type="hidden" name="email" value="<?=htmlspecialchars($email)?>"><input type="hidden" name="action" value="tag"><label class="sr-only" for="crm-tag">New tag</label><input id="crm-tag" name="tag" maxlength="64" placeholder="vip, wholesale, pickup"><button class="button secondary">Add tag</button></form></div>
+<div class="dashboard-panel"><div class="panel-head"><div><p class="eyebrow">Internal only</p><h2>Customer notes</h2></div></div><form method="post" class="admin-form"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>"><input type="hidden" name="email" value="<?=htmlspecialchars($email)?>"><input type="hidden" name="action" value="note"><label>Add note<textarea name="note" maxlength="3000" required rows="4"></textarea></label><button class="button secondary">Add note</button></form><div class="crm-notes"><?php foreach($customer['notes'] as $note):?><article><strong><?=htmlspecialchars($note['admin_email'])?></strong><small><?=htmlspecialchars($note['created_at'])?></small><p><?=nl2br(htmlspecialchars($note['note']))?></p></article><?php endforeach;?></div></div></section>
+<section class="dashboard-grid dashboard-secondary"><div class="dashboard-panel"><div class="panel-head"><div><p class="eyebrow">Purchase history</p><h2>Orders</h2></div></div><div class="dashboard-table-wrap"><table class="dashboard-table"><thead><tr><th>Order</th><th>Status</th><th>Total</th><th>Date</th></tr></thead><tbody><?php foreach($customer['order_history'] as $o):?><tr><td><a href="/admin-order.php?id=<?=(int)$o['id']?>"><?=htmlspecialchars($o['order_number'])?></a></td><td><?=htmlspecialchars(str_replace('_',' ',$o['status']))?></td><td><?=money((int)$o['total_cents'])?></td><td><?=htmlspecialchars($o['created_at'])?></td></tr><?php endforeach;?></tbody></table></div></div>
+<div class="dashboard-panel"><div class="panel-head"><div><p class="eyebrow">Service history</p><h2>Support</h2></div></div><?php if(!$customer['support_history']):?><p class="muted">No support history.</p><?php else:?><div class="fulfillment-list"><?php foreach($customer['support_history'] as $t):?><a href="/admin-support.php?id=<?=(int)$t['id']?>"><span><strong><?=htmlspecialchars($t['ticket_number'])?></strong><small><?=htmlspecialchars($t['subject'])?></small></span><span><?=htmlspecialchars(str_replace('_',' ',$t['status']))?></span></a><?php endforeach;?></div><?php endif;?></div></section>
+<?php if($customer['gift_purchases']):?><section class="dashboard-panel"><div class="panel-head"><div><p class="eyebrow">Stored value</p><h2>Gift card purchases</h2></div></div><div class="dashboard-table-wrap"><table class="dashboard-table"><thead><tr><th>Date</th><th>Recipient</th><th>Amount</th><th>Status</th></tr></thead><tbody><?php foreach($customer['gift_purchases'] as $g):?><tr><td><?=htmlspecialchars($g['created_at'])?></td><td><?=htmlspecialchars($g['recipient_email'])?></td><td><?=money((int)$g['amount_cents'])?></td><td><?=htmlspecialchars($g['status'])?></td></tr><?php endforeach;?></tbody></table></div></section><?php endif;?>
+<div class="allergen-callout"><strong>Privacy</strong><p>CRM notes and tags are internal service metadata. They are purged when a registered customer closes their account. Order records remain subject to the store’s existing legal/operational retention policy.</p></div>
+</main></body></html>
