@@ -16,4 +16,5 @@ $id=$reviews->submit($uid,$flavor,5,'Amazing','Rich and fudgy with a great toppi
 $reviews->moderate($id,'approved',$aid);$agg=$reviews->aggregate($flavor);assert($agg['count']===1);assert($agg['average']===5.0);assert(count($reviews->approvedForFlavor($flavor))===1);
 $reviews->submit($uid,$flavor,4,'Still great','Updated review after another box.');assert($reviews->aggregate($flavor)['count']===0);assert($reviews->stats()['pending']===1);
 $blocked=false;try{$reviews->submit($other,$flavor,5,'Fake','This should never be accepted.');}catch(InvalidArgumentException){$blocked=true;}assert($blocked);
+$flavorPage=(string)file_get_contents($root.'/public/flavor.php');assert(str_contains($flavorPage,'aggregateRating'));assert(str_contains($flavorPage,'Verified customer'));assert(!str_contains($flavorPage,"review['first_name']"));
 echo "Section 59 checks passed\n";
