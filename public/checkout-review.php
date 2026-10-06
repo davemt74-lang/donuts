@@ -1,11 +1,11 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
-use FudgeDonuts\{CartService,CatalogRepository,Database,DiscountService,PackBuilderService,PresetPackService,ShippingService};
+use FudgeDonuts\{CartService,CatalogRepository,Database,DiscountService,PackBuilderService,PresetPackService,ShippingService,TaxService};
 if(empty($_SESSION['checkout'])){header('Location: /checkout.php');exit;}
 $db=Database::connection();$catalog=new CatalogRepository($db);
 $summary=(new CartService(new PackBuilderService($catalog),new DiscountService($db),new PresetPackService($catalog)))->summary($_SESSION,$_SESSION['coupon']??null);
-$c=$_SESSION['checkout'];$shipping=new ShippingService($db);$methods=$shipping->methodsFor($c['postal_code'],$summary['total_cents']);$fulfillmentSettings=$shipping->settings();$error='';
+$c=$_SESSION['checkout'];$shipping=new ShippingService($db);$methods=$shipping->methodsFor($c['postal_code'],$summary['total_cents']);$fulfillmentSettings=$shipping->settings();$taxSettings=(new TaxService($db))->settings();$error='';
 $_SESSION['checkout_attempt_token'] ??= bin2hex(random_bytes(32));
 if($_SERVER['REQUEST_METHOD']==='POST'){
  verify_csrf($_POST['_csrf']??null);
@@ -34,6 +34,6 @@ $grand=$summary['total_cents']+(int)($selected['price_cents']??0);
 <?php if(!$methods):?><div class="notice error">No delivery methods are currently available for this address. Please contact us before ordering.</div><?php else:?><button class="button secondary">Save delivery method</button><?php endif;?></form>
 <div class="review-total"><span>Cart</span><strong><?=money($summary['total_cents'])?></strong></div>
 <div class="review-total"><span>Delivery</span><strong><?=$selected?($selected['price_cents']===0?'Free':money((int)$selected['price_cents'])):'—'?></strong></div>
-<div class="review-total grand"><span>Total before tax</span><strong><?=money($grand)?></strong></div>
+<div class="review-total grand"><span>Total before tax</span><strong><?=money($grand)?></strong></div><?php if($taxSettings['automatic_tax_enabled']==='1' && $taxSettings['checkout_notice']!==''):?><div class="method-note"><?=htmlspecialchars($taxSettings['checkout_notice'])?></div><?php endif;?>
 <div class="actions"><a class="button secondary" href="/checkout.php">Edit details</a><?php if($selected):?><form method="post" action="/pay.php"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>"><button class="button" type="submit">Pay securely with Stripe</button></form><?php endif;?></div>
 </main></body></html>
