@@ -87,6 +87,13 @@ final class BatchTraceabilityService
             if($batch['status']!=='active') throw new \InvalidArgumentException('Only active batches can be assigned.');
             if(strtotime((string)$batch['produced_at'])>time()) throw new \InvalidArgumentException('Future-dated production batches cannot be assigned.');
             if(!empty($batch['best_by_date']) && (string)$batch['best_by_date']<gmdate('Y-m-d')) throw new \InvalidArgumentException('Expired production batches cannot be assigned.');
+            try{
+                $ingredientRisk=(new IngredientTraceabilityService($this->db))->batchRisk($batchId);
+                if(!$ingredientRisk['ok']) throw new \InvalidArgumentException($ingredientRisk['reason']);
+            }catch(\PDOException $e){
+                $message=strtolower($e->getMessage());
+                if(!str_contains($message,'production_batch_ingredients') && !str_contains($message,'ingredient_lots')) throw $e;
+            }
             if((int)$batch['quantity_remaining']<$qty) throw new \InvalidArgumentException('Batch '.$batch['batch_code'].' does not have enough remaining quantity.');
             $fid=(int)$batch['flavor_id'];$provided[$fid]=($provided[$fid]??0)+$qty;
             $assignments[]=['batch'=>$batch,'qty'=>$qty];
