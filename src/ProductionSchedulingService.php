@@ -90,6 +90,11 @@ final class ProductionSchedulingService
         $bestByDate=trim((string)$bestByDate)?:null;
         if($bestByDate!==null && strtotime($bestByDate)===false) throw new \InvalidArgumentException('Best-by date is invalid.');
         if($bestByDate!==null && $bestByDate<gmdate('Y-m-d')) throw new \InvalidArgumentException('Best-by date cannot be in the past.');
+        try{(new ProductionQaService($this->db))->assertReadyForCompletion($id);}
+        catch(\PDOException $e){
+            $m=strtolower($e->getMessage());
+            if(!str_contains($m,'production_quality_checks')) throw $e;
+        }
 
         $this->db->beginTransaction();
         try{
