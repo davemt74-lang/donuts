@@ -12,6 +12,11 @@ $batchSvc=new BatchTraceabilityService($db);$batch=$batchSvc->createBatch(['batc
 $svc=new IngredientTraceabilityService($db);
 $lot=$svc->createLot(['ingredient_name'=>'Cocoa','supplier_name'=>'Supplier A','supplier_lot_code'=>'COCOA-1','received_at'=>gmdate('Y-m-d H:i:s',time()-86400),'best_by_date'=>gmdate('Y-m-d',time()+30*86400),'quantity_received'=>25,'quantity_unit'=>'lb'],$aid);
 $svc->linkBatch($batch,$lot,4.5,'lb',$aid);assert(count($svc->ingredientsForBatch($batch))===1);assert($svc->batchRisk($batch)['ok']===true);assert($svc->summary()['unlinked_batches']===0);
+$batch2=$batchSvc->createBatch(['batch_code'=>'ING-BATCH2','flavor_id'=>$fid,'produced_at'=>$produced,'best_by_date'=>$best,'quantity_produced'=>20],$aid);
+$tooMuch=false;try{$svc->linkBatch($batch2,$lot,21.0,'lb',$aid);}catch(InvalidArgumentException){$tooMuch=true;}assert($tooMuch);
+$badUnit=false;try{$svc->linkBatch($batch2,$lot,1.0,'kg',$aid);}catch(InvalidArgumentException){$badUnit=true;}assert($badUnit);
+$receivedAfter=$svc->createLot(['ingredient_name'=>'Milk','supplier_name'=>'Supplier C','supplier_lot_code'=>'MILK-LATE','received_at'=>gmdate('Y-m-d H:i:s',time()-1800),'best_by_date'=>gmdate('Y-m-d',time()+10*86400)],$aid);
+$lateBlocked=false;try{$svc->linkBatch($batch,$receivedAfter,null,'',$aid);}catch(InvalidArgumentException){$lateBlocked=true;}assert($lateBlocked);
 
 $db->exec("INSERT INTO orders(order_number,checkout_fingerprint,status,email,first_name,last_name,line1,city,region,postal_code,fulfillment_code,fulfillment_name,fulfillment_type,subtotal_cents,total_cents) VALUES('FD-ING','ing1','preparing','buyer@example.com','Buyer','One','1 Main','Phoenix','AZ','85001','standard','Standard','shipping',1000,1000)");$order=(int)$db->lastInsertId();
 $cfg=json_encode(['name'=>'One','items'=>[['flavor_id'=>$fid,'name'=>'One','quantity'=>1]]],JSON_THROW_ON_ERROR);$s=$db->prepare("INSERT INTO order_items(order_id,kind,pack_size,quantity,unit_price_cents,line_total_cents,configuration_json) VALUES(?,?,?,?,?,?,?)");$s->execute([$order,'custom',1,1,1000,1000,$cfg]);
@@ -22,6 +27,8 @@ $svc->setHold($lot,false);assert($svc->batchRisk($batch)['ok']===true);assert($b
 $affected=$svc->recall($lot,'Supplier recall',$aid);assert(count($affected)===1);assert($svc->batchRisk($batch)['ok']===false);assert($batchSvc->orderShipmentReady($order)['ok']===false);
 
 $db->exec("UPDATE orders SET status='shipped' WHERE id={$order}");$immutable=false;try{$svc->unlinkBatch($batch,$lot);}catch(InvalidArgumentException){$immutable=true;}assert($immutable);
+$postShipLot=$svc->createLot(['ingredient_name'=>'Salt','supplier_name'=>'Supplier D','supplier_lot_code'=>'SALT-1','received_at'=>gmdate('Y-m-d H:i:s',time()-2*86400),'best_by_date'=>gmdate('Y-m-d',time()+30*86400)],$aid);
+$postShipBlocked=false;try{$svc->linkBatch($batch,$postShipLot,null,'',$aid);}catch(InvalidArgumentException){$postShipBlocked=true;}assert($postShipBlocked);
 
 $future=false;try{$svc->createLot(['ingredient_name'=>'Sugar','supplier_name'=>'Supplier B','supplier_lot_code'=>'FUTURE','received_at'=>gmdate('Y-m-d H:i:s',time()+86400)],$aid);}catch(InvalidArgumentException){$future=true;}assert($future);
 $badDate=false;try{$svc->createLot(['ingredient_name'=>'Sugar','supplier_name'=>'Supplier B','supplier_lot_code'=>'BAD-DATE','received_at'=>gmdate('Y-m-d H:i:s',time()-86400),'best_by_date'=>gmdate('Y-m-d',time()-2*86400)],$aid);}catch(InvalidArgumentException){$badDate=true;}assert($badDate);
