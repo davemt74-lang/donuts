@@ -210,3 +210,11 @@ Gift-card codes are generated from cryptographically secure random bytes, stored
 At order checkout, gift cards behave as payment tender rather than discounts. Tax is calculated on the full taxable order before stored value is applied. A gift card can cover part or all of the order; any Stripe remainder is reconciled together with the reserved gift-card amount before fulfillment begins.
 
 Refunds return value to the original tenders. The refundable gift-card portion is restored first, and any remainder is sent back through Stripe. Retry keys prevent a repeated refund operation from crediting gift-card value twice. Admin → Gift Cards shows outstanding stored-value liability, reserved value, balances, and enable/disable controls without exposing full codes.
+
+
+## Stripe disputes and chargebacks
+Subscribe the production Stripe webhook endpoint to `charge.dispute.created`, `charge.dispute.updated`, and `charge.dispute.closed` in addition to the existing Checkout events.
+
+Admin → Disputes links chargebacks to orders or gift-card purchases. Open and lost disputes block further fulfillment and manual refunds on affected orders. Disputed gift-card purchases disable the issued stored-value card while the dispute is open or lost and reactivate any remaining balance only when Stripe closes the dispute in the store's favor.
+
+Evidence submission and dispute acceptance remain in Stripe Dashboard; the store records and enforces the operational state locally.
