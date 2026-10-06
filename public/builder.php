@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = $e->getMessage();
     }
 }
-?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Build a <?=$size?> Pack · Fudge Donuts</title><meta name="description" content="Build your own <?=$size?> pack of Fudge Donuts and choose every flavor."><link rel="canonical" href="<?=htmlspecialchars($canonical)?>"><link rel="stylesheet" href="<?=htmlspecialchars(asset_url('/assets/app.css'))?>"></head><body>
+?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Build a <?=$size?> Pack · Fudge Donuts</title><meta name="description" content="Build your own <?=$size?> pack of Fudge Donuts and choose every flavor."><link rel="canonical" href="<?=htmlspecialchars($canonical)?>"><link rel="stylesheet" href="<?=htmlspecialchars(asset_url('/assets/app.css'))?>"><?=analytics_script()?></head><body>
 <a class="skip-link" href="#main-content">Skip to main content</a>
 <header class="nav"><a class="brand" href="/">Fudge Donuts</a><nav><a href="/">Home</a><a href="/builder.php?size=3">3 Pack</a><a href="/builder.php?size=6">6 Pack</a><a href="/builder.php?size=12">12 Pack</a></nav></header>
 <main id="main-content" tabindex="-1" class="section builder">
