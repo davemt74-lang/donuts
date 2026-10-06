@@ -5,30 +5,38 @@ namespace FudgeDonuts;
 
 final class EmailTemplateService
 {
-    public function orderConfirmation(array $order): array
+    public function orderConfirmation(array $order,string $orderUrl=''): array
     {
         $subject='Your Fudge Donuts order '.$order['order_number'];
         $text="Thanks for your order, {$order['first_name']}.\n\nOrder: {$order['order_number']}\nTotal: ".\money((int)$order['total_cents'])."\nFulfillment: {$order['fulfillment_name']}\n\nWe’ll let you know when it moves to the next step.";
-        return [$subject,$text,$this->wrap('Order confirmed',[
+        $parts=[
             'Thanks for your order, '.htmlspecialchars((string)$order['first_name']).'.',
             '<strong>Order:</strong> '.htmlspecialchars((string)$order['order_number']),
             '<strong>Total:</strong> '.\money((int)$order['total_cents']),
             '<strong>Fulfillment:</strong> '.htmlspecialchars((string)$order['fulfillment_name']),
             'We’ll let you know when it moves to the next step.',
-        ])];
+        ];
+        if($orderUrl!==''){
+            $text.="\n\nTrack your order: {$orderUrl}";
+            $parts[]='<a class="button" href="'.htmlspecialchars($orderUrl).'">Track your order</a>';
+        }
+        return [$subject,$text,$this->wrap('Order confirmed',$parts)];
     }
 
-    public function statusUpdate(array $order,string $status): array
+    public function statusUpdate(array $order,string $status,string $orderUrl=''): array
     {
         $label=ucwords(str_replace('_',' ',$status));
         $subject='Order '.$order['order_number'].': '.$label;
         $text="Your Fudge Donuts order {$order['order_number']} is now {$label}.";
-        return [$subject,$text,$this->wrap('Order update',[
-            'Your Fudge Donuts order <strong>'.htmlspecialchars((string)$order['order_number']).'</strong> is now <strong>'.htmlspecialchars($label).'</strong>.'
-        ])];
+        $parts=['Your Fudge Donuts order <strong>'.htmlspecialchars((string)$order['order_number']).'</strong> is now <strong>'.htmlspecialchars($label).'</strong>.'];
+        if($orderUrl!==''){
+            $text.="\n\nView order status: {$orderUrl}";
+            $parts[]='<a class="button" href="'.htmlspecialchars($orderUrl).'">View order status</a>';
+        }
+        return [$subject,$text,$this->wrap('Order update',$parts)];
     }
 
-    public function fulfillmentUpdate(array $order,array $details): array
+    public function fulfillmentUpdate(array $order,array $details,string $orderUrl=''): array
     {
         $status=ucwords(str_replace('_',' ',(string)$order['status']));
         $subject='Order '.$order['order_number'].': '.$status;
@@ -39,6 +47,7 @@ final class EmailTemplateService
         if(!empty($details['tracking_url'])){$text[]='Track your order: '.$details['tracking_url'];$html[]='<a href="'.htmlspecialchars((string)$details['tracking_url']).'">Track your order</a>';}
         if(!empty($details['pickup_instructions'])){$text[]='Pickup instructions: '.$details['pickup_instructions'];$html[]='<strong>Pickup instructions:</strong><br>'.nl2br(htmlspecialchars((string)$details['pickup_instructions']));}
         if(!empty($details['pickup_ready_at'])){$text[]='Pickup ready: '.$details['pickup_ready_at'];$html[]='<strong>Pickup ready:</strong> '.htmlspecialchars((string)$details['pickup_ready_at']);}
+        if($orderUrl!==''){$text[]='View order status: '.$orderUrl;$html[]='<a class="button" href="'.htmlspecialchars($orderUrl).'">View order status</a>';}
         return [$subject,implode("\n\n",$text),$this->wrap('Order update',$html)];
     }
 
