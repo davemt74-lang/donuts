@@ -27,15 +27,16 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
     }catch(Throwable $e){$error=$e->getMessage();}
 }
 ?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Contact Support · Fudge Donuts</title><link rel="stylesheet" href="/assets/app.css"></head><body>
+<a class="skip-link" href="#main-content">Skip to main content</a>
 <header class="nav"><a class="brand" href="/">Fudge Donuts</a><nav><a href="/faq.php">FAQ</a><a href="/account.php">Account</a><a href="/cart.php">Cart</a></nav></header>
-<main class="section narrow"><p class="eyebrow">Customer support</p><h1>How can we help?</h1>
-<?php if($created):?><div class="notice"><strong>We received your message.</strong><br>Your support ticket is <?=htmlspecialchars($created['ticket_number'])?>. A confirmation has been sent to <?=htmlspecialchars($created['email'])?>.</div>
+<main id="main-content" tabindex="-1" class="section narrow"><p class="eyebrow">Customer support</p><h1>How can we help?</h1>
+<?php if($created):?><div class="notice" role="status" aria-live="polite"><strong>We received your message.</strong><br>Your support ticket is <?=htmlspecialchars($created['ticket_number'])?>. A confirmation has been sent to <?=htmlspecialchars($created['email'])?>.</div>
 <?php else:?>
 <p>Questions about an order, pickup, shipping, ingredients, gifting, or your account? Send us a message here.</p>
-<?php if($error):?><div class="notice error"><?=htmlspecialchars($error)?></div><?php endif;?>
+<?php if($error):?><div class="notice error" role="alert"><?=htmlspecialchars($error)?></div><?php endif;?>
 <form method="post" class="admin-form support-form"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>">
 <label>Name<input name="customer_name" required maxlength="190" value="<?=htmlspecialchars((string)($_POST['customer_name']??''))?>"></label>
-<label>Email<input type="email" name="email" required maxlength="190" value="<?=htmlspecialchars((string)($_POST['email']??''))?>"></label>
+<label>Email<input type="email" name="email" required autocomplete="email" maxlength="190" value="<?=htmlspecialchars((string)($_POST['email']??''))?>"></label>
 <label>Order number <small>optional</small><input name="order_number" maxlength="32" placeholder="FD-..." value="<?=htmlspecialchars((string)($_POST['order_number']??''))?>"></label>
 <label>Subject<input name="subject" required minlength="3" maxlength="190" value="<?=htmlspecialchars((string)($_POST['subject']??''))?>"></label>
 <label>Message<textarea name="message" required minlength="10" maxlength="5000" rows="8"><?=htmlspecialchars((string)($_POST['message']??''))?></textarea></label>
