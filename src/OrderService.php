@@ -70,8 +70,10 @@ final class OrderService
     public function attachStripePaymentIntent(string $sessionId,string $paymentIntentId): void
     {
         if($paymentIntentId==='') return;
-        $s=$this->db->prepare('UPDATE orders SET stripe_payment_intent_id=?,updated_at=CURRENT_TIMESTAMP WHERE stripe_checkout_session_id=?');
-        $s->execute([$paymentIntentId,$sessionId]);
+        $q=$this->db->prepare('SELECT id FROM orders WHERE stripe_checkout_session_id=?');$q->execute([$sessionId]);$orderId=$q->fetchColumn();
+        if($orderId===false) return;
+        $s=$this->db->prepare('INSERT INTO order_payment_details(order_id,stripe_payment_intent_id) VALUES(?,?) ON CONFLICT(order_id) DO UPDATE SET stripe_payment_intent_id=excluded.stripe_payment_intent_id,updated_at=CURRENT_TIMESTAMP');
+        $s->execute([(int)$orderId,$paymentIntentId]);
     }
 
     public function markPaidByStripeSession(string $sessionId,int $amountTotal,int $taxCents): void
@@ -117,6 +119,7 @@ final class OrderService
         $s=$this->db->prepare('SELECT * FROM orders WHERE id=?');$s->execute([$id]);$order=$s->fetch();
         if(!$order) throw new \RuntimeException('Order not found.');
         $i=$this->db->prepare('SELECT * FROM order_items WHERE order_id=? ORDER BY id');$i->execute([$id]);$order['items']=$i->fetchAll();
+        try{$p=$this->db->prepare('SELECT stripe_payment_intent_id FROM order_payment_details WHERE order_id=?');$p->execute([$id]);$order['stripe_payment_intent_id']=$p->fetchColumn()?:null;}catch(\Throwable){$order['stripe_payment_intent_id']=null;}
         return $order;
     }
 
