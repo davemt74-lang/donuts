@@ -24,7 +24,7 @@ final class CheckoutRecoveryService
         $expires=gmdate('Y-m-d H:i:s',time()+(max(1,min(30,$this->days))*86400));
 
         if($existingId){
-            $s=$this->db->prepare("UPDATE checkout_recoveries SET user_id=?,email=?,cart_json=?,status='active',expires_at=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status IN ('active','recovered')");
+            $s=$this->db->prepare("UPDATE checkout_recoveries SET user_id=?,email=?,cart_json=?,status='active',linked_order_id=NULL,expires_at=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status IN ('active','recovered')");
             $s->execute([$userId,$email,$payload,$expires,$existingId]);
             if($s->rowCount()===1)return $existingId;
         }
@@ -57,6 +57,18 @@ final class CheckoutRecoveryService
     public function markRecovered(int $id): void
     {
         $s=$this->db->prepare("UPDATE checkout_recoveries SET status='recovered',recovered_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='active'");$s->execute([$id]);
+    }
+
+    public function attachOrder(int $id,int $orderId): void
+    {
+        $s=$this->db->prepare("UPDATE checkout_recoveries SET linked_order_id=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status IN ('active','recovered')");
+        $s->execute([$orderId,$id]);
+    }
+
+    public function markConvertedByOrder(int $orderId): void
+    {
+        $s=$this->db->prepare("UPDATE checkout_recoveries SET status='converted',converted_order_id=?,updated_at=CURRENT_TIMESTAMP WHERE linked_order_id=? AND status IN ('active','recovered')");
+        $s->execute([$orderId,$orderId]);
     }
 
     public function markConverted(int $id,int $orderId): void
