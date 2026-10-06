@@ -25,12 +25,16 @@ if(is_array($object) && !empty($object['id'])){
         $currency=strtolower((string)($object['currency']??''));
         $orderId=$orderService->idByStripeSession((string)$object['id']);
         $orderService->attachStripePaymentIntent((string)$object['id'],(string)($object['payment_intent']??''));
-        $orderService->markPaidByStripeSession((string)$object['id'],$subtotal,$total,$tax,$currency);
-        $payments->markCompletedByProviderSession((string)$object['id']);
-        if($orderId){
-            (new InventoryService($db))->commitOrder($orderId);
-            (new PromotionService($db))->redeemOrder($orderId);
-            (new NotificationService($db))->queueOrderConfirmation($orderService->find($orderId));
+        $matched=$orderService->markPaidByStripeSession((string)$object['id'],$subtotal,$total,$tax,$currency);
+        if($matched){
+            $payments->markCompletedByProviderSession((string)$object['id']);
+            if($orderId){
+                (new InventoryService($db))->commitOrder($orderId);
+                (new PromotionService($db))->redeemOrder($orderId);
+                (new NotificationService($db))->queueOrderConfirmation($orderService->find($orderId));
+            }
+        }else{
+            $payments->markReviewByProviderSession((string)$object['id']);
         }
     }elseif(in_array($event['type'],['checkout.session.expired','checkout.session.async_payment_failed'],true)){
         $orderId=$orderService->idByStripeSession((string)$object['id']);
