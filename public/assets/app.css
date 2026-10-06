@@ -7,3 +7,5 @@
 .address-card{padding:18px 20px;border:1px solid #e1d7cd;border-radius:16px;margin:12px 0;background:#fff}
 
 .checkout-page{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:50px;align-items:start}.checkout-form{display:grid;gap:14px}.checkout-form label{display:grid;gap:6px;font-weight:600}.checkout-form .two,.checkout-form .three{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.checkout-form .three{grid-template-columns:2fr 1fr 1fr}.checkout-form textarea{min-height:110px}.checkout-form .check{display:flex;align-items:center;gap:8px;font-weight:500}@media(max-width:800px){.checkout-page{grid-template-columns:1fr}.checkout-form .two,.checkout-form .three{grid-template-columns:1fr}}
+
+.fulfillment-options{display:grid;gap:10px;margin-bottom:25px}.method-card{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;border:1px solid #ded2c7;border-radius:15px;padding:15px;background:#fff;cursor:pointer}.method-card span{display:grid}.method-card small{color:var(--muted)}.review-total.grand{font-size:1.55rem}
