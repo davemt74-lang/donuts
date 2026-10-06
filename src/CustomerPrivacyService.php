@@ -7,7 +7,7 @@ use PDO;
 
 final class CustomerPrivacyService
 {
-    private const ACTIVE_ORDER_STATUSES=['pending_payment','payment_failed','payment_review','paid','preparing','ready','shipped'];
+    private const ACTIVE_ORDER_STATUSES=['pending_payment','payment_review','paid','preparing','ready','shipped'];
 
     public function __construct(private readonly PDO $db) {}
 
@@ -24,7 +24,7 @@ final class CustomerPrivacyService
 
         $addresses=$this->rows('SELECT * FROM addresses WHERE user_id=? ORDER BY id',[$userId]);
         $savedBoxes=$this->safeRows('SELECT id,name,box_type,pack_size,configuration_json,created_at,updated_at FROM saved_boxes WHERE user_id=? ORDER BY id',[$userId]);
-        $orders=$this->rows('SELECT * FROM orders WHERE user_id=? ORDER BY id',[$userId]);
+        $orders=$this->rows('SELECT id,order_number,status,email,first_name,last_name,line1,line2,city,region,postal_code,country,phone,is_gift,gift_message,fulfillment_code,fulfillment_name,fulfillment_type,subtotal_cents,discount_cents,shipping_cents,tax_cents,total_cents,currency,created_at,updated_at FROM orders WHERE user_id=? ORDER BY id',[$userId]);
         foreach($orders as &$order){
             $order['items']=$this->rows('SELECT kind,pack_size,quantity,unit_price_cents,line_total_cents,configuration_json FROM order_items WHERE order_id=? ORDER BY id',[(int)$order['id']]);
             $order['events']=$this->rows('SELECT event_type,note,created_at FROM order_events WHERE order_id=? ORDER BY id',[(int)$order['id']]);
@@ -63,7 +63,7 @@ final class CustomerPrivacyService
             throw new \InvalidArgumentException('Password is incorrect.');
         }
 
-        $q=$this->db->prepare("SELECT order_number,status FROM orders WHERE user_id=? AND status IN ('pending_payment','payment_failed','payment_review','paid','preparing','ready','shipped') ORDER BY id DESC LIMIT 1");
+        $q=$this->db->prepare("SELECT order_number,status FROM orders WHERE user_id=? AND status IN ('pending_payment','payment_review','paid','preparing','ready','shipped') ORDER BY id DESC LIMIT 1");
         $q->execute([$userId]);$active=$q->fetch();
         if($active){
             throw new \RuntimeException('Account closure is unavailable while order '.$active['order_number'].' is still active.');
