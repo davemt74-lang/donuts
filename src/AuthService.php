@@ -13,7 +13,7 @@ final class AuthService
     {
         $email=strtolower(trim($email));
         if(!filter_var($email,FILTER_VALIDATE_EMAIL)) throw new \InvalidArgumentException('Enter a valid email address.');
-        if(strlen($password)<10) throw new \InvalidArgumentException('Password must be at least 10 characters.');
+        if(strlen($password)<12) throw new \InvalidArgumentException('Password must be at least 12 characters.');
         $hash=password_hash($password,PASSWORD_DEFAULT);
         $s=$this->db->prepare('INSERT INTO users(email,password_hash,first_name,last_name) VALUES(?,?,?,?)');
         try{$s->execute([$email,$hash,trim($firstName),trim($lastName)]);}
