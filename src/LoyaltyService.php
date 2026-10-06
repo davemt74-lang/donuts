@@ -145,7 +145,7 @@ final class LoyaltyService
 
     public function applyRefund(int $orderId,int $refundId): array
     {
-        $row=$this->orderRow($orderId);if(!$row)return ['restored'=>0,'reversed'=>0];
+        $row=$this->orderRow($orderId);if(!$row || empty($row['user_id']))return ['restored'=>0,'reversed'=>0];
         $o=$this->db->prepare('SELECT total_cents FROM orders WHERE id=?');$o->execute([$orderId]);$total=(int)$o->fetchColumn();if($total<=0)return ['restored'=>0,'reversed'=>0];
         $r=$this->db->prepare("SELECT COALESCE(SUM(amount_cents),0) FROM refund_records WHERE order_id=? AND status='succeeded'");$r->execute([$orderId]);$refunded=min($total,(int)$r->fetchColumn());
 
@@ -195,7 +195,7 @@ final class LoyaltyService
     public function recentLedger(int $limit=100): array
     {
         $limit=max(1,min(500,$limit));
-        return $this->db->query("SELECT l.*,u.email FROM loyalty_ledger l JOIN users u ON u.id=l.user_id ORDER BY l.id DESC LIMIT {$limit}")->fetchAll();
+        return $this->db->query("SELECT l.*,COALESCE(u.email,'Closed account') email FROM loyalty_ledger l LEFT JOIN users u ON u.id=l.user_id ORDER BY l.id DESC LIMIT {$limit}")->fetchAll();
     }
 
     public function programStats(): array
