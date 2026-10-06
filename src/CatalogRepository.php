@@ -57,6 +57,12 @@ final class CatalogRepository
         return $row;
     }
 
+    public function presetById(int $id): ?array
+    {
+        $s=$this->db->prepare('SELECT pp.*,ps.size,ps.base_price_cents FROM preset_packs pp JOIN pack_sizes ps ON ps.id=pp.pack_size_id WHERE pp.id=?');
+        $s->execute([$id]);return $s->fetch()?:null;
+    }
+
     public function presetItems(int $presetId): array
     {
         $s=$this->db->prepare('SELECT ppi.flavor_id,ppi.quantity,f.name,f.slug,f.surcharge_cents,f.image_path,f.active,f.sold_out FROM preset_pack_items ppi JOIN flavors f ON f.id=ppi.flavor_id WHERE ppi.preset_pack_id=? ORDER BY f.sort_order,f.name');
@@ -103,7 +109,7 @@ final class CatalogRepository
         if(!$pack || $name==='' || !preg_match('/^[a-z0-9-]+$/',$slug)) throw new \InvalidArgumentException('Valid preset name, slug, and pack are required.');
         $items=[];$total=0;$eligible=array_flip($this->eligibleFlavorIds($packId));
         foreach((array)($data['items']??[]) as $flavorId=>$qty){
-            $flavorId=(int)$flavorId;$qty=max(0,(int)$qty;if($qty===0)continue;
+            $flavorId=(int)$flavorId;$qty=max(0,(int)$qty);if($qty===0)continue;
             if(!isset($eligible[$flavorId]) || !$this->flavorById($flavorId)) throw new \InvalidArgumentException('Preset contains an ineligible flavor.');
             $items[$flavorId]=$qty;$total+=$qty;
         }
