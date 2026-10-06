@@ -38,6 +38,7 @@ spl_autoload_register(static function (string $class): void {
 
 if(PHP_SAPI!=='cli' && is_file($maintenanceLock)){
     \FudgeDonuts\SecurityService::applyHeaders();
+if(PHP_SAPI!=='cli') \FudgeDonuts\SeoService::applyRobotsHeader($requestUri??(string)($_SERVER['REQUEST_URI']??'/'));
     \FudgeDonuts\HttpResponseService::send(
         503,
         'We’ll be right back.',
