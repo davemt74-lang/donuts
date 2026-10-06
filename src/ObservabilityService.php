@@ -126,8 +126,10 @@ final class ObservabilityService
         $paymentReview=(int)$this->db->query("SELECT COUNT(*) FROM orders WHERE status='payment_review'")->fetchColumn();
         $critical=(int)$this->db->query("SELECT COUNT(*) FROM operational_events WHERE resolved_at IS NULL AND severity='critical' AND event_type<>'operations_health'")->fetchColumn();
         $errors=(int)$this->db->query("SELECT COUNT(*) FROM operational_events WHERE resolved_at IS NULL AND severity='error' AND event_type<>'operations_health'")->fetchColumn();
-        $status=($critical>0)?'unhealthy':(($failedMail+$expiredReservations+$paymentReview+$errors)>0?'degraded':'ok');
-        return ['status'=>$status,'failed_email'=>$failedMail,'expired_reservations'=>$expiredReservations,'payment_review'=>$paymentReview,'open_errors'=>$errors,'open_critical'=>$critical];
+        $jobHealth=['stale'=>0,'failing'=>0,'critical'=>0];
+        try{$jobHealth=(new JobMonitorService($this->db))->health();}catch(\Throwable){}
+        $status=($critical>0 || (int)$jobHealth['critical']>0)?'unhealthy':(($failedMail+$expiredReservations+$paymentReview+$errors+(int)$jobHealth['stale']+(int)$jobHealth['failing'])>0?'degraded':'ok');
+        return ['status'=>$status,'failed_email'=>$failedMail,'expired_reservations'=>$expiredReservations,'payment_review'=>$paymentReview,'open_errors'=>$errors,'open_critical'=>$critical,'stale_jobs'=>(int)$jobHealth['stale'],'failing_jobs'=>(int)$jobHealth['failing'],'critical_jobs'=>(int)$jobHealth['critical']];
     }
 
     public function resolveSystemType(string $type): int
