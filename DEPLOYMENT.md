@@ -306,3 +306,9 @@ Creating a recommended draft PO recomputes the plan server-side before writing t
 Use **Admin → Production Schedule** to turn forecasted prep demand into dated kitchen work orders. Each day has a configurable production-capacity ceiling, with optional date-specific overrides for short shifts, closures, or expanded capacity.
 
 Work orders move **Planned → In Progress → Completed**. Completion atomically creates the canonical production batch and links it back to the work order, preserving recipe/BOM snapshot behavior and downstream traceability. Future work orders cannot be started early, planned work cannot exceed the day's remaining capacity, and overdue open work is surfaced as a release-readiness warning.
+
+
+## Production QA and waste
+Use **Admin → QA & Waste** while a production work order is In Progress. Every required QA check must pass before the work order can be completed into its final traceable production batch.
+
+The required checks currently cover appearance/finish, portion/size, allergen-label verification, and sanitation/handling. Failed checks block completion until corrected and re-signed. Waste events remain linked to the work order and finished flavor, and completed work records planned-vs-actual yield for variance monitoring. Configure the yield warning threshold in the QA console.
