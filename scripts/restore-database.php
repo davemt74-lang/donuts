@@ -25,10 +25,10 @@ file_put_contents($lock,"database restore in progress\n",LOCK_EX);
 
 try{
     $db->exec('PRAGMA wal_checkpoint(TRUNCATE)');
-    Database::disconnect();
+    Database::disconnect();$db=null;$svc=null;
     $tmp=$current.'.restore-'.bin2hex(random_bytes(4));
     if(!copy($source,$tmp)) throw new RuntimeException('Unable to stage restore database.');
-    $tmpCheck=(new BackupService(new PDO('sqlite:'.$tmp),$root))->verify($tmp);
+    $tmpPdo=new PDO('sqlite:'.$tmp,null,null,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);$tmpCheck=(new BackupService($tmpPdo,$root))->verify($tmp);$tmpPdo=null;
     if(!$tmpCheck['ok']) throw new RuntimeException('Staged restore failed integrity verification.');
     $old=$current.'.pre-restore';
     @unlink($old);
