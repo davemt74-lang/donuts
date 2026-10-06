@@ -121,7 +121,10 @@ final class RecipeService
                 if($remaining<=0.000001)break;
                 $available=(float)$lot['available_quantity'];
                 if($available<=0)continue;
-                $take=min($remaining,$available);$plan[]=['lot_id'=>(int)$lot['id'],'quantity'=>$take,'unit'=>$need['quantity_unit']];$remaining=round($remaining-$take,6);
+                $take=min($remaining,$available);
+                $target=round((float)$lot['current_batch_used']+$take,6);
+                $plan[]=['lot_id'=>(int)$lot['id'],'quantity'=>$target,'increment'=>$take,'unit'=>$need['quantity_unit']];
+                $remaining=round($remaining-$take,6);
             }
             if($remaining>0.000001) throw new \InvalidArgumentException('Insufficient active supplier lot quantity for '.$need['ingredient_name'].' (need '.rtrim(rtrim(number_format($remaining,6,'.',''),'0'),'.').' '.$need['quantity_unit'].' more).');
         }
@@ -144,12 +147,14 @@ final class RecipeService
 
     private function availableLots(string $ingredient,string $unit,string $producedAt,int $batchId): array
     {
-        $s=$this->db->prepare("SELECT l.*,CASE WHEN l.quantity_received IS NULL THEN 0 ELSE l.quantity_received-COALESCE((SELECT SUM(p.quantity_used) FROM production_batch_ingredients p WHERE p.ingredient_lot_id=l.id AND p.batch_id<>?),0) END available_quantity
+        $s=$this->db->prepare("SELECT l.*,
+            COALESCE((SELECT SUM(pc.quantity_used) FROM production_batch_ingredients pc WHERE pc.ingredient_lot_id=l.id AND pc.batch_id=?),0) current_batch_used,
+            CASE WHEN l.quantity_received IS NULL THEN 0 ELSE l.quantity_received-COALESCE((SELECT SUM(p.quantity_used) FROM production_batch_ingredients p WHERE p.ingredient_lot_id=l.id AND p.batch_id<>?),0)-COALESCE((SELECT SUM(pc.quantity_used) FROM production_batch_ingredients pc WHERE pc.ingredient_lot_id=l.id AND pc.batch_id=?),0) END available_quantity
             FROM ingredient_lots l
             WHERE lower(l.ingredient_name)=lower(?) AND l.quantity_unit=? AND l.status='active' AND l.quantity_received IS NOT NULL
               AND l.received_at<=? AND (l.best_by_date IS NULL OR l.best_by_date>=date(?))
             ORDER BY CASE WHEN l.best_by_date IS NULL THEN 1 ELSE 0 END,l.best_by_date,l.received_at,l.id");
-        $s->execute([$batchId,$ingredient,$unit,$producedAt,$producedAt]);return $s->fetchAll();
+        $s->execute([$batchId,$batchId,$batchId,$ingredient,$unit,$producedAt,$producedAt]);return $s->fetchAll();
     }
 
     private function normalizeComponents(array $components): array
