@@ -195,6 +195,7 @@ final class OrderService
         try{$p=$this->db->prepare('SELECT stripe_payment_intent_id FROM order_payment_details WHERE order_id=?');$p->execute([$id]);$order['stripe_payment_intent_id']=$p->fetchColumn()?:null;}catch(\Throwable){$order['stripe_payment_intent_id']=null;}
         try{$r=$this->db->prepare('SELECT * FROM order_payment_reconciliation WHERE order_id=?');$r->execute([$id]);$order['payment_reconciliation']=$r->fetch()?:null;}catch(\Throwable){$order['payment_reconciliation']=null;}
         try{$f=$this->db->prepare('SELECT * FROM order_fulfillment_details WHERE order_id=?');$f->execute([$id]);$order['fulfillment_details']=$f->fetch()?:null;}catch(\Throwable){$order['fulfillment_details']=null;}
+        try{$order['shipments']=(new ShipmentService($this->db))->forOrder($id);}catch(\Throwable){$order['shipments']=[];}
         return $order;
     }
 
