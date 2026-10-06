@@ -47,7 +47,7 @@ final class ReviewService
     public function approvedForFlavor(int $flavorId,int $limit=30): array
     {
         $limit=max(1,min(100,$limit));
-        $s=$this->db->prepare("SELECT r.rating,r.title,r.body,r.created_at,u.first_name FROM product_reviews r JOIN users u ON u.id=r.user_id WHERE r.flavor_id=? AND r.status='approved' ORDER BY r.created_at DESC LIMIT {$limit}");
+        $s=$this->db->prepare("SELECT rating,title,body,created_at FROM product_reviews WHERE flavor_id=? AND status='approved' ORDER BY created_at DESC LIMIT {$limit}");
         $s->execute([$flavorId]);return $s->fetchAll();
     }
 
