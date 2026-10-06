@@ -168,3 +168,11 @@ The bundled Apache `public/.htaccess` enables compression where `mod_deflate` is
 Public catalog/content pages emit canonical URLs and search-engine-safe metadata. Account, cart, checkout, payment, order-status, admin and internal action routes emit `X-Robots-Tag: noindex, nofollow, noarchive`.
 
 Apache rewrites `/robots.txt` to the dynamic robots policy so the Sitemap directive uses the configured production `APP_URL`. A static `robots.txt` remains as a conservative fallback when rewriting is unavailable. Product structured data must reflect actual sale behavior: individual flavors are described as products available in build-your-own boxes, while purchasable preset boxes include Offer pricing.
+
+
+## First-party conversion analytics
+Anonymous conversion attribution is disabled by default. Set `ANALYTICS_ENABLED=1` only after confirming your published privacy/cookie policy covers first-party analytics storage.
+
+When enabled, the storefront creates a random 128-bit first-party visitor identifier and records only funnel events, page paths, referrer host, UTM campaign fields, and attributed order revenue. It does not store names, email addresses, postal addresses, raw IP addresses, or third-party tracking identifiers.
+
+`ANALYTICS_RETENTION_DAYS` controls event retention. The Operations worker prunes expired anonymous events. Admin → Reports shows the 30-day funnel and attributed acquisition sources.
