@@ -17,14 +17,18 @@ jobs:
           php-version: '8.1'
           extensions: pdo_sqlite,curl,mbstring
 
-      - name: Create audit database
+      - name: Create and verify audit database
         run: |
           cp .env.example .env
           mkdir -p storage
           php scripts/migrate.php
+          php scripts/migrate.php --status
+          php scripts/migrate.php
 
       - name: Release audit
-        run: php scripts/release-audit.php
+        run: |
+          php scripts/release-audit.php
+          php scripts/post-deploy-check.php
 
       - name: Build deploy package
         run: |
