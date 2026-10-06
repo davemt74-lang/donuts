@@ -22,6 +22,7 @@ if(is_array($object) && !empty($object['id'])){
         $total=(int)($object['amount_total']??0);
         $tax=(int)($object['total_details']['amount_tax']??0);
         $orderId=$orderService->idByStripeSession((string)$object['id']);
+        $orderService->attachStripePaymentIntent((string)$object['id'],(string)($object['payment_intent']??''));
         $payments->markCompletedByProviderSession((string)$object['id']);
         $orderService->markPaidByStripeSession((string)$object['id'],$total,$tax);
         if($orderId){
