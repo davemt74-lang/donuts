@@ -17,7 +17,8 @@ $b1=$svc->createBatch(['batch_code'=>'LOT-A1','flavor_id'=>$fids[0],'produced_at
 $b2=$svc->createBatch(['batch_code'=>'LOT-B1','flavor_id'=>$fids[1],'produced_at'=>'2026-10-06 08:00:00','best_by_date'=>'2026-10-13','quantity_produced'=>20],$aid);
 assert($svc->requiredFlavorQuantities($orderId)===[$fids[0]=>4,$fids[1]=>2]);
 $svc->assignOrder($orderId,[$b1=>4,$b2=>2],$aid);assert(count($svc->assignmentsForOrder($orderId))===2);
-assert((int)$svc->batch($b1)['quantity_remaining']===16);
-$affected=$svc->recall($b1,'Quality issue',$aid);assert(count($affected)===1);assert($affected[0]['email']==='buyer@example.com');assert($svc->batch($b1)['status']==='recalled');
+assert((int)$svc->batch($b1)['quantity_remaining']===16);assert($svc->orderShipmentReady($orderId)['ok']===true);
+$svc->setHold($b1,true);assert($svc->orderShipmentReady($orderId)['ok']===false);$svc->setHold($b1,false);assert($svc->orderShipmentReady($orderId)['ok']===true);
+$affected=$svc->recall($b1,'Quality issue',$aid);assert(count($affected)===1);assert($affected[0]['email']==='buyer@example.com');assert($svc->batch($b1)['status']==='recalled');assert($svc->orderShipmentReady($orderId)['ok']===false);
 $bad=false;try{$svc->assignOrder($orderId,[$b2=>6],$aid);}catch(InvalidArgumentException){$bad=true;}assert($bad);
 echo "Section 66 checks passed\n";
