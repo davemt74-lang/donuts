@@ -52,6 +52,9 @@ final class AdminService
         if(!$order)throw new \InvalidArgumentException('Order not found.');
         $from=(string)$order['status'];
         if(!in_array($to,self::ORDER_TRANSITIONS[$from]??[],true))throw new \InvalidArgumentException("Cannot move order from {$from} to {$to}.");
+        if(in_array($to,['preparing','ready','shipped','completed'],true) && (new DisputeService($this->db))->hasBlockingDispute($orderId)){
+            throw new \RuntimeException('This order has an open Stripe dispute and cannot advance in fulfillment.');
+        }
         $this->db->beginTransaction();
         try{
             $s=$this->db->prepare('UPDATE orders SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status=?');
