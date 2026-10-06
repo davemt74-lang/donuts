@@ -4,7 +4,7 @@ require dirname(__DIR__).'/src/bootstrap.php';
 use FudgeDonuts\{AdminAuditService,AdminService,Database,FulfillmentOperationsService,NotificationService};
 require_admin_roles(['super_admin','admin','fulfillment']);
 
-$db=Database::connection();$admin=new AdminService($db);$ops=new FulfillmentOperationsService($db);$audit=new AdminAuditService($db);$error='';$notice='';
+$db=Database::connection();$admin=new AdminService($db);$ops=new FulfillmentOperationsService($db);$audit=new AdminAuditService($db);$error='';$notice=(string)($_SESSION['admin_orders_flash']??'');unset($_SESSION['admin_orders_flash']);
 if($_SERVER['REQUEST_METHOD']==='POST'){
  verify_csrf($_POST['_csrf']??null);
  try{
@@ -12,10 +12,17 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
    if($action==='batch'){
      $ids=array_map('intval',(array)($_POST['order_ids']??[]));$to=(string)($_POST['status']??'');
      $count=$ops->batchTransition($ids,$to);
-     $notifications=new NotificationService($db);
-     foreach($ids as $id){$order=$admin->order($id);if($order)$notifications->queueStatusUpdate($order,$to);}
-     $audit->record((int)$_SESSION['admin_id'],'order_batch_status_changed','order_batch',implode(',',$ids),"{$count} orders moved to {$to}.",[],['order_ids'=>$ids,'status'=>$to]);
-     $notice=$count.' order'.($count===1?'':'s').' moved to '.str_replace('_',' ',$to).'.';
+     $notifications=new NotificationService($db);$notificationFailures=0;
+     foreach($ids as $id){
+       $order=$admin->order($id);
+       if(!$order)continue;
+       try{$notifications->queueStatusUpdate($order,$to);}catch(Throwable){$notificationFailures++;}
+     }
+     $audit->record((int)$_SESSION['admin_id'],'order_batch_status_changed','order_batch',implode(',',$ids),"{$count} orders moved to {$to}.",[],['order_ids'=>$ids,'status'=>$to,'notification_failures'=>$notificationFailures]);
+     $_SESSION['admin_orders_flash']=$count.' order'.($count===1?'':'s').' moved to '.str_replace('_',' ',$to).'.'.($notificationFailures?' '.$notificationFailures.' status notification'.($notificationFailures===1?'':'s').' could not be queued.':'');
+     $redirect='/admin-orders.php';$current=trim((string)($_GET['status']??''));
+     if($current!=='')$redirect.='?status='.rawurlencode($current);
+     header('Location: '.$redirect,true,303);exit;
    }
  }catch(Throwable $e){$error=$e->getMessage();}
 }
