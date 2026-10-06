@@ -280,3 +280,11 @@ Link supplier lots to finished production batches before those batches are used 
 For a supplier recall, mark the ingredient lot **Recalled**, review the downstream production batches and customer orders, export the affected-order CSV if needed, then use **Queue / retry failed recall notices**. Notification keys are idempotent per ingredient lot/order and failed outbox messages are explicitly reopened for retry.
 
 This traceability workflow supports operations and customer notification; it does not replace any regulatory reporting, recall, or supplier documentation obligations that apply to the business.
+
+
+## Recipes and bill of materials
+Define production formulas in **Admin → Recipes** before creating new production batches. Recipe quantities are stored per finished donut and each new batch snapshots the active recipe version so later formula changes never alter historical traceability.
+
+For BOM-controlled batches, Admin → Batches shows expected vs linked ingredient quantities. **Auto-allocate supplier lots (FEFO)** uses the earliest eligible best-by/received lots first, respects received quantities and units, and refuses partial allocation when enough valid supplier inventory does not exist.
+
+A BOM-controlled batch with missing required ingredient provenance is blocked from downstream order assignment until coverage is complete.
