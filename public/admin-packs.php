@@ -1,16 +1,16 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
-use FudgeDonuts\{CatalogRepository,Database};
+use FudgeDonuts\{AdminAuditService,CatalogRepository,Database};
 require_admin_roles(['super_admin','admin']);
-$db=Database::connection();$catalog=new CatalogRepository($db);$error='';$notice='';
+$db=Database::connection();$catalog=new CatalogRepository($db);$audit=new AdminAuditService($db);$error='';$notice='';
 if($_SERVER['REQUEST_METHOD']==='POST'){
  verify_csrf($_POST['_csrf']??null);
  try{
   $action=(string)($_POST['action']??'');
-  if($action==='pack'){$catalog->savePack($_POST);$notice='Pack updated.';}
-  elseif($action==='eligibility'){$catalog->setEligibility((int)$_POST['pack_id'],array_map('intval',(array)($_POST['flavor_ids']??[])));$notice='Pack eligibility updated.';}
-  elseif($action==='preset'){$catalog->savePreset($_POST);$notice='Preset saved.';}
+  if($action==='pack'){$catalog->savePack($_POST);$audit->record((int)$_SESSION['admin_id'],'pack_saved','pack',(int)($_POST['id']??0),'Pack pricing/configuration saved.',[],$_POST);$notice='Pack updated.';}
+  elseif($action==='eligibility'){$packId=(int)$_POST['pack_id'];$before=$catalog->eligibleFlavorIds($packId);$after=array_map('intval',(array)($_POST['flavor_ids']??[]));$catalog->setEligibility($packId,$after);$audit->record((int)$_SESSION['admin_id'],'pack_eligibility_updated','pack',$packId,'Pack flavor eligibility updated.',['flavor_ids'=>$before],['flavor_ids'=>$after]);$notice='Pack eligibility updated.';}
+  elseif($action==='preset'){$catalog->savePreset($_POST);$audit->record((int)$_SESSION['admin_id'],'preset_saved','preset',(string)($_POST['slug']??''),'Preset assortment saved.',[],$_POST);$notice='Preset saved.';}
  }catch(Throwable $e){$error=$e->getMessage();}
 }
 $packs=$catalog->packs(false);$flavors=$catalog->flavors(false);$presets=$catalog->presets(false);$editPreset=null;$editItems=[];
