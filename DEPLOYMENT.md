@@ -122,3 +122,9 @@ If Stripe Automatic Tax is enabled, configure the required business tax registra
 
 ## Customer support
 Set `SUPPORT_EMAIL` to the internal mailbox that should receive new-ticket alerts. Customers submit requests at `/contact.php`; administrators manage the queue at **Admin → Support**. Order-linked tickets verify ownership for signed-in customers and verify the order email for guests.
+
+
+## Batch fulfillment
+Admin → Orders supports atomic batch transitions from **Paid → Preparing** and **Preparing → Ready**. Shipping transitions remain individual so carrier and tracking information can be attached safely.
+
+Fulfillment operators can print per-order packing slips, print the ready local-pickup sheet, and export ready shipping orders as CSV. Customer-controlled CSV fields are neutralized against spreadsheet formula execution.
