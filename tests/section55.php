@@ -9,6 +9,7 @@ $seo=new SeoService(new CatalogRepository($db),'https://fudgedonuts.example');
 
 assert(SeoService::indexable('/flavor.php?slug=smores')===true);
 assert(SeoService::indexable('/preset.php?slug=classic')===true);
+assert(SeoService::indexable('/robots.txt')===true);
 assert(SeoService::indexable('/cart.php')===false);
 assert(SeoService::indexable('/admin.php')===false);
 assert(SeoService::indexable('/order-status.php?token=x')===false);
@@ -40,5 +41,9 @@ assert(str_contains($ht,'RewriteRule ^robots\.txt$ robots.php'));
 foreach(['index.php','flavor.php','preset.php'] as $file){
  $content=(string)file_get_contents($root.'/public/'.$file);
  assert(str_contains($content,'twitter:card'),$file.' missing Twitter card metadata');
+}
+foreach(['story.php','faq.php','contact.php','policy.php','builder.php'] as $file){
+ $content=(string)file_get_contents($root.'/public/'.$file);
+ assert(str_contains($content,'rel="canonical"'),$file.' missing canonical URL');
 }
 echo "Section 55 checks passed\n";
