@@ -53,7 +53,7 @@ final class ReleaseAuditService
         return [
             'public/index.php','public/cart.php','public/checkout.php','public/pay.php','public/stripe-webhook.php',
             'public/admin.php','public/admin-audit.php','public/admin-operations.php','public/admin-shipping.php','public/admin-tax.php','public/admin-backups.php','public/setup-admin.php','public/health.php','public/sitemap.php','public/order-status.php','public/unsubscribe.php','public/admin-marketing.php','public/account-privacy.php','public/contact.php','public/admin-support.php','public/admin-packing-slip.php','public/admin-pickup-sheet.php','public/admin-fulfillment.csv.php',
-            'public/assets/app.css','public/assets/builder.js','src/PerformanceService.php','scripts/migrate.php','scripts/post-deploy-check.php','scripts/http-smoke.php','scripts/preflight.php','scripts/backup-database.php','scripts/restore-database.php','scripts/send-notifications.php','scripts/check-operations.php','scripts/recover-reservations.php','DEPLOYMENT.md',
+            'public/assets/app.css','public/assets/builder.js','src/PerformanceService.php','src/HttpResponseService.php','scripts/migrate.php','scripts/post-deploy-check.php','scripts/http-smoke.php','scripts/preflight.php','scripts/backup-database.php','scripts/restore-database.php','scripts/send-notifications.php','scripts/check-operations.php','scripts/recover-reservations.php','DEPLOYMENT.md',
         ];
     }
 
