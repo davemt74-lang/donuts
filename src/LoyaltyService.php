@@ -173,6 +173,18 @@ final class LoyaltyService
         }catch(\Throwable $e){if($this->db->inTransaction())$this->db->rollBack();throw $e;}
     }
 
+    public function reconcileSucceededRefunds(int $limit=100): int
+    {
+        $limit=max(1,min(500,$limit));
+        $rows=$this->db->query("SELECT r.order_id,MAX(r.id) refund_id FROM refund_records r JOIN order_loyalty_redemptions l ON l.order_id=r.order_id WHERE r.status='succeeded' GROUP BY r.order_id ORDER BY MAX(r.id) DESC LIMIT {$limit}")->fetchAll();
+        $changed=0;
+        foreach($rows as $row){
+            $result=$this->applyRefund((int)$row['order_id'],(int)$row['refund_id']);
+            if((int)$result['restored']>0 || (int)$result['reversed']>0)$changed++;
+        }
+        return $changed;
+    }
+
     public function adjustByEmail(string $email,int $points,string $reason,int $adminId): array
     {
         $email=strtolower(trim($email));if($points===0||abs($points)>100000)throw new \InvalidArgumentException('Adjustment must be between -100000 and 100000 points.');
