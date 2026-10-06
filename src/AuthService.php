@@ -64,7 +64,7 @@ final class AuthService
             }
             $s=$this->db->prepare('INSERT INTO addresses(user_id,label,first_name,last_name,line1,line2,city,region,postal_code,country,phone,is_default) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)');
             $s->execute([$userId,trim((string)($data['label']??'Address')),trim((string)$data['first_name']),trim((string)$data['last_name']),trim((string)$data['line1']),trim((string)($data['line2']??'')),trim((string)$data['city']),trim((string)$data['region']),trim((string)$data['postal_code']),strtoupper(trim((string)($data['country']??'US'))),trim((string)($data['phone']??'')),!empty($data['is_default'])?1:0]);
-            $id=(int)$this->db->lastInsertId();$this->db->commit();return $id;
+            $id=(int)$this->db->lastInsertId();$this->ensureDefaultAddress($userId);$this->db->commit();return $id;
         }catch(\Throwable $e){$this->db->rollBack();throw $e;}
     }
 
