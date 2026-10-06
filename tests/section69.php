@@ -24,11 +24,14 @@ $batches=new BatchTraceabilityService($db);
 $batch=$batches->createBatch(['batch_code'=>'RECIPE-001','flavor_id'=>$flavor,'produced_at'=>'2026-10-06 08:00:00','best_by_date'=>'2026-10-20','quantity_produced'=>10],$admin);
 $req=$recipes->requirementsForBatch($batch);assert(count($req)===2);
 $coverage=$recipes->coverage($batch);assert($coverage['controlled']===true);assert($coverage['complete']===false);
+$risk=$trace->batchRisk($batch);assert($risk['ok']===false);assert(str_contains($risk['reason'],'Chocolate'));
 
-$result=$recipes->autoAllocateBatch($batch,$admin);assert($result['allocated']===2);assert($result['coverage']['complete']===true);
+$trace->linkBatch($batch,$choc,10,'OZ',$admin);
+$partial=$recipes->coverage($batch);assert($partial['complete']===false);assert(abs((float)$partial['requirements'][1]['actual']-10.0)<0.000001 || abs((float)$partial['requirements'][0]['actual']-10.0)<0.000001);
+$result=$recipes->autoAllocateBatch($batch,$admin);assert($result['allocated']>=2);assert($result['coverage']['complete']===true);
 $linked=$trace->ingredientsForBatch($batch);assert(count($linked)===2);
 $used=[];foreach($linked as $row)$used[$row['ingredient_name']]=(float)$row['quantity_used'];
-assert(abs($used['Chocolate']-25.0)<0.000001);assert(abs($used['Butter']-5.0)<0.000001);
+assert(abs($used['Chocolate']-25.0)<0.000001);assert(abs($used['Butter']-5.0)<0.000001);assert($trace->batchRisk($batch)['ok']===true);
 
 $newRecipe=$recipes->createVersion($flavor,[['ingredient_name'=>'Chocolate','quantity_per_donut'=>3,'quantity_unit'=>'oz']],'Version 2',$admin,true);
 assert($recipes->activeForFlavor($flavor)['id']===$newRecipe);
