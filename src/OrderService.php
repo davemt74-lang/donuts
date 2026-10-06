@@ -67,6 +67,13 @@ final class OrderService
         $this->event($orderId,'payment_session_created','Stripe Checkout session created.',['session_id'=>$sessionId]);
     }
 
+    public function attachStripePaymentIntent(string $sessionId,string $paymentIntentId): void
+    {
+        if($paymentIntentId==='') return;
+        $s=$this->db->prepare('UPDATE orders SET stripe_payment_intent_id=?,updated_at=CURRENT_TIMESTAMP WHERE stripe_checkout_session_id=?');
+        $s->execute([$paymentIntentId,$sessionId]);
+    }
+
     public function markPaidByStripeSession(string $sessionId,int $amountTotal,int $taxCents): void
     {
         $this->db->beginTransaction();
