@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
-use FudgeDonuts\{Database,InventoryService,NotificationService,OrderService,PaymentRepository,StripeService};
+use FudgeDonuts\{Database,InventoryService,NotificationService,OrderService,PaymentRepository,PromotionService,StripeService};
 
 $payload=file_get_contents('php://input')?:'';
 $signature=(string)($_SERVER['HTTP_STRIPE_SIGNATURE']??'');
@@ -25,6 +25,7 @@ if(is_array($object) && !empty($object['id'])){
         $orderService->markPaidByStripeSession((string)$object['id'],$total,$tax);
         if($orderId){
             (new InventoryService($db))->commitOrder($orderId);
+            (new PromotionService($db))->redeemOrder($orderId);
             (new NotificationService($db))->queueOrderConfirmation($orderService->find($orderId));
         }
     }elseif(in_array($event['type'],['checkout.session.expired','checkout.session.async_payment_failed'],true)){
