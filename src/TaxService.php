@@ -83,11 +83,24 @@ final class TaxService
         $q->execute([$orderId,$s['automatic_tax_enabled']==='1'?1:0,$s['product_tax_code'],$s['tax_behavior']]);
     }
 
+    public function recordCalculated(int $orderId,int $taxCents): void
+    {
+        if($taxCents<0) throw new \InvalidArgumentException('Tax amount cannot be negative.');
+        $q=$this->db->prepare('UPDATE order_tax_details SET calculated_tax_cents=?,updated_at=CURRENT_TIMESTAMP WHERE order_id=?');
+        $q->execute([$taxCents,$orderId]);
+    }
+
     public function recordCollected(int $orderId,int $taxCents): void
     {
         if($taxCents<0) throw new \InvalidArgumentException('Tax amount cannot be negative.');
         $q=$this->db->prepare('UPDATE order_tax_details SET stripe_tax_cents=?,updated_at=CURRENT_TIMESTAMP WHERE order_id=?');
         $q->execute([$taxCents,$orderId]);
+    }
+
+    public function calculatedForOrder(int $orderId): int
+    {
+        try{$s=$this->db->prepare('SELECT calculated_tax_cents FROM order_tax_details WHERE order_id=?');$s->execute([$orderId]);return max(0,(int)($s->fetchColumn()?:0));}
+        catch(\Throwable){return 0;}
     }
 
     public function orderDetail(int $orderId): ?array
