@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
-use FudgeDonuts\{AnalyticsService,Database,InventoryService,NotificationService,OrderService,PaymentRepository,PromotionService,StripeService,TaxService};
+use FudgeDonuts\{AnalyticsService,CostAccountingService,Database,InventoryService,NotificationService,OrderService,PaymentRepository,PromotionService,StripeService,TaxService};
 
 $payload=file_get_contents('php://input')?:'';
 $signature=(string)($_SERVER['HTTP_STRIPE_SIGNATURE']??'');
@@ -33,6 +33,9 @@ if(is_array($object) && !empty($object['id'])){
                 (new InventoryService($db))->commitOrder($orderId);
                 (new PromotionService($db))->redeemOrder($orderId);
                 (new NotificationService($db))->queueOrderConfirmation($orderService->find($orderId));
+                try{(new CostAccountingService($db))->snapshotOrder($orderId);}catch(Throwable $e){
+                    \FudgeDonuts\ObservabilityService::captureThrowable($e,dirname(__DIR__),'cost_snapshot_failure');
+                }
                 if((env('ANALYTICS_ENABLED','0')??'0')==='1'){
                     try{(new AnalyticsService($db))->recordPurchase($orderId);}catch(Throwable){}
                 }

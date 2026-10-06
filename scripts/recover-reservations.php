@@ -2,7 +2,7 @@
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
 
-use FudgeDonuts\{Database,InventoryService,JobMonitorService,NotificationService,OrderService,PaymentRepository,PromotionService,StripeService};
+use FudgeDonuts\{AnalyticsService,CostAccountingService,Database,InventoryService,JobMonitorService,NotificationService,OrderService,PaymentRepository,PromotionService,StripeService,TaxService};
 
 $db=Database::connection();
 $monitor=new JobMonitorService($db);$runId=$monitor->start('reservations','Abandoned checkout reservation recovery',(int)env('JOB_RESERVATIONS_INTERVAL_MINUTES','5'));
@@ -50,8 +50,11 @@ foreach($inventory->expiredLeases(200) as $lease){
             );
             if($matched){
                 $payments->markCompletedByProviderSession($sessionId);
+                (new TaxService($db))->recordCollected($orderId,(int)($session['total_details']['amount_tax']??0));
                 $inventory->commitOrder($orderId);
                 (new PromotionService($db))->redeemOrder($orderId);
+                try{(new CostAccountingService($db))->snapshotOrder($orderId);}catch(Throwable $e){\FudgeDonuts\ObservabilityService::captureThrowable($e,dirname(__DIR__),'cost_snapshot_failure');}
+                if((env('ANALYTICS_ENABLED','0')??'0')==='1'){try{(new AnalyticsService($db))->recordPurchase($orderId);}catch(Throwable){}}
                 (new NotificationService($db))->queueOrderConfirmation($orders->find($orderId));
                 $committed++;
             }else{
