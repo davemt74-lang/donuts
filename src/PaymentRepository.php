@@ -46,6 +46,12 @@ final class PaymentRepository
         $s->execute([$providerSessionId]);
     }
 
+    public function markReviewByProviderSession(string $providerSessionId): void
+    {
+        $s=$this->db->prepare("UPDATE payment_sessions SET status='review',updated_at=CURRENT_TIMESTAMP WHERE provider_session_id=? AND status<>'completed'");
+        $s->execute([$providerSessionId]);
+    }
+
     public function markFailedByProviderSession(string $providerSessionId): void
     {
         $s=$this->db->prepare("UPDATE payment_sessions SET status='failed',updated_at=CURRENT_TIMESTAMP WHERE provider_session_id=? AND status<>'completed'");
