@@ -2,13 +2,15 @@
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
 
-use FudgeDonuts\{Database,MarketingConsentService};
+use FudgeDonuts\{Database,MarketingConsentService,SecurityService};
 
 if($_SERVER['REQUEST_METHOD']!=='POST'){header('Location: /');exit;}
 verify_csrf($_POST['_csrf']??null);
 try{
+    $db=Database::connection();$security=new SecurityService($db);$client=SecurityService::clientIdentifier();
+    $security->assertLoginAllowed('newsletter-ip',$client,10,3600);$security->recordLoginFailure('newsletter-ip',$client,10,3600);
     (new MarketingConsentService(
-        Database::connection(),
+        $db,
         (string)env('APP_KEY',''),
         (string)env('APP_URL','http://127.0.0.1:8080')
     ))->subscribe(
