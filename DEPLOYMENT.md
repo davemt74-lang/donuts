@@ -102,3 +102,9 @@ The post-deploy check verifies migration state, SQLite integrity, required appli
 
 ## Shipping and local pickup
 After migrations, configure fulfillment in **Admin → Shipping**. Set active shipping methods, rates, free-shipping thresholds, ETA ranges, local-pickup ZIP codes, pickup location/hours, and customer-facing instructions. Checkout always re-quotes the selected method server-side before payment.
+
+
+## Session and browser security
+Production sessions force the Secure and HttpOnly cookie flags with SameSite=Lax. Configure `ADMIN_SESSION_IDLE_MINUTES`, `ADMIN_SESSION_MAX_HOURS`, `USER_SESSION_IDLE_MINUTES`, and `USER_SESSION_MAX_HOURS` to match the deployment policy.
+
+The application emits CSP, frame-denial, MIME-sniffing, referrer, permissions, cross-origin resource, and HSTS headers in production. Keep `APP_URL` on HTTPS; authenticated responses are marked private/no-store.
