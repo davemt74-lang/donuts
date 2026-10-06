@@ -55,7 +55,7 @@ final class PasswordResetService
 
     private function validatePassword(string $password): void
     {
-        if(strlen($password)<10) throw new \InvalidArgumentException('Password must be at least 10 characters.');
+        if(strlen($password)<12) throw new \InvalidArgumentException('Password must be at least 12 characters.');
         if(!preg_match('/[A-Za-z]/',$password) || !preg_match('/\d/',$password)) throw new \InvalidArgumentException('Password must contain letters and a number.');
     }
 }

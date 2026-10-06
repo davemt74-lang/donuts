@@ -8,8 +8,9 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
  verify_csrf($_POST['_csrf']??null);
  $email=(string)($_POST['email']??'');
  try{
-   $security=new SecurityService($db);$security->assertLoginAllowed('password-reset',$email,5,3600);
-   $security->recordLoginFailure('password-reset',$email,5,3600);
+   $security=new SecurityService($db);$client=SecurityService::clientIdentifier();
+   $security->assertLoginAllowed('password-reset',$email,5,3600);$security->assertLoginAllowed('password-reset-ip',$client,20,3600);
+   $security->recordLoginFailure('password-reset',$email,5,3600);$security->recordLoginFailure('password-reset-ip',$client,20,3600);
    $reset=(new PasswordResetService($db))->create($email);
    if($reset){
       $base=rtrim((string)env('APP_URL','http://127.0.0.1:8080'),'/');

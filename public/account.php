@@ -14,18 +14,19 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
  $mode=(string)($_POST['mode']??'');
  try{
   if($mode==='register'){
+   $client=SecurityService::clientIdentifier();$security->assertLoginAllowed('register-ip',$client,5,3600);$security->recordLoginFailure('register-ip',$client,5,3600);
    $id=$auth->register((string)($_POST['email']??''),(string)($_POST['password']??''),(string)($_POST['first_name']??''),(string)($_POST['last_name']??''));
-   session_regenerate_id(true);$_SESSION['user_id']=$id;header('Location: /account.php');exit;
+   session_regenerate_id(true);$_SESSION['user_id']=$id;SecurityService::initializeAuthSession($_SESSION,'user');rotate_csrf_token();header('Location: /account.php');exit;
   }
   if($mode==='login'){
-   $email=(string)($_POST['email']??'');
-   $security->assertLoginAllowed('account',$email);
+   $email=(string)($_POST['email']??'');$client=SecurityService::clientIdentifier();
+   $security->assertLoginAllowed('account',$email);$security->assertLoginAllowed('account-ip',$client,30,900);
    $user=$auth->login($email,(string)($_POST['password']??''));
-   if(!$user){$security->recordLoginFailure('account',$email);throw new InvalidArgumentException('Email or password is incorrect.');}
-   $security->clearLoginFailures('account',$email);
-   session_regenerate_id(true);$_SESSION['user_id']=(int)$user['id'];header('Location: /account.php');exit;
+   if(!$user){$security->recordLoginFailure('account',$email);$security->recordLoginFailure('account-ip',$client,30,900);throw new InvalidArgumentException('Email or password is incorrect.');}
+   $security->clearLoginFailures('account',$email);$security->clearLoginFailures('account-ip',$client);
+   session_regenerate_id(true);$_SESSION['user_id']=(int)$user['id'];SecurityService::initializeAuthSession($_SESSION,'user');rotate_csrf_token();header('Location: /account.php');exit;
   }
-  if($mode==='logout'){unset($_SESSION['user_id']);session_regenerate_id(true);header('Location: /');exit;}
+  if($mode==='logout'){unset($_SESSION['user_id'],$_SESSION['user_authenticated_at'],$_SESSION['user_last_activity']);session_regenerate_id(true);rotate_csrf_token();header('Location: /');exit;}
   if($mode==='address'){
    if(empty($_SESSION['user_id'])) throw new InvalidArgumentException('Sign in first.');
    $auth->saveAddress((int)$_SESSION['user_id'],$_POST);header('Location: /account.php');exit;
@@ -45,7 +46,7 @@ $accountFlash=(string)($_SESSION['account_flash']??'');unset($_SESSION['account_
 <p class="eyebrow">Your account</p><h1><?= $action==='register'?'Create account':'Welcome back' ?></h1>
 <form method="post" class="admin-form"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>"><input type="hidden" name="mode" value="<?=$action==='register'?'register':'login'?>">
 <?php if($action==='register'):?><input name="first_name" placeholder="First name"><input name="last_name" placeholder="Last name"><?php endif;?>
-<input type="email" name="email" required placeholder="Email"><input type="password" name="password" required minlength="10" placeholder="Password"><button class="button"><?=$action==='register'?'Create account':'Sign in'?></button></form>
+<input type="email" name="email" required placeholder="Email"><input type="password" name="password" required minlength="12" placeholder="Password"><button class="button"><?=$action==='register'?'Create account':'Sign in'?></button></form>
 <p><?=$action==='register'?'Already have an account? <a href="/account.php">Sign in</a>':'New here? <a href="/account.php?action=register">Create an account</a>'?></p><?php if($action!=='register'):?><p><a href="/forgot-password.php">Forgot your password?</a></p><?php endif;?>
 <?php else:?>
 <p class="eyebrow">Account</p><h1>Hello, <?=htmlspecialchars($user['first_name']?:'there')?></h1><p><?=htmlspecialchars($user['email'])?></p><?php if(!empty($_GET['password'])):?><div class="notice">Your password has been updated.</div><?php endif;?><?php if(!empty($_GET['box'])):?><div class="notice">Your box has been saved.</div><?php endif;?><?php if($accountFlash):?><div class="notice error"><?=htmlspecialchars($accountFlash)?></div><?php endif;?>
