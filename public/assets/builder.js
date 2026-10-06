@@ -16,9 +16,18 @@
     const used = selected();
     const surcharge = cards.reduce((n,card) => n + Number(card.dataset.surcharge) * Number(card.querySelector('.qty').value || 0), 0);
     count.textContent = String(used);
-    total.textContent = formatMoney(base + surcharge);
+    const amount = formatMoney(base + surcharge);
+    total.textContent = amount;
+    cards.forEach(card => {
+      const qty = card.querySelector('.qty');
+      qty.setAttribute('aria-valuenow', qty.value);
+    });
     submit.disabled = used !== max;
-    status.textContent = used === max ? 'Your box is ready' : used < max ? `${max-used} remaining` : `${used-max} too many`;
+    status.textContent = used === max
+      ? 'Your box is ready. ' + used + ' selected. Total ' + amount + '.'
+      : used < max
+        ? used + ' selected. ' + (max-used) + ' remaining. Total ' + amount + '.'
+        : used + ' selected. ' + (used-max) + ' too many. Total ' + amount + '.';
     form.classList.toggle('complete', used === max);
   }
 
