@@ -96,3 +96,11 @@ jobs:
         run: php -d zend.assertions=1 -d assert.exception=1 tests/section41.php
       - name: Section 42
         run: php -d zend.assertions=1 -d assert.exception=1 tests/section42.php
+      - name: Section 43
+        run: |
+          php -d zend.assertions=1 -d assert.exception=1 tests/section43.php
+          rm -f storage/ci-migrate.sqlite storage/ci-migrate.sqlite-wal storage/ci-migrate.sqlite-shm
+          DB_DSN=sqlite:storage/ci-migrate.sqlite php scripts/migrate.php
+          DB_DSN=sqlite:storage/ci-migrate.sqlite php scripts/migrate.php --status
+          DB_DSN=sqlite:storage/ci-migrate.sqlite php scripts/migrate.php
+          DB_DSN=sqlite:storage/ci-migrate.sqlite php scripts/post-deploy-check.php
