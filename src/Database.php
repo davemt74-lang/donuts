@@ -14,7 +14,7 @@ final class Database
         if (self::$pdo) return self::$pdo;
 
         $dsn = \env('DB_DSN', 'sqlite:' . dirname(__DIR__) . '/storage/store.sqlite');
-        if (str_starts_with((string)$dsn, 'sqlite:') && !str_starts_with((string)$dsn, 'sqlite:/')) {
+        if ((string)$dsn !== 'sqlite::memory:' && str_starts_with((string)$dsn, 'sqlite:') && !str_starts_with((string)$dsn, 'sqlite:/')) {
             $dsn = 'sqlite:' . dirname(__DIR__) . '/' . substr((string)$dsn, 7);
         }
         self::$pdo = new PDO((string)$dsn, \env('DB_USER', '') ?? '', \env('DB_PASS', '') ?? '', [

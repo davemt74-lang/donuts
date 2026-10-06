@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
-use FudgeDonuts\{Database,OrderService,PaymentRepository,StripeService};
+use FudgeDonuts\{Database,InventoryService,OrderService,PaymentRepository,StripeService};
 
 $payload=file_get_contents('php://input')?:'';
 $signature=(string)($_SERVER['HTTP_STRIPE_SIGNATURE']??'');
@@ -21,9 +21,14 @@ if(is_array($object) && !empty($object['id'])){
     if($event['type']==='checkout.session.completed' && ($object['payment_status']??'')==='paid'){
         $total=(int)($object['amount_total']??0);
         $tax=(int)($object['total_details']['amount_tax']??0);
+        $orderId=$orderService->idByStripeSession((string)$object['id']);
         $orderService->markPaidByStripeSession((string)$object['id'],$total,$tax);
+        if($orderId)(new InventoryService($db))->commitOrder($orderId);
     }elseif(in_array($event['type'],['checkout.session.expired','checkout.session.async_payment_failed'],true)){
+        $orderId=$orderService->idByStripeSession((string)$object['id']);
         $orderService->markPaymentFailedByStripeSession((string)$object['id'],(string)$event['type']);
+        if($orderId)(new InventoryService($db))->releaseOrder($orderId);
     }
 }
+$payments->markEventProcessed('stripe',(string)$event['id']);
 http_response_code(200);echo 'ok';
