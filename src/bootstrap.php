@@ -1,43 +1,6 @@
 <?php
 declare(strict_types=1);
 
-error_reporting(E_ALL);
-$maintenanceLock=dirname(__DIR__).'/storage/maintenance.lock';
-if(PHP_SAPI!=='cli' && is_file($maintenanceLock)){
-    http_response_code(503);
-    header('Retry-After: 60');
-    exit('Store maintenance in progress.');
-}
-if ((getenv('APP_ENV') ?: 'development') === 'production') {
-    ini_set('display_errors','0');
-    ini_set('log_errors','1');
-}
-
-$secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
-session_name('fudge_donuts_session');
-session_set_cookie_params([
-    'lifetime' => 0,
-    'path' => '/',
-    'secure' => $secure,
-    'httponly' => true,
-    'samesite' => 'Lax',
-]);
-session_start();
-
-spl_autoload_register(static function (string $class): void {
-    $prefix = 'FudgeDonuts\\';
-    if (!str_starts_with($class, $prefix)) {
-        return;
-    }
-    $relative = substr($class, strlen($prefix));
-    $path = __DIR__ . '/' . str_replace('\\', '/', $relative) . '.php';
-    if (is_file($path)) {
-        require $path;
-    }
-});
-
-\FudgeDonuts\SecurityService::applyHeaders();
-
 function env(string $key, ?string $default = null): ?string
 {
     static $loaded = false;
@@ -57,19 +20,83 @@ function env(string $key, ?string $default = null): ?string
     return $value === false ? $default : $value;
 }
 
+error_reporting(E_ALL);
+$environment=(string)env('APP_ENV','development');
+$maintenanceLock=dirname(__DIR__).'/storage/maintenance.lock';
+if(PHP_SAPI!=='cli' && is_file($maintenanceLock)){
+    http_response_code(503);
+    header('Retry-After: 60');
+    exit('Store maintenance in progress.');
+}
+if($environment==='production'){
+    ini_set('display_errors','0');
+    ini_set('log_errors','1');
+}
+
+ini_set('session.use_strict_mode','1');
+ini_set('session.use_only_cookies','1');
+ini_set('session.cookie_httponly','1');
+
+$httpsDetected=(!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS']!=='off') || strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO']??''))==='https';
+$secure=$environment==='production' || $httpsDetected;
+session_name('fudge_donuts_session');
+session_set_cookie_params([
+    'lifetime'=>0,
+    'path'=>'/',
+    'secure'=>$secure,
+    'httponly'=>true,
+    'samesite'=>'Lax',
+]);
+session_start();
+
+spl_autoload_register(static function (string $class): void {
+    $prefix='FudgeDonuts\\';
+    if(!str_starts_with($class,$prefix)) return;
+    $relative=substr($class,strlen($prefix));
+    $path=__DIR__.'/'.str_replace('\\','/',$relative).'.php';
+    if(is_file($path)) require $path;
+});
+
+\FudgeDonuts\SecurityService::applyHeaders();
+
+$sessionExpired=false;
+if(!\FudgeDonuts\SecurityService::touchAuthSession(
+    $_SESSION,'admin_id','admin',
+    (int)env('ADMIN_SESSION_IDLE_MINUTES','30'),
+    (int)env('ADMIN_SESSION_MAX_HOURS','12')
+)){
+    unset($_SESSION['admin'],$_SESSION['admin_id'],$_SESSION['admin_role'],$_SESSION['admin_authenticated_at'],$_SESSION['admin_last_activity']);
+    $sessionExpired=true;
+}
+if(!\FudgeDonuts\SecurityService::touchAuthSession(
+    $_SESSION,'user_id','user',
+    (int)env('USER_SESSION_IDLE_MINUTES','120'),
+    (int)env('USER_SESSION_MAX_HOURS','168')
+)){
+    unset($_SESSION['user_id'],$_SESSION['user_authenticated_at'],$_SESSION['user_last_activity']);
+    $sessionExpired=true;
+}
+if($sessionExpired) session_regenerate_id(true);
+if(!empty($_SESSION['admin_id']) || !empty($_SESSION['user_id'])) \FudgeDonuts\SecurityService::applyPrivateCacheHeaders();
+
 if((env('OBSERVABILITY_ENABLED','1')??'1')!=='0'){
     \FudgeDonuts\ObservabilityService::installRuntimeHandlers(dirname(__DIR__));
 }
 
 function csrf_token(): string
 {
-    if (empty($_SESSION['_csrf'])) $_SESSION['_csrf'] = bin2hex(random_bytes(32));
+    if(empty($_SESSION['_csrf'])) $_SESSION['_csrf']=bin2hex(random_bytes(32));
     return $_SESSION['_csrf'];
+}
+
+function rotate_csrf_token(): void
+{
+    $_SESSION['_csrf']=bin2hex(random_bytes(32));
 }
 
 function verify_csrf(?string $token): void
 {
-    if (!$token || !hash_equals($_SESSION['_csrf'] ?? '', $token)) {
+    if(!$token || !hash_equals($_SESSION['_csrf']??'',$token)){
         http_response_code(419);
         exit('Invalid CSRF token');
     }
@@ -77,7 +104,7 @@ function verify_csrf(?string $token): void
 
 function money(int $cents): string
 {
-    return '$' . number_format($cents / 100, 2);
+    return '$'.number_format($cents/100,2);
 }
 
 function admin_has_role(array $roles): bool
@@ -91,18 +118,19 @@ function require_admin_roles(array $roles): void
         header('Location: /admin.php');
         exit;
     }
-    try {
+    try{
         $admin=(new \FudgeDonuts\AdminAuthService(\FudgeDonuts\Database::connection()))->admin((int)$_SESSION['admin_id']);
-    } catch (Throwable) {
+    }catch(Throwable){
         $admin=null;
     }
     if(!$admin || !(int)$admin['active']){
-        unset($_SESSION['admin'],$_SESSION['admin_id'],$_SESSION['admin_role']);
+        unset($_SESSION['admin'],$_SESSION['admin_id'],$_SESSION['admin_role'],$_SESSION['admin_authenticated_at'],$_SESSION['admin_last_activity']);
         session_regenerate_id(true);
         header('Location: /admin.php');
         exit;
     }
     $_SESSION['admin_role']=(string)$admin['role'];
+    \FudgeDonuts\SecurityService::applyPrivateCacheHeaders();
     if(!in_array((string)$admin['role'],$roles,true)){
         http_response_code(403);
         exit('Forbidden');
