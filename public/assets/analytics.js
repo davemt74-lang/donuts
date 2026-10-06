@@ -26,7 +26,7 @@
   };
   const params=new URLSearchParams(location.search);
   let ref='';
-  try{if(document.referrer)ref=new URL(document.referrer).hostname;}catch(_){}
+  try{if(document.referrer){const host=new URL(document.referrer).hostname;if(host!==location.hostname)ref=host;}}catch(_){}
   const payload={
     visitor_id:cookie(),event:event(),path:location.pathname,referrer_host:ref,
     utm_source:params.get('utm_source')||'',utm_medium:params.get('utm_medium')||'',
