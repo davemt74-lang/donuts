@@ -312,3 +312,9 @@ Work orders move **Planned → In Progress → Completed**. Completion atomicall
 Use **Admin → QA & Waste** while a production work order is In Progress. Every required QA check must pass before the work order can be completed into its final traceable production batch.
 
 The required checks currently cover appearance/finish, portion/size, allergen-label verification, and sanitation/handling. Failed checks block completion until corrected and re-signed. Waste events remain linked to the work order and finished flavor, and completed work records planned-vs-actual yield for variance monitoring. Configure the yield warning threshold in the QA console.
+
+
+## Finished-goods FEFO allocation
+Use **Admin → Batch Allocation** for Preparing and Ready orders that do not yet have production-batch traceability. Automatic allocation uses first-expire-first-out: earliest best-by date first, then oldest production time.
+
+The allocator skips held, recalled, expired, future-dated, depleted, or ingredient-unsafe batches. It may split one flavor requirement across multiple safe batches. The final assignment still runs through the canonical batch-assignment transaction, which revalidates exact flavor quantities and remaining inventory before consuming any batch quantity. If the full order cannot be satisfied, no partial assignment is written.
