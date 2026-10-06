@@ -1,0 +1,59 @@
+<?php
+declare(strict_types=1);
+require dirname(__DIR__).'/src/bootstrap.php';
+
+use FudgeDonuts\{AdminAuditService,CatalogRepository,Database,ProductionSchedulingService};
+require_admin_roles(['super_admin','admin','fulfillment']);
+
+$db=Database::connection();$svc=new ProductionSchedulingService($db);$audit=new AdminAuditService($db);$catalog=new CatalogRepository($db);$error='';$notice=(string)($_SESSION['production_flash']??'');unset($_SESSION['production_flash']);
+if($_SERVER['REQUEST_METHOD']==='POST'){
+    verify_csrf($_POST['_csrf']??null);
+    try{
+        $action=(string)($_POST['action']??'');
+        if($action==='create'){
+            $id=$svc->create($_POST,(int)$_SESSION['admin_id']);
+            $audit->record((int)$_SESSION['admin_id'],'production_work_order_created','production_work_order',$id,'Production work order created.',[],$_POST);
+            $_SESSION['production_flash']='Production work order created.';
+        }elseif($action==='start'){
+            $id=(int)$_POST['id'];$svc->start($id);
+            $audit->record((int)$_SESSION['admin_id'],'production_work_order_started','production_work_order',$id,'Production work order started.');
+            $_SESSION['production_flash']='Production work order started.';
+        }elseif($action==='cancel'){
+            $id=(int)$_POST['id'];$svc->cancel($id);
+            $audit->record((int)$_SESSION['admin_id'],'production_work_order_cancelled','production_work_order',$id,'Production work order cancelled.');
+            $_SESSION['production_flash']='Production work order cancelled.';
+        }elseif($action==='complete'){
+            $id=(int)$_POST['id'];$batchId=$svc->complete($id,(int)$_SESSION['admin_id'],(int)$_POST['actual_quantity'],(string)$_POST['batch_code'],$_POST['best_by_date']??null);
+            $audit->record((int)$_SESSION['admin_id'],'production_work_order_completed','production_work_order',$id,'Production work order completed and batch created.',[],['batch_id'=>$batchId,'actual_quantity'=>(int)$_POST['actual_quantity']]);
+            $_SESSION['production_flash']='Work order completed and production batch created.';
+        }elseif($action==='capacity'){
+            $svc->setCapacityOverride((string)$_POST['production_date'],(int)$_POST['max_units'],(string)($_POST['notes']??''));
+            $audit->record((int)$_SESSION['admin_id'],'production_capacity_updated','production_capacity',(string)$_POST['production_date'],'Production capacity override updated.',[],['max_units'=>(int)$_POST['max_units']]);
+            $_SESSION['production_flash']='Capacity override saved.';
+        }elseif($action==='settings'){
+            $svc->saveSettings((int)$_POST['daily_capacity_units'],(int)$_POST['planning_horizon_days']);
+            $audit->record((int)$_SESSION['admin_id'],'production_schedule_settings_updated','production_schedule','global','Production scheduling defaults updated.',[],$_POST);
+            $_SESSION['production_flash']='Production scheduling settings saved.';
+        }else throw new InvalidArgumentException('Unsupported production action.');
+        header('Location: /admin-production-schedule.php',true,303);exit;
+    }catch(Throwable $e){$error=$e->getMessage();}
+}
+$status=trim((string)($_GET['status']??''));$summary=$svc->summary();$settings=$svc->settings();$suggestions=$svc->suggestions();$calendar=$svc->capacityCalendar((int)$settings['planning_horizon_days']);$orders=$svc->workOrders($status?:null);$flavors=$catalog->flavors();
+?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Production Schedule · Fudge Donuts Admin</title><link rel="stylesheet" href="/assets/app.css"></head><body class="admin-body">
+<header class="admin-topbar"><a class="admin-brand" href="/admin.php">Fudge Donuts <span>Admin</span></a><nav><a href="/admin.php">Dashboard</a><a href="/admin-inventory.php">Inventory</a><a href="/admin-production-plan.php">Forecast</a><a class="active" href="/admin-production-schedule.php">Schedule</a><a href="/admin-batches.php">Batches</a><a href="/admin-procurement-plan.php">Procurement</a></nav></header>
+<main class="admin-shell"><div class="admin-page-head"><div><p class="eyebrow">Kitchen operations</p><h1>Production Schedule</h1><p class="admin-welcome">Turn demand forecasts into dated, capacity-controlled work orders and traceable production batches.</p></div></div>
+<?php if($error):?><div class="notice error" role="alert"><?=htmlspecialchars($error)?></div><?php endif;?><?php if($notice):?><div class="notice" role="status"><?=htmlspecialchars($notice)?></div><?php endif;?>
+<section class="dashboard-kpis"><article class="kpi-card"><span>Planned</span><strong><?=$summary['planned']?></strong><small><?=$summary['planned_units']?> scheduled units</small></article><article class="kpi-card"><span>In progress</span><strong><?=$summary['in_progress']?></strong><small>Active kitchen work</small></article><article class="kpi-card <?=($summary['overdue']>0?'kpi-alert':'')?>"><span>Overdue</span><strong><?=$summary['overdue']?></strong><small>Past scheduled date</small></article><article class="kpi-card"><span>Completed</span><strong><?=$summary['completed']?></strong><small>Work orders closed</small></article></section>
+
+<section class="dashboard-grid dashboard-secondary">
+<div class="dashboard-panel"><div class="panel-head"><div><p class="eyebrow">New work order</p><h2>Schedule production</h2></div></div><form method="post" class="admin-form"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>"><input type="hidden" name="action" value="create"><label>Flavor<select name="flavor_id" required><?php foreach($flavors as $f):?><option value="<?=(int)$f['id']?>"><?=htmlspecialchars($f['name'])?></option><?php endforeach;?></select></label><div class="two"><label>Production date<input type="date" name="scheduled_date" min="<?=gmdate('Y-m-d')?>" value="<?=gmdate('Y-m-d')?>" required></label><label>Planned quantity<input type="number" name="planned_quantity" min="1" max="100000" required></label></div><div class="two"><label>Priority<select name="priority"><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select></label><label>Assigned to<input name="assigned_to" maxlength="190" placeholder="Kitchen / team member"></label></div><label>Notes<textarea name="notes"></textarea></label><button class="button">Create work order</button></form></div>
+<div class="dashboard-panel"><div class="panel-head"><div><p class="eyebrow">Defaults</p><h2>Capacity settings</h2></div></div><form method="post" class="admin-form"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>"><input type="hidden" name="action" value="settings"><label>Default daily capacity<input type="number" name="daily_capacity_units" min="1" max="100000" value="<?=(int)$settings['daily_capacity_units']?>"></label><label>Planning horizon days<input type="number" name="planning_horizon_days" min="1" max="90" value="<?=(int)$settings['planning_horizon_days']?>"></label><button class="button secondary">Save defaults</button></form><hr><form method="post" class="admin-form"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>"><input type="hidden" name="action" value="capacity"><label>Capacity override date<input type="date" name="production_date" min="<?=gmdate('Y-m-d')?>" required></label><label>Max units<input type="number" name="max_units" min="0" max="100000" required></label><label>Notes<input name="notes" maxlength="1000"></label><button class="button secondary">Save override</button></form></div>
+</section>
+
+<section class="dashboard-panel"><div class="panel-head"><div><p class="eyebrow">Forecast gap</p><h2>Unscheduled suggested production</h2></div></div><div class="dashboard-table-wrap"><table class="dashboard-table"><thead><tr><th>Flavor</th><th>Forecast prep</th><th>Already scheduled</th><th>Still unscheduled</th><th>Risk</th></tr></thead><tbody><?php if(!$suggestions['rows']):?><tr><td colspan="5" class="empty-cell">Current production schedule covers the forecast.</td></tr><?php endif;?><?php foreach($suggestions['rows'] as $row):?><tr><td><strong><?=htmlspecialchars($row['name'])?></strong></td><td><?=(int)$row['suggested_prep']?></td><td><?=(int)$row['scheduled_units']?></td><td><strong><?=(int)$row['unscheduled_units']?></strong></td><td><span class="production-risk production-risk-<?=htmlspecialchars($row['risk'])?>"><?=htmlspecialchars($row['risk'])?></span></td></tr><?php endforeach;?></tbody></table></div></section>
+
+<section class="dashboard-panel"><div class="panel-head"><div><p class="eyebrow">Capacity</p><h2>Upcoming calendar</h2></div></div><div class="capacity-calendar"><?php foreach($calendar as $day):?><article class="capacity-day <?=($day['overbooked']?'capacity-over':'')?>"><strong><?=htmlspecialchars($day['date'])?></strong><span><?=(int)$day['planned_units']?> / <?=(int)$day['max_units']?> units</span><small><?=(int)$day['remaining_units']?> remaining<?=$day['override']?' · override':''?></small></article><?php endforeach;?></div></section>
+
+<div class="order-filters"><a class="<?=!$status?'active':''?>" href="/admin-production-schedule.php">All</a><?php foreach(['planned','in_progress','completed','cancelled'] as $s):?><a class="<?=$status===$s?'active':''?>" href="/admin-production-schedule.php?status=<?=$s?>"><?=htmlspecialchars(ucwords(str_replace('_',' ',$s)))?></a><?php endforeach;?></div>
+<section class="dashboard-panel"><div class="dashboard-table-wrap"><table class="dashboard-table"><thead><tr><th>Work order</th><th>Flavor</th><th>Date</th><th>Plan / actual</th><th>Priority</th><th>Status</th><th>Batch</th><th>Actions</th></tr></thead><tbody><?php if(!$orders):?><tr><td colspan="8" class="empty-cell">No production work orders in this view.</td></tr><?php endif;?><?php foreach($orders as $w):?><tr><td><strong><?=htmlspecialchars($w['work_order_number'])?></strong><?php if($w['assigned_to']):?><small><?=htmlspecialchars($w['assigned_to'])?></small><?php endif;?></td><td><?=htmlspecialchars($w['flavor_name'])?></td><td><?=htmlspecialchars($w['scheduled_date'])?></td><td><?=(int)$w['planned_quantity']?><?php if($w['actual_quantity']!==null):?> / <?=(int)$w['actual_quantity']?><?php endif;?></td><td><?=htmlspecialchars(ucfirst($w['priority']))?></td><td><?=htmlspecialchars(ucwords(str_replace('_',' ',$w['status'])))?></td><td><?=htmlspecialchars((string)($w['batch_code']??''))?></td><td><div class="production-actions"><?php if($w['status']==='planned'):?><form method="post"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>"><input type="hidden" name="action" value="start"><input type="hidden" name="id" value="<?=(int)$w['id']?>"><button class="link">Start</button></form><form method="post"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>"><input type="hidden" name="action" value="cancel"><input type="hidden" name="id" value="<?=(int)$w['id']?>"><button class="link">Cancel</button></form><?php elseif($w['status']==='in_progress'):?><form method="post" class="complete-work-order"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>"><input type="hidden" name="action" value="complete"><input type="hidden" name="id" value="<?=(int)$w['id']?>"><input type="number" name="actual_quantity" min="1" max="100000" value="<?=(int)$w['planned_quantity']?>" aria-label="Actual quantity"><input name="batch_code" required maxlength="64" placeholder="Batch code" aria-label="Batch code"><input type="date" name="best_by_date" aria-label="Best-by date"><button class="button secondary">Complete</button></form><?php endif;?></div></td></tr><?php endforeach;?></tbody></table></div></section>
+</main></body></html>
