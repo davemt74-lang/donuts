@@ -11,7 +11,7 @@ final class RefundService
 
     public function refundableCents(int $orderId): int
     {
-        $s=$this->db->prepare("SELECT total_cents FROM orders WHERE id=? AND status IN ('paid','preparing','ready','shipped','delivered','completed')");
+        $s=$this->db->prepare("SELECT total_cents FROM orders WHERE id=? AND status IN ('payment_review','paid','preparing','ready','shipped','delivered','completed')");
         $s->execute([$orderId]);$total=$s->fetchColumn();
         if($total===false) return 0;
         $r=$this->db->prepare("SELECT COALESCE(SUM(amount_cents),0) FROM refund_records WHERE order_id=? AND status IN ('pending','succeeded')");
