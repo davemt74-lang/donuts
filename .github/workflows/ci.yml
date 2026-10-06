@@ -28,3 +28,5 @@ jobs:
         run: php -d zend.assertions=1 -d assert.exception=1 tests/section7.php
       - name: Section 8
         run: php -d zend.assertions=1 -d assert.exception=1 tests/section8.php
+      - name: Section 9
+        run: php -d zend.assertions=1 -d assert.exception=1 tests/section9.php
