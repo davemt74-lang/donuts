@@ -238,3 +238,11 @@ php scripts/process-checkout-recovery.php
 Run it on the cadence configured by `JOB_CHECKOUT_RECOVERY_INTERVAL_MINUTES` (60 minutes by default). A reminder is eligible only after `CHECKOUT_RECOVERY_REMINDER_HOURS` and only when the checkout email is currently explicitly **subscribed** in the marketing-consent ledger. Every recovery reminder contains a signed unsubscribe link. Unsubscribed and unknown addresses are never sent recovery marketing.
 
 Admin → Recovery shows active, restored, converted, expired, and reminder activity. Registered-customer privacy exports include recovery lifecycle metadata, and account closure purges associated recovery snapshots.
+
+
+## Shipment records and partial fulfillment
+Shipping orders use durable package records in Admin → Orders → Order Detail. Each shipment has its own carrier, tracking number, tracking URL, item allocation, and lifecycle.
+
+Create one or more pending packages, allocate only the quantities included in each package, then mark packages shipped/delivered individually. Pending package allocation prevents the same order quantity from being assigned twice. The order moves to **Shipped** only when every ordered unit is actually in a shipped/delivered package, and to **Delivered** only when every ordered unit is delivered.
+
+Existing Section 25 tracking records are migrated into a legacy shipment record so historical tracking is preserved. The old fulfillment timestamps remain synchronized for backwards compatibility.
