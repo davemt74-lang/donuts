@@ -12,7 +12,7 @@ $flavors = $catalog->flavors();
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Fudge Donuts</title><link rel="stylesheet" href="/assets/app.css"></head>
 <body>
-<header class="nav"><a class="brand" href="/">Fudge Donuts</a><nav><a href="#shop">Shop</a><a href="#flavors">Flavors</a><a href="/builder.php?size=12">Build a Box</a></nav></header>
+<header class="nav"><a class="brand" href="/">Fudge Donuts</a><nav><a href="#shop">Shop</a><a href="#flavors">Flavors</a><a href="/builder.php?size=12">Build a Box</a><a href="/account.php">Account</a><a href="/cart.php">Cart</a></nav></header>
 <main>
 <section class="hero">
   <div><p class="eyebrow">Small batch · rich fudge center</p><h1>Not just a donut.<br>A fudge donut.</h1><p>Choose a curated box or build your own mix.</p><a class="button" href="#shop">Shop the boxes</a></div>
