@@ -37,6 +37,7 @@ spl_autoload_register(static function (string $class): void {
 });
 
 if(PHP_SAPI!=='cli' && is_file($maintenanceLock)){
+    \FudgeDonuts\SecurityService::applyHeaders();
     \FudgeDonuts\HttpResponseService::send(
         503,
         'We’ll be right back.',
