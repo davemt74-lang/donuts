@@ -6,7 +6,7 @@ namespace FudgeDonuts;
 final class SeoService
 {
     private const INDEXABLE_PATHS=[
-        '/','/index.php','/flavor.php','/preset.php','/builder.php','/story.php','/faq.php','/policy.php','/contact.php','/sitemap.php','/robots.php','/robots.txt'
+        '/','/index.php','/flavor.php','/preset.php','/builder.php','/story.php','/faq.php','/policy.php','/contact.php','/gift-cards.php','/sitemap.php','/robots.php','/robots.txt'
     ];
     public function __construct(private readonly CatalogRepository $catalog,private string $baseUrl)
     {
@@ -88,6 +88,7 @@ final class SeoService
             ['path'=>'/story.php','changefreq'=>'monthly','priority'=>'0.6'],
             ['path'=>'/faq.php','changefreq'=>'monthly','priority'=>'0.5'],
             ['path'=>'/contact.php','changefreq'=>'monthly','priority'=>'0.4'],
+            ['path'=>'/gift-cards.php','changefreq'=>'monthly','priority'=>'0.7'],
             ['path'=>'/policy.php?type=terms','changefreq'=>'yearly','priority'=>'0.2'],
             ['path'=>'/policy.php?type=privacy','changefreq'=>'yearly','priority'=>'0.2'],
             ['path'=>'/policy.php?type=refunds','changefreq'=>'yearly','priority'=>'0.2'],
