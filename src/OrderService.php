@@ -23,7 +23,8 @@ final class OrderService
         $existing=$this->db->prepare('SELECT id FROM orders WHERE checkout_fingerprint=?');
         $existing->execute([$fingerprint]);
         if($id=$existing->fetchColumn()) return $this->find((int)$id);
-        $number='FD-'.gmdate('Ymd').'-'.strtoupper(bin2hex(random_bytes(3)));
+        $prefix=(new StoreSettingsService($this->db))->orderPrefix();
+        $number=$prefix.'-'.gmdate('Ymd').'-'.strtoupper(bin2hex(random_bytes(3)));
 
         $this->db->beginTransaction();
         try{
