@@ -16,6 +16,8 @@ if($health['status']!=='ok'){
         $body=$message."\n\n".json_encode($health,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES);
         (new NotificationService($db))->queue($alertEmail,'Fudge Donuts operational alert',$body,$key);
     }
+}else{
+    $obs->resolveSystemType('operations_health');
 }
 
 $pruned=$obs->prune((int)env('OBSERVABILITY_RETENTION_DAYS','90'));
