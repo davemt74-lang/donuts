@@ -3,7 +3,7 @@ declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
 use FudgeDonuts\{AdminAuditService,AdminService,BatchTraceabilityService,Database,DisputeService,FulfillmentService,GiftCardService,InventoryService,NotificationService,RefundService,StripeService,TaxService};
 require_admin_roles(['super_admin','admin','fulfillment']);
-$db=Database::connection();$admin=new AdminService($db);$audit=new AdminAuditService($db);$refunds=new RefundService($db);$fulfillment=new FulfillmentService($db);$id=(int)($_GET['id']??$_POST['id']??0);$order=$admin->order($id);
+$db=Database::connection();$admin=new AdminService($db);$audit=new AdminAuditService($db);$refunds=new RefundService($db);$fulfillment=new FulfillmentService($db);$batchSvc=new BatchTraceabilityService($db);$id=(int)($_GET['id']??$_POST['id']??0);$order=$admin->order($id);
 if(!$order){
     \FudgeDonuts\HttpResponseService::send(
         404,
@@ -21,6 +21,10 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
    $action=(string)($_POST['action']??'');
    if($action==='status'){
      $newStatus=(string)$_POST['status'];$beforeStatus=(string)$order['status'];
+     if($newStatus==='shipped'){
+       $trace=$batchSvc->orderShipmentReady($id);
+       if(!$trace['ok']) throw new RuntimeException('Shipment blocked: '.$trace['reason']);
+     }
      if($newStatus==='cancelled' && in_array($beforeStatus,['pending_payment','payment_failed'],true) && !empty($order['stripe_checkout_session_id'])){
        $stripeSession=(string)$order['stripe_checkout_session_id'];
        try{
@@ -82,7 +86,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
    $order=$admin->order($id);
  }catch(Throwable $e){$error=$e->getMessage();}
 }
-$refundRows=$refunds->forOrder($id);$cancel=$refunds->pendingCancellation($id);$refundable=$refunds->refundableCents($id);$fulfillmentDetails=$fulfillment->details($id);$taxDetail=(new TaxService($db))->orderDetail($id);$giftApplication=(new GiftCardService($db,(string)env('APP_KEY','')))->applicationForOrder($id);$batchSvc=new BatchTraceabilityService($db);$batchAssignments=$batchSvc->assignmentsForOrder($id);$batchNeeds=$batchSvc->requiredFlavorQuantities($id);
+$refundRows=$refunds->forOrder($id);$cancel=$refunds->pendingCancellation($id);$refundable=$refunds->refundableCents($id);$fulfillmentDetails=$fulfillment->details($id);$taxDetail=(new TaxService($db))->orderDetail($id);$giftApplication=(new GiftCardService($db,(string)env('APP_KEY','')))->applicationForOrder($id);$batchAssignments=$batchSvc->assignmentsForOrder($id);$batchNeeds=$batchSvc->requiredFlavorQuantities($id);
 ?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="<?=htmlspecialchars(asset_url('/assets/app.css'))?>"><title><?=htmlspecialchars($order['order_number'])?> · Admin</title></head><body class="admin-body">
 <header class="admin-topbar"><a class="admin-brand" href="/admin.php">Fudge Donuts <span>Admin</span></a><nav><a href="/admin.php">Dashboard</a><a class="active" href="/admin-orders.php">Orders</a><a href="/admin-inventory.php">Inventory</a><a href="/admin-shipping.php">Shipping</a><a href="/admin-reports.php">Reports</a><a href="/admin-notifications.php">Email</a><a href="/admin-marketing.php">Marketing</a><a href="/admin-audit.php">Audit</a><a href="/admin-operations.php">Operations</a></nav></header>
 <main class="admin-shell"><?php if($orderDisputes):?><section class="dashboard-panel alert-panel"><p class="eyebrow">Payment dispute protection</p><h2>This order is financially blocked</h2><p>Stripe has an open or lost dispute for this payment. Fulfillment progression and manual refunds are blocked to prevent additional loss.</p><?php foreach($orderDisputes as $d):?><div class="review-total"><span><?=htmlspecialchars($d['stripe_dispute_id'])?> · <?=htmlspecialchars(str_replace('_',' ',$d['status']))?></span><strong><?=money((int)$d['amount_cents'])?></strong></div><?php endforeach;?><a class="button secondary" href="/admin-disputes.php">Review disputes</a></section><?php endif;?><div class="admin-page-head"><div><p class="eyebrow">Order detail</p><h1><?=htmlspecialchars($order['order_number'])?></h1></div><a class="button secondary" href="/admin-orders.php">Back to orders</a></div>
