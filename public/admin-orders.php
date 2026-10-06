@@ -1,18 +1,36 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
-use FudgeDonuts\{AdminService,Database,NotificationService};
+use FudgeDonuts\{AdminAuditService,AdminService,Database,FulfillmentOperationsService,NotificationService};
 require_admin_roles(['super_admin','admin','fulfillment']);
-$admin=new AdminService(Database::connection());$error='';
+
+$db=Database::connection();$admin=new AdminService($db);$ops=new FulfillmentOperationsService($db);$audit=new AdminAuditService($db);$error='';$notice='';
 if($_SERVER['REQUEST_METHOD']==='POST'){
  verify_csrf($_POST['_csrf']??null);
- try{$id=(int)($_POST['order_id']??0);$status=(string)($_POST['status']??'');$admin->transitionOrder($id,$status,(string)($_POST['note']??''));$order=$admin->order($id);if($order)(new NotificationService(Database::connection()))->queueStatusUpdate($order,$status);header('Location: /admin-orders.php');exit;}catch(Throwable $e){$error=$e->getMessage();}
+ try{
+   $action=(string)($_POST['action']??'');
+   if($action==='batch'){
+     $ids=array_map('intval',(array)($_POST['order_ids']??[]));$to=(string)($_POST['status']??'');
+     $count=$ops->batchTransition($ids,$to);
+     $notifications=new NotificationService($db);
+     foreach($ids as $id){$order=$admin->order($id);if($order)$notifications->queueStatusUpdate($order,$to);}
+     $audit->record((int)$_SESSION['admin_id'],'order_batch_status_changed','order_batch',implode(',',$ids),"{$count} orders moved to {$to}.",[],['order_ids'=>$ids,'status'=>$to]);
+     $notice=$count.' order'.($count===1?'':'s').' moved to '.str_replace('_',' ',$to).'.';
+   }
+ }catch(Throwable $e){$error=$e->getMessage();}
 }
 $statusFilter=trim((string)($_GET['status']??''));
-try{$orders=$admin->orders(100,$statusFilter?:null);}catch(Throwable $e){$error=$e->getMessage();$statusFilter='';$orders=$admin->orders();}
+try{$orders=$admin->orders(200,$statusFilter?:null);}catch(Throwable $e){$error=$e->getMessage();$statusFilter='';$orders=$admin->orders();}
 ?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/assets/app.css"><title>Orders · Admin</title></head><body class="admin-body">
-<header class="admin-topbar"><a class="admin-brand" href="/admin.php">Fudge Donuts <span>Admin</span></a><nav><a href="/admin.php">Dashboard</a><a href="/admin-flavors.php">Flavors</a><a href="/admin-packs.php">Packs</a><a class="active" href="/admin-orders.php">Orders</a><a href="/admin-inventory.php">Inventory</a><a href="/admin-shipping.php">Shipping</a><a href="/admin-promotions.php">Promotions</a><a href="/admin-content.php">Content</a><a href="/admin-reports.php">Reports</a><a href="/admin-notifications.php">Email</a><a href="/admin-marketing.php">Marketing</a><a href="/admin-audit.php">Audit</a><a href="/admin-operations.php">Operations</a></nav></header>
-<main class="admin-shell"><div class="admin-page-head"><div><p class="eyebrow">Operations</p><h1>Orders</h1></div><div class="order-filters"><a class="<?=!$statusFilter?'active':''?>" href="/admin-orders.php">All</a><?php foreach(['paid'=>'New','preparing'=>'Preparing','ready'=>'Ready','shipped'=>'Shipped'] as $s=>$label):?><a class="<?=$statusFilter===$s?'active':''?>" href="/admin-orders.php?status=<?=urlencode($s)?>"><?=htmlspecialchars($label)?></a><?php endforeach;?></div></div><?php if($error):?><div class="notice error"><?=htmlspecialchars($error)?></div><?php endif;?>
-<div class="admin-table-wrap"><table><thead><tr><th>Order</th><th>Customer</th><th>Fulfillment</th><th>Total</th><th>Status</th><th>Update</th></tr></thead><tbody>
-<?php foreach($orders as $o):?><tr><td><a href="/admin-order.php?id=<?=(int)$o['id']?>"><strong><?=htmlspecialchars($o['order_number'])?></strong></a><br><small><?=htmlspecialchars($o['created_at'])?></small></td><td><?=htmlspecialchars($o['first_name'].' '.$o['last_name'])?><br><small><?=htmlspecialchars($o['email'])?></small></td><td><?=htmlspecialchars($o['fulfillment_name'])?></td><td><?=money((int)$o['total_cents'])?></td><td><span class="status status-<?=htmlspecialchars($o['status'])?>"><?=htmlspecialchars(str_replace('_',' ',$o['status']))?></span></td><td><form method="post" class="inline-admin"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>"><input type="hidden" name="order_id" value="<?=(int)$o['id']?>"><select name="status"><option value="">Choose…</option><option>preparing</option><option>ready</option><option>shipped</option><option>delivered</option><option>completed</option><option>cancelled</option></select><input name="note" placeholder="Optional note"><button class="button secondary">Update</button></form></td></tr><?php endforeach;?>
-</tbody></table></div></main></body></html>
+<header class="admin-topbar"><a class="admin-brand" href="/admin.php">Fudge Donuts <span>Admin</span></a><nav><a href="/admin.php">Dashboard</a><a href="/admin-flavors.php">Flavors</a><a href="/admin-packs.php">Packs</a><a class="active" href="/admin-orders.php">Orders</a><a href="/admin-support.php">Support</a><a href="/admin-inventory.php">Inventory</a><a href="/admin-shipping.php">Shipping</a><a href="/admin-tax.php">Tax</a><a href="/admin-reports.php">Reports</a><a href="/admin-operations.php">Operations</a></nav></header>
+<main class="admin-shell">
+<div class="admin-page-head"><div><p class="eyebrow">Operations</p><h1>Orders</h1></div><div class="admin-quick-actions"><a class="button secondary" href="/admin-fulfillment.csv.php?type=shipping&status=ready">Export ready shipping CSV</a><a class="button secondary" href="/admin-pickup-sheet.php?status=ready" target="_blank">Print pickup sheet</a></div></div>
+<div class="order-filters"><a class="<?=!$statusFilter?'active':''?>" href="/admin-orders.php">All</a><?php foreach(['paid'=>'New','preparing'=>'Preparing','ready'=>'Ready','shipped'=>'Shipped'] as $s=>$label):?><a class="<?=$statusFilter===$s?'active':''?>" href="/admin-orders.php?status=<?=urlencode($s)?>"><?=htmlspecialchars($label)?></a><?php endforeach;?></div>
+<?php if($error):?><div class="notice error"><?=htmlspecialchars($error)?></div><?php endif;?><?php if($notice):?><div class="notice"><?=htmlspecialchars($notice)?></div><?php endif;?>
+<form method="post" class="batch-orders-form"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>"><input type="hidden" name="action" value="batch">
+<div class="batch-toolbar"><strong>Batch fulfillment</strong><select name="status" required><option value="">Choose action…</option><option value="preparing">Move paid orders → Preparing</option><option value="ready">Move preparing orders → Ready</option></select><button class="button secondary">Apply to selected</button><small>Shipping/tracking changes remain individual.</small></div>
+<div class="admin-table-wrap"><table><thead><tr><th><span class="sr-only">Select</span></th><th>Order</th><th>Customer</th><th>Fulfillment</th><th>Total</th><th>Status</th><th>Documents</th></tr></thead><tbody>
+<?php if(!$orders):?><tr><td colspan="7" class="empty-cell">No orders in this view.</td></tr><?php endif;?>
+<?php foreach($orders as $o):?><tr><td><input type="checkbox" name="order_ids[]" value="<?=(int)$o['id']?>" aria-label="Select <?=htmlspecialchars($o['order_number'])?>"></td><td><a href="/admin-order.php?id=<?=(int)$o['id']?>"><strong><?=htmlspecialchars($o['order_number'])?></strong></a><br><small><?=htmlspecialchars($o['created_at'])?></small></td><td><?=htmlspecialchars($o['first_name'].' '.$o['last_name'])?><br><small><?=htmlspecialchars($o['email'])?></small></td><td><?=htmlspecialchars($o['fulfillment_name'])?><br><small><?=htmlspecialchars(ucfirst($o['fulfillment_type']))?></small></td><td><?=money((int)$o['total_cents'])?></td><td><span class="status status-<?=htmlspecialchars($o['status'])?>"><?=htmlspecialchars(str_replace('_',' ',$o['status']))?></span></td><td><a href="/admin-packing-slip.php?id=<?=(int)$o['id']?>" target="_blank">Packing slip</a></td></tr><?php endforeach;?>
+</tbody></table></div></form>
+</main></body></html>
