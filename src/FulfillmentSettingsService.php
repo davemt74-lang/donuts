@@ -40,13 +40,18 @@ final class FulfillmentSettingsService
             $etaMin,$etaMax,mb_substr(trim((string)($data['checkout_message']??'')),0,1000),
             !empty($data['active'])?1:0,(int)($data['sort_order']??0)
         ];
-        if($id>0){
-            $s=$this->db->prepare('UPDATE shipping_methods SET code=?,name=?,type=?,price_cents=?,free_over_cents=?,description=?,eta_min_days=?,eta_max_days=?,checkout_message=?,active=?,sort_order=? WHERE id=?');
-            $s->execute([...$values,$id]);if($s->rowCount()===0 && !$this->method($id)) throw new \InvalidArgumentException('Fulfillment method not found.');
-            return $id;
+        try{
+            if($id>0){
+                $s=$this->db->prepare('UPDATE shipping_methods SET code=?,name=?,type=?,price_cents=?,free_over_cents=?,description=?,eta_min_days=?,eta_max_days=?,checkout_message=?,active=?,sort_order=? WHERE id=?');
+                $s->execute([...$values,$id]);if($s->rowCount()===0 && !$this->method($id)) throw new \InvalidArgumentException('Fulfillment method not found.');
+                return $id;
+            }
+            $s=$this->db->prepare('INSERT INTO shipping_methods(code,name,type,price_cents,free_over_cents,description,eta_min_days,eta_max_days,checkout_message,active,sort_order) VALUES(?,?,?,?,?,?,?,?,?,?,?)');
+            $s->execute($values);return (int)$this->db->lastInsertId();
+        }catch(\PDOException $e){
+            if(str_contains(strtolower($e->getMessage()),'unique')) throw new \InvalidArgumentException('A fulfillment method with that code already exists.');
+            throw $e;
         }
-        $s=$this->db->prepare('INSERT INTO shipping_methods(code,name,type,price_cents,free_over_cents,description,eta_min_days,eta_max_days,checkout_message,active,sort_order) VALUES(?,?,?,?,?,?,?,?,?,?,?)');
-        $s->execute($values);return (int)$this->db->lastInsertId();
     }
 
     public function setPickupZip(string $postalCode,bool $active): void
