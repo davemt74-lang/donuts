@@ -43,6 +43,8 @@ final class PreflightService
             $checks[]=$this->check('stripe_secret',str_starts_with((string)\env('STRIPE_SECRET_KEY',''),'sk_'),'Stripe secret key required');
             $checks[]=$this->check('stripe_webhook',str_starts_with((string)\env('STRIPE_WEBHOOK_SECRET',''),'whsec_'),'Stripe webhook secret required');
             $checks[]=$this->check('app_url',str_starts_with((string)\env('APP_URL',''),'https://'),'Production APP_URL must use HTTPS');
+            $trustProxy=(string)\env('TRUST_PROXY_HEADERS','0');
+            $checks[]=$this->check('trust_proxy_headers',in_array($trustProxy,['0','1'],true),'TRUST_PROXY_HEADERS must be 0 or 1');
             $adminIdle=(int)\env('ADMIN_SESSION_IDLE_MINUTES','30');$adminMax=(int)\env('ADMIN_SESSION_MAX_HOURS','12');
             $userIdle=(int)\env('USER_SESSION_IDLE_MINUTES','120');$userMax=(int)\env('USER_SESSION_MAX_HOURS','168');
             $checks[]=$this->check('admin_session_idle',$adminIdle>=5 && $adminIdle<=240,'ADMIN_SESSION_IDLE_MINUTES must be between 5 and 240');

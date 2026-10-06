@@ -31,7 +31,18 @@ final class SecurityService
 
     public static function isHttps(): bool
     {
-        return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS']!=='off') || strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO']??''))==='https';
+        if(!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS']!=='off') return true;
+        if((\env('TRUST_PROXY_HEADERS','0')??'0')==='1'){
+            return strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO']??''))==='https';
+        }
+        return false;
+    }
+
+    public static function validateCustomerPassword(string $password): void
+    {
+        $length=strlen($password);
+        if($length<12) throw new \InvalidArgumentException('Password must be at least 12 characters.');
+        if($length>128) throw new \InvalidArgumentException('Password must be 128 characters or fewer.');
     }
 
     public static function initializeAuthSession(array &$session,string $prefix): void

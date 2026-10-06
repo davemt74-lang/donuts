@@ -35,9 +35,15 @@ if($environment==='production'){
 
 ini_set('session.use_strict_mode','1');
 ini_set('session.use_only_cookies','1');
+ini_set('session.use_trans_sid','0');
 ini_set('session.cookie_httponly','1');
+ini_set('session.sid_length','48');
+ini_set('session.sid_bits_per_character','6');
 
-$httpsDetected=(!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS']!=='off') || strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO']??''))==='https';
+$httpsDetected=(!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS']!=='off');
+if(!$httpsDetected && (env('TRUST_PROXY_HEADERS','0')??'0')==='1'){
+    $httpsDetected=strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO']??''))==='https';
+}
 $secure=$environment==='production' || $httpsDetected;
 session_name('fudge_donuts_session');
 session_set_cookie_params([
