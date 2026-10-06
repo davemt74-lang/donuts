@@ -36,6 +36,7 @@ final class CustomerPrivacyService
             'tags'=>$this->safeRows('SELECT tag,created_at FROM customer_tags WHERE customer_email_hash=? ORDER BY tag',[$emailHash]),
             'notes'=>$this->safeRows('SELECT note,created_at FROM customer_admin_notes WHERE customer_email_hash=? ORDER BY id',[$emailHash]),
         ];
+        $checkoutRecovery=$this->safeRows('SELECT id,email,status,reminder_sent_at,recovered_at,linked_order_id,converted_order_id,expires_at,created_at,updated_at FROM checkout_recoveries WHERE user_id=? OR lower(email)=? ORDER BY id',[$userId,strtolower((string)$user['email'])]);
         $marketing=$this->safeRow('SELECT id,email,status,created_at,updated_at FROM newsletter_subscribers WHERE lower(email)=?',[strtolower((string)$user['email'])]);
         if($marketing){
             $marketing['consent_events']=$this->safeRows('SELECT action,source,created_at FROM newsletter_consent_events WHERE subscriber_id=? ORDER BY id',[(int)$marketing['id']]);
@@ -56,6 +57,7 @@ final class CustomerPrivacyService
             'saved_boxes'=>$savedBoxes,
             'orders'=>$orders,
             'crm'=>$crm,
+            'checkout_recovery'=>$checkoutRecovery,
             'marketing'=>$marketing,
         ];
         $this->record($userId,(string)$user['email'],'data_export',['orders'=>count($orders),'addresses'=>count($addresses)]);
@@ -93,6 +95,7 @@ final class CustomerPrivacyService
             $this->safeExecute('DELETE FROM password_reset_tokens WHERE user_id=?',[$userId]);
             $this->safeExecute('DELETE FROM saved_boxes WHERE user_id=?',[$userId]);
             try{(new CustomerCrmService($this->db))->purgeInternalData($email);}catch(\Throwable){}
+            $this->safeExecute('DELETE FROM checkout_recoveries WHERE user_id=? OR lower(email)=?',[$userId,$email]);
             $s=$this->db->prepare('DELETE FROM addresses WHERE user_id=?');$s->execute([$userId]);
             $s=$this->db->prepare('DELETE FROM users WHERE id=?');$s->execute([$userId]);
             if($s->rowCount()!==1) throw new \RuntimeException('Account changed before closure completed.');
