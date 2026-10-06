@@ -15,3 +15,5 @@
 .newsletter{text-align:center}.newsletter-form{display:flex;gap:10px;justify-content:center;max-width:560px;margin:20px auto}.newsletter-form input{flex:1}.lead{font-size:1.2rem}
 
 .gift-options{display:grid;gap:12px;padding:16px;border:1px solid #e2d7ce;border-radius:16px;background:var(--cream)}
+
+.preset-card img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:16px;margin-bottom:18px}.subsection-title{margin-top:64px}
