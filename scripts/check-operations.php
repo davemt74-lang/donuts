@@ -2,9 +2,9 @@
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
 
-use FudgeDonuts\{Database,NotificationService,ObservabilityService};
+use FudgeDonuts\{Database,JobMonitorService,NotificationService,ObservabilityService};
 
-$db=Database::connection();$obs=new ObservabilityService($db);$health=$obs->health();
+$db=Database::connection();$monitor=new JobMonitorService($db);$runId=$monitor->start('operations','Operational health and alert checks',(int)env('JOB_OPERATIONS_INTERVAL_MINUTES','5'));$obs=new ObservabilityService($db);$health=$obs->health();
 $alertEmail=trim((string)env('ALERT_EMAIL',''));
 $severity=$health['status']==='unhealthy'?'critical':($health['status']==='degraded'?'warning':'info');
 
@@ -20,6 +20,7 @@ if($health['status']!=='ok'){
     $obs->resolveSystemType('operations_health');
 }
 
-$pruned=$obs->prune((int)env('OBSERVABILITY_RETENTION_DAYS','90'));
-echo json_encode(['health'=>$health,'pruned'=>$pruned],JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR).PHP_EOL;
+$pruned=$obs->prune((int)env('OBSERVABILITY_RETENTION_DAYS','90'));$abandoned=$monitor->abandonStuckRuns();
+$monitor->succeed($runId,'health='.$health['status'].' pruned='.$pruned.' abandoned='.$abandoned);
+echo json_encode(['health'=>$health,'pruned'=>$pruned,'abandoned_runs'=>$abandoned],JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR).PHP_EOL;
 exit($health['status']==='unhealthy'?2:0);
