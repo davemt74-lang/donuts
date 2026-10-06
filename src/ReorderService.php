@@ -58,6 +58,7 @@ final class ReorderService
         }
 
         $summary=$this->cart->summary($working,$working['coupon']??null);
+        (new InventoryService($this->db))->validateCart($summary);
         $session=$working;
         return [
             'order_number'=>(string)$order['order_number'],
