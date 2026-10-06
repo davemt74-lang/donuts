@@ -11,53 +11,44 @@ final class NotificationService
 
     public function queueOrderConfirmation(array $order): void
     {
-        $subject='Your Fudge Donuts order '.$order['order_number'];
-        $body="Thanks for your order, {$order['first_name']}.\n\nOrder: {$order['order_number']}\nTotal: ".\money((int)$order['total_cents'])."\nFulfillment: {$order['fulfillment_name']}\n\nWe’ll let you know when it moves to the next step.";
-        $this->queue((string)$order['email'],$subject,$body,'order-confirmation:'.$order['id']);
+        [$subject,$body,$html]=(new EmailTemplateService())->orderConfirmation($order);
+        $this->queue((string)$order['email'],$subject,$body,'order-confirmation:'.$order['id'],$html);
     }
 
     public function queueStatusUpdate(array $order,string $status): void
     {
-        $label=ucwords(str_replace('_',' ',$status));
-        $subject='Order '.$order['order_number'].': '.$label;
-        $body="Your Fudge Donuts order {$order['order_number']} is now {$label}.";
-        $this->queue((string)$order['email'],$subject,$body,'order-status:'.$order['id'].':'.$status);
+        [$subject,$body,$html]=(new EmailTemplateService())->statusUpdate($order,$status);
+        $this->queue((string)$order['email'],$subject,$body,'order-status:'.$order['id'].':'.$status,$html);
     }
 
     public function queueFulfillmentUpdate(array $order,array $details): void
     {
-        $status=ucwords(str_replace('_',' ',(string)$order['status']));
-        $subject='Order '.$order['order_number'].': '.$status;
-        $parts=["Your Fudge Donuts order {$order['order_number']} is now {$status}."];
-        if(!empty($details['carrier']) || !empty($details['tracking_number'])){
-            $parts[]='Carrier: '.trim((string)$details['carrier']);
-            $parts[]='Tracking: '.trim((string)$details['tracking_number']);
-        }
-        if(!empty($details['tracking_url'])) $parts[]='Track your order: '.$details['tracking_url'];
-        if(!empty($details['pickup_instructions'])) $parts[]='Pickup instructions: '.$details['pickup_instructions'];
-        if(!empty($details['pickup_ready_at'])) $parts[]='Pickup ready: '.$details['pickup_ready_at'];
-        $this->queue((string)$order['email'],$subject,implode("\n\n",$parts),'fulfillment:'.$order['id'].':'.$order['status'].':'.hash('sha256',json_encode($details)));
+        [$subject,$body,$html]=(new EmailTemplateService())->fulfillmentUpdate($order,$details);
+        $this->queue((string)$order['email'],$subject,$body,'fulfillment:'.$order['id'].':'.$order['status'].':'.hash('sha256',json_encode($details)),$html);
     }
 
     public function queuePasswordReset(string $email,string $firstName,string $url,string $expiresAt): void
     {
-        $subject='Reset your Fudge Donuts password';
-        $name=trim($firstName)!==''?$firstName:'there';
-        $body="Hi {$name},\n\nUse this secure link to reset your Fudge Donuts password:\n{$url}\n\nThis link expires at {$expiresAt} UTC. If you did not request a reset, you can ignore this email.";
-        $this->queue($email,$subject,$body,'password-reset:'.hash('sha256',$url));
+        [$subject,$body,$html]=(new EmailTemplateService())->passwordReset($firstName,$url,$expiresAt);
+        $this->queue($email,$subject,$body,'password-reset:'.hash('sha256',$url),$html);
     }
 
-    public function queue(string $recipient,string $subject,string $body,string $idempotencyKey): void
+    public function queue(string $recipient,string $subject,string $body,string $idempotencyKey,string $htmlBody=''): void
     {
         if(!filter_var($recipient,FILTER_VALIDATE_EMAIL)) throw new \InvalidArgumentException('Invalid notification recipient.');
         $s=$this->db->prepare('INSERT OR IGNORE INTO notification_outbox(recipient,subject,body,idempotency_key) VALUES(?,?,?,?)');
         $s->execute([$recipient,$subject,$body,$idempotencyKey]);
+        $q=$this->db->prepare('SELECT id FROM notification_outbox WHERE idempotency_key=?');$q->execute([$idempotencyKey]);$id=$q->fetchColumn();
+        if($id!==false && $htmlBody!==''){
+            $h=$this->db->prepare('INSERT INTO notification_email_content(outbox_id,html_body) VALUES(?,?) ON CONFLICT(outbox_id) DO UPDATE SET html_body=excluded.html_body');
+            $h->execute([(int)$id,$htmlBody]);
+        }
     }
 
     public function pending(int $limit=25): array
     {
         $limit=max(1,min(100,$limit));
-        return $this->db->query("SELECT * FROM notification_outbox WHERE status='pending' AND (next_attempt_at IS NULL OR next_attempt_at<=CURRENT_TIMESTAMP) ORDER BY id LIMIT {$limit}")->fetchAll();
+        return $this->db->query("SELECT o.*,COALESCE(c.html_body,'') html_body FROM notification_outbox o LEFT JOIN notification_email_content c ON c.outbox_id=o.id WHERE o.status='pending' AND (o.next_attempt_at IS NULL OR o.next_attempt_at<=CURRENT_TIMESTAMP) ORDER BY o.id LIMIT {$limit}")->fetchAll();
     }
 
     public function markSent(int $id): void
