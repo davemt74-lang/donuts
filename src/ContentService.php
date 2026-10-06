@@ -27,11 +27,12 @@ final class ContentService
         return $this->db->query('SELECT * FROM site_content ORDER BY content_key')->fetchAll();
     }
 
-    public function subscribe(string $email): void
+    public function subscribe(string $email,bool $explicitConsent=false,string $source='legacy'): void
     {
-        $email=strtolower(trim($email));
-        if(!filter_var($email,FILTER_VALIDATE_EMAIL))throw new \InvalidArgumentException('Enter a valid email address.');
-        $s=$this->db->prepare("INSERT INTO newsletter_subscribers(email,status) VALUES(?,'subscribed') ON CONFLICT(email) DO UPDATE SET status='subscribed',updated_at=CURRENT_TIMESTAMP");
-        $s->execute([$email]);
+        (new MarketingConsentService(
+            $this->db,
+            (string)\env('APP_KEY',''),
+            (string)\env('APP_URL','http://127.0.0.1:8080')
+        ))->subscribe($email,$source,$explicitConsent);
     }
 }
