@@ -3,7 +3,7 @@ declare(strict_types=1);
 $root=dirname(__DIR__);putenv('DB_DSN=sqlite::memory:');require $root.'/src/bootstrap.php';
 use FudgeDonuts\{AuthService,CartService,CatalogRepository,CustomerAccountService,Database,DiscountService,PackBuilderService,PasswordResetService,PresetPackService};
 $db=Database::connection();foreach(['001_catalog.sql','002_discounts.sql','003_accounts.sql','006_orders.sql','015_customer_account.sql'] as $f)$db->exec((string)file_get_contents($root.'/database/'.$f));
-$auth=new AuthService($db);$uid=$auth->register('customer@example.com','Password123','Test','Customer');
+$auth=new AuthService($db);$uid=$auth->register('customer@example.com','Password1234','Test','Customer');
 $reset=new PasswordResetService($db);$token=$reset->create('customer@example.com',3600);assert($token!==null);$rid=$reset->consume($token['token'],'NewPassword456','NewPassword456');assert($rid===$uid);assert($auth->login('customer@example.com','NewPassword456')!==null);
 $again=false;try{$reset->consume($token['token'],'Another12345','Another12345');}catch(InvalidArgumentException){$again=true;}assert($again);
 $catalog=new CatalogRepository($db);$ids=array_column($catalog->flavors(false),'id','slug');$cart=new CartService(new PackBuilderService($catalog),new DiscountService($db),new PresetPackService($catalog));$session=[];$cart->addCustomBox($session,3,[$ids['smores']=>3],1);$summary=$cart->summary($session);
