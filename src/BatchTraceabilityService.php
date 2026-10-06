@@ -28,7 +28,11 @@ final class BatchTraceabilityService
         try{
             $s=$this->db->prepare("INSERT INTO production_batches(batch_code,flavor_id,produced_at,best_by_date,quantity_produced,quantity_remaining,status,notes,created_by) VALUES(?,?,?,?,?,?,'active',?,?)");
             $s->execute([$code,$flavorId,$produced,$bestBy,$qty,$qty,$notes,$adminId]);
-            return (int)$this->db->lastInsertId();
+            $id=(int)$this->db->lastInsertId();
+            try{(new RecipeService($this->db))->snapshotBatch($id);}catch(\PDOException $e){
+                if(!str_contains(strtolower($e->getMessage()),'flavor_recipes') && !str_contains(strtolower($e->getMessage()),'batch_recipe_requirements')) throw $e;
+            }
+            return $id;
         }catch(\PDOException $e){
             if(str_contains(strtolower($e->getMessage()),'unique')) throw new \InvalidArgumentException('Batch code already exists.');
             throw $e;
