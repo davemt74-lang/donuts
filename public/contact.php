@@ -26,7 +26,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
         }
     }catch(Throwable $e){$error=$e->getMessage();}
 }
-?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Contact Support · Fudge Donuts</title><link rel="stylesheet" href="/assets/app.css"></head><body>
+?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Contact Support · Fudge Donuts</title><link rel="stylesheet" href="<?=htmlspecialchars(asset_url('/assets/app.css'))?>"></head><body>
 <a class="skip-link" href="#main-content">Skip to main content</a>
 <header class="nav"><a class="brand" href="/">Fudge Donuts</a><nav><a href="/faq.php">FAQ</a><a href="/account.php">Account</a><a href="/cart.php">Cart</a></nav></header>
 <main id="main-content" tabindex="-1" class="section narrow"><p class="eyebrow">Customer support</p><h1>How can we help?</h1>

@@ -132,3 +132,11 @@ Fulfillment operators can print per-order packing slips, print the ready local-p
 
 ## Accessibility
 The launch-critical storefront flow includes skip navigation, visible keyboard focus, labeled form controls, assistive live regions for the pack builder, 44px interactive targets, and reduced-motion support. Keep these semantics intact when changing templates or shared CSS; Section 50 CI checks the critical regressions.
+
+
+## Frontend performance
+The application explicitly marks session-backed and mutating routes as `private, no-store`. Read-only catalog/content routes such as flavor, story, FAQ, policy and sitemap responses use a short public cache window.
+
+Shared CSS and JavaScript URLs are versioned from the deployed file modification time so browsers can safely retain cached assets across requests while receiving a new URL after a deployment.
+
+At the web-server or CDN layer, enable gzip/Brotli compression for HTML/CSS/JS/JSON and set static image caching independently from dynamic PHP responses. Do not override application `private, no-store` headers on cart, checkout, account, admin, payment, support or other session-backed routes.

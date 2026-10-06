@@ -33,8 +33,17 @@ if($environment==='production'){
     ini_set('log_errors','1');
 }
 
+spl_autoload_register(static function (string $class): void {
+    $prefix='FudgeDonuts\\';
+    if(!str_starts_with($class,$prefix)) return;
+    $relative=substr($class,strlen($prefix));
+    $path=__DIR__.'/'.str_replace('\\','/',$relative).'.php';
+    if(is_file($path)) require $path;
+});
+
 ini_set('session.use_strict_mode','1');
 ini_set('session.use_only_cookies','1');
+ini_set('session.cache_limiter','');
 ini_set('session.use_trans_sid','0');
 ini_set('session.cookie_httponly','1');
 ini_set('session.sid_length','48');
@@ -53,15 +62,15 @@ session_set_cookie_params([
     'httponly'=>true,
     'samesite'=>'Lax',
 ]);
-session_start();
-
-spl_autoload_register(static function (string $class): void {
-    $prefix='FudgeDonuts\\';
-    if(!str_starts_with($class,$prefix)) return;
-    $relative=substr($class,strlen($prefix));
-    $path=__DIR__.'/'.str_replace('\\','/',$relative).'.php';
-    if(is_file($path)) require $path;
-});
+$requestMethod=(string)($_SERVER['REQUEST_METHOD']??'GET');
+$requestUri=(string)($_SERVER['REQUEST_URI']??'/');
+$hasSessionCookie=isset($_COOKIE[session_name()]);
+$skipSession=PHP_SAPI!=='cli' && \FudgeDonuts\PerformanceService::canSkipSession($requestMethod,$requestUri,$hasSessionCookie);
+if($skipSession){
+    $_SESSION=[];
+}else{
+    session_start();
+}
 
 \FudgeDonuts\SecurityService::applyHeaders();
 
@@ -83,10 +92,23 @@ if(!\FudgeDonuts\SecurityService::touchAuthSession(
     $sessionExpired=true;
 }
 if($sessionExpired) session_regenerate_id(true);
-if(!empty($_SESSION['admin_id']) || !empty($_SESSION['user_id'])) \FudgeDonuts\SecurityService::applyPrivateCacheHeaders();
+$authenticated=!empty($_SESSION['admin_id']) || !empty($_SESSION['user_id']);
+if(PHP_SAPI!=='cli'){
+    \FudgeDonuts\PerformanceService::apply(
+        $requestMethod,
+        $requestUri,
+        $authenticated
+    );
+}
+if($authenticated) \FudgeDonuts\SecurityService::applyPrivateCacheHeaders();
 
 if((env('OBSERVABILITY_ENABLED','1')??'1')!=='0'){
     \FudgeDonuts\ObservabilityService::installRuntimeHandlers(dirname(__DIR__));
+}
+
+function asset_url(string $path): string
+{
+    return \FudgeDonuts\PerformanceService::assetUrl($path,dirname(__DIR__));
 }
 
 function csrf_token(): string
