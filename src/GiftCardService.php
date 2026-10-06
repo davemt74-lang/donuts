@@ -52,6 +52,12 @@ final class GiftCardService
         $s=$this->db->prepare("UPDATE gift_card_purchases SET status='failed',updated_at=CURRENT_TIMESTAMP WHERE stripe_session_id=? AND status='pending'");$s->execute([$sessionId]);
     }
 
+    public function failPurchase(int $purchaseId): void
+    {
+        $s=$this->db->prepare("UPDATE gift_card_purchases SET status='failed',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='pending'");
+        $s->execute([$purchaseId]);
+    }
+
     public function activatePurchase(int $purchaseId,string $sessionId,int $paidCents,string $currency): array
     {
         if(strtolower($currency)!=='usd') throw new \RuntimeException('Gift card currency mismatch.');
@@ -184,6 +190,31 @@ final class GiftCardService
     {
         $limit=max(1,min(500,$limit));
         return $this->db->query("SELECT id,code_last4,initial_balance_cents,balance_cents,reserved_cents,status,recipient_email,created_at FROM gift_cards ORDER BY id DESC LIMIT {$limit}")->fetchAll();
+    }
+
+    public function ledger(int $giftCardId,int $limit=100): array
+    {
+        $limit=max(1,min(500,$limit));
+        $s=$this->db->prepare("SELECT * FROM gift_card_ledger WHERE gift_card_id=? ORDER BY id DESC LIMIT {$limit}");
+        $s->execute([$giftCardId]);return $s->fetchAll();
+    }
+
+    public function setStatus(int $giftCardId,string $status): void
+    {
+        if(!in_array($status,['active','disabled'],true)) throw new \InvalidArgumentException('Invalid gift card status.');
+        $card=$this->card($giftCardId);
+        if($status==='active' && (int)$card['balance_cents']<=0) throw new \InvalidArgumentException('A zero-balance gift card cannot be reactivated.');
+        $s=$this->db->prepare("UPDATE gift_cards SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?");
+        $s->execute([$status,$giftCardId]);
+    }
+
+    public function purchaseStats(): array
+    {
+        $out=['pending'=>0,'paid'=>0,'failed'=>0];
+        foreach($this->db->query("SELECT status,COUNT(*) count FROM gift_card_purchases GROUP BY status")->fetchAll() as $row){
+            $out[(string)$row['status']]=(int)$row['count'];
+        }
+        return $out;
     }
 
     public function decryptedCode(int $cardId): string
