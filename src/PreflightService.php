@@ -33,7 +33,7 @@ final class PreflightService
                     $checks[]=$this->check('sqlite_wal',$journal==='wal','File-backed SQLite must use WAL journal mode');
                 }
             }
-            $required=['pack_sizes','flavors','users','orders','notification_outbox','notification_email_content','auth_rate_limits','admin_users','password_reset_tokens','saved_boxes','order_payment_details','refund_records','cancellation_requests','order_fulfillment_details','order_consents','order_payment_reconciliation','inventory_reservation_leases','newsletter_consent_events','admin_audit_log','customer_privacy_events','operational_events','scheduled_jobs','scheduled_job_runs','schema_migrations','shipping_methods','pickup_zip_codes','fulfillment_settings','tax_settings','order_tax_details','support_tickets','support_messages','analytics_visitors','analytics_events','order_attribution','order_cost_snapshots','product_reviews','gift_card_purchases','gift_cards','gift_card_ledger','order_gift_card_applications'];
+            $required=['pack_sizes','flavors','users','orders','notification_outbox','notification_email_content','auth_rate_limits','admin_users','password_reset_tokens','saved_boxes','order_payment_details','refund_records','cancellation_requests','order_fulfillment_details','order_consents','order_payment_reconciliation','inventory_reservation_leases','newsletter_consent_events','admin_audit_log','customer_privacy_events','operational_events','scheduled_jobs','scheduled_job_runs','schema_migrations','shipping_methods','pickup_zip_codes','fulfillment_settings','tax_settings','order_tax_details','support_tickets','support_messages','analytics_visitors','analytics_events','order_attribution','order_cost_snapshots','product_reviews','gift_card_purchases','gift_cards','gift_card_ledger','order_gift_card_applications','loyalty_settings','loyalty_accounts','order_loyalty_redemptions','loyalty_ledger'];
             foreach($required as $table){
                 $checks[]=$this->check('table_'.$table,$this->tableExists($db,$table),'Required table '.$table);
             }
@@ -100,6 +100,14 @@ final class PreflightService
             $checks[]=$this->check('analytics_enabled',in_array($analyticsEnabled,['0','1'],true),'ANALYTICS_ENABLED must be 0 or 1');
             $analyticsDays=(int)\env('ANALYTICS_RETENTION_DAYS','180');
             $checks[]=$this->check('analytics_retention_days',$analyticsDays>=30 && $analyticsDays<=730,'ANALYTICS_RETENTION_DAYS must be between 30 and 730');
+            try{
+                $loyalty=(new LoyaltyService($db))->settings();
+                $checks[]=$this->check('loyalty_points_per_dollar',(int)$loyalty['points_per_dollar']>=0 && (int)$loyalty['points_per_dollar']<=100,'Rewards points per dollar must be between 0 and 100');
+                $checks[]=$this->check('loyalty_cents_per_point',(int)$loyalty['cents_per_point']>=1 && (int)$loyalty['cents_per_point']<=100,'Rewards cents per point must be between 1 and 100');
+                $checks[]=$this->check('loyalty_redeem_percent',(int)$loyalty['maximum_redeem_percent']>=1 && (int)$loyalty['maximum_redeem_percent']<=100,'Rewards redemption percent must be between 1 and 100');
+            }catch(\Throwable $e){
+                $checks[]=$this->check('loyalty_settings',false,'Rewards settings: '.$e->getMessage());
+            }
             $giftAmounts=array_values(array_filter(array_map('intval',explode(',',(string)\env('GIFT_CARD_AMOUNTS_CENTS','2500,5000,10000'))),fn($v)=>$v>=500&&$v<=100000));
             $checks[]=$this->check('gift_card_amounts',count($giftAmounts)>0,'GIFT_CARD_AMOUNTS_CENTS must include at least one denomination between 500 and 100000 cents');
             $supportEmail=trim((string)\env('SUPPORT_EMAIL',''));
