@@ -118,3 +118,7 @@ Leave `TRUST_PROXY_HEADERS=0` unless TLS is terminated by a trusted reverse prox
 Configure Stripe tax behavior in **Admin → Tax**. The store currently certifies exclusive tax only, so Stripe tax is added after the server-calculated pre-tax order total and then reconciled against the Stripe Checkout result.
 
 If Stripe Automatic Tax is enabled, configure the required business tax registrations in Stripe separately. Optionally set a Stripe product tax code such as `txcd_99999999`; leaving it blank uses Stripe's configured default tax treatment.
+
+
+## Customer support
+Set `SUPPORT_EMAIL` to the internal mailbox that should receive new-ticket alerts. Customers submit requests at `/contact.php`; administrators manage the queue at **Admin → Support**. Order-linked tickets verify ownership for signed-in customers and verify the order email for guests.

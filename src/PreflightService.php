@@ -23,7 +23,7 @@ final class PreflightService
             $db=Database::connection();
             $db->query('SELECT 1');
             $checks[]=$this->check('database',true,'Database connection');
-            $required=['pack_sizes','flavors','users','orders','notification_outbox','notification_email_content','auth_rate_limits','admin_users','password_reset_tokens','saved_boxes','order_payment_details','refund_records','cancellation_requests','order_fulfillment_details','order_consents','order_payment_reconciliation','inventory_reservation_leases','newsletter_consent_events','admin_audit_log','customer_privacy_events','operational_events','scheduled_jobs','scheduled_job_runs','schema_migrations','shipping_methods','pickup_zip_codes','fulfillment_settings','tax_settings','order_tax_details'];
+            $required=['pack_sizes','flavors','users','orders','notification_outbox','notification_email_content','auth_rate_limits','admin_users','password_reset_tokens','saved_boxes','order_payment_details','refund_records','cancellation_requests','order_fulfillment_details','order_consents','order_payment_reconciliation','inventory_reservation_leases','newsletter_consent_events','admin_audit_log','customer_privacy_events','operational_events','scheduled_jobs','scheduled_job_runs','schema_migrations','shipping_methods','pickup_zip_codes','fulfillment_settings','tax_settings','order_tax_details','support_tickets','support_messages'];
             foreach($required as $table){
                 $checks[]=$this->check('table_'.$table,$this->tableExists($db,$table),'Required table '.$table);
             }
@@ -82,6 +82,8 @@ final class PreflightService
             }catch(\Throwable $e){
                 $checks[]=$this->check('tax_settings',false,'Tax settings: '.$e->getMessage());
             }
+            $supportEmail=trim((string)\env('SUPPORT_EMAIL',''));
+            $checks[]=$this->check('support_email',$supportEmail===''||filter_var($supportEmail,FILTER_VALIDATE_EMAIL)!==false,'SUPPORT_EMAIL must be blank or a valid email address');
             $transport=strtolower((string)\env('MAIL_TRANSPORT','log'));
             $checks[]=$this->check('mail_transport',in_array($transport,['smtp','mail'],true),'Production MAIL_TRANSPORT must be smtp or mail');
             $checks[]=$this->check('mail_from',filter_var((string)\env('MAIL_FROM',''),FILTER_VALIDATE_EMAIL)!==false,'MAIL_FROM must be a valid email address');
