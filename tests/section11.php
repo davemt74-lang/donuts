@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);$root=dirname(__DIR__);putenv('DB_DSN=sqlite::memory:');require $root.'/src/bootstrap.php';
 use FudgeDonuts\{Database,InventoryService,OrderService};
-$db=Database::connection();foreach(['001_catalog.sql','006_orders.sql','007_inventory.sql'] as $f)$db->exec((string)file_get_contents($root.'/database/'.$f));
+$db=Database::connection();foreach(['001_catalog.sql','006_orders.sql','007_inventory.sql','021_inventory_reservation_leases.sql'] as $f)$db->exec((string)file_get_contents($root.'/database/'.$f));
 $flavors=$db->query('SELECT id,slug FROM flavors')->fetchAll();$ids=array_column($flavors,'id','slug');
 $svc=new InventoryService($db);$svc->setInventory((int)$ids['smores'],true,10,2);
 $cart=['items'=>[['quantity'=>2,'line_total_cents'=>2598,'box'=>['type'=>'custom','size'=>3,'total_cents'=>1299,'items'=>[['flavor_id'=>(int)$ids['smores'],'quantity'=>3]]]]],'subtotal_cents'=>2598,'discount_cents'=>0,'total_cents'=>2598];
