@@ -6,7 +6,7 @@ use FudgeDonuts\{AnalyticsService,CostAccountingService,Database,InventoryServic
 
 $db=Database::connection();
 $monitor=new JobMonitorService($db);$runId=$monitor->start('reservations','Abandoned checkout reservation recovery',(int)env('JOB_RESERVATIONS_INTERVAL_MINUTES','5'));
-$inventory=new InventoryService($db);
+$inventory=new InventoryService($db);$giftCards=new GiftCardService($db,(string)env('APP_KEY',''));
 $orders=new OrderService($db);
 $payments=new PaymentRepository($db);
 $stripe=new StripeService((string)env('STRIPE_SECRET_KEY',''),(string)env('STRIPE_WEBHOOK_SECRET',''));
@@ -24,7 +24,7 @@ foreach($inventory->expiredLeases(200) as $lease){
             $inventory->holdForReview($orderId);$held++;continue;
         }
         if(in_array($status,['cancelled','refunded','payment_failed'],true)){
-            $inventory->releaseOrder($orderId);$released++;continue;
+            $inventory->releaseOrder($orderId);$giftCards->releaseForOrder($orderId);$released++;continue;
         }
         if($status!=='pending_payment'){
             fwrite(STDERR,"[skip] order {$orderId} has status {$status}\n");continue;
@@ -32,7 +32,7 @@ foreach($inventory->expiredLeases(200) as $lease){
 
         if($sessionId===''){
             $orders->markPaymentInitializationFailed($orderId,'Inventory reservation expired before Stripe Checkout was attached.');
-            $inventory->releaseOrder($orderId);$released++;continue;
+            $inventory->releaseOrder($orderId);$giftCards->releaseForOrder($orderId);$released++;continue;
         }
 
         $session=$stripe->retrieveCheckoutSession($sessionId);
