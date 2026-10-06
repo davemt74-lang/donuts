@@ -300,3 +300,9 @@ Receiving a purchase-order line creates the canonical ingredient lot in the supp
 **Admin → Procurement Plan** converts the production forecast into ingredient demand using each flavor's active recipe. It subtracts usable active supplier-lot stock plus draft/ordered PO pipeline quantities, then recommends the lowest-cost active supplier item and respects its minimum order quantity and lead time.
 
 Creating a recommended draft PO recomputes the plan server-side before writing the order, so posted quantities are never trusted. Draft POs count as planned supply to prevent duplicate recommendations until they are cancelled or ordered.
+
+
+## Production scheduling
+Use **Admin → Production Schedule** to turn forecasted prep demand into dated kitchen work orders. Each day has a configurable production-capacity ceiling, with optional date-specific overrides for short shifts, closures, or expanded capacity.
+
+Work orders move **Planned → In Progress → Completed**. Completion atomically creates the canonical production batch and links it back to the work order, preserving recipe/BOM snapshot behavior and downstream traceability. Future work orders cannot be started early, planned work cannot exceed the day's remaining capacity, and overdue open work is surfaced as a release-readiness warning.
