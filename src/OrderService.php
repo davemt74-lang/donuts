@@ -138,6 +138,12 @@ final class OrderService
         }
     }
 
+    public function findByNumber(string $orderNumber): ?array
+    {
+        $s=$this->db->prepare('SELECT id FROM orders WHERE order_number=?');$s->execute([trim($orderNumber)]);
+        $id=$s->fetchColumn();return $id===false?null:$this->find((int)$id);
+    }
+
     public function findByStripeSession(string $sessionId): ?array
     {
         $s=$this->db->prepare('SELECT id FROM orders WHERE stripe_checkout_session_id=?');$s->execute([$sessionId]);
@@ -157,6 +163,7 @@ final class OrderService
         $i=$this->db->prepare('SELECT * FROM order_items WHERE order_id=? ORDER BY id');$i->execute([$id]);$order['items']=$i->fetchAll();
         try{$p=$this->db->prepare('SELECT stripe_payment_intent_id FROM order_payment_details WHERE order_id=?');$p->execute([$id]);$order['stripe_payment_intent_id']=$p->fetchColumn()?:null;}catch(\Throwable){$order['stripe_payment_intent_id']=null;}
         try{$r=$this->db->prepare('SELECT * FROM order_payment_reconciliation WHERE order_id=?');$r->execute([$id]);$order['payment_reconciliation']=$r->fetch()?:null;}catch(\Throwable){$order['payment_reconciliation']=null;}
+        try{$f=$this->db->prepare('SELECT * FROM order_fulfillment_details WHERE order_id=?');$f->execute([$id]);$order['fulfillment_details']=$f->fetch()?:null;}catch(\Throwable){$order['fulfillment_details']=null;}
         return $order;
     }
 

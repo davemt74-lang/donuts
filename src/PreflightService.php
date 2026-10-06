@@ -45,6 +45,8 @@ final class PreflightService
             $checks[]=$this->check('app_url',str_starts_with((string)\env('APP_URL',''),'https://'),'Production APP_URL must use HTTPS');
             $holdMinutes=(int)\env('CHECKOUT_HOLD_MINUTES','30');
             $checks[]=$this->check('checkout_hold_minutes',$holdMinutes>=30 && $holdMinutes<=120,'CHECKOUT_HOLD_MINUTES must be between 30 and 120');
+            $trackingDays=(int)\env('ORDER_TRACKING_LINK_DAYS','90');
+            $checks[]=$this->check('order_tracking_link_days',$trackingDays>=1 && $trackingDays<=365,'ORDER_TRACKING_LINK_DAYS must be between 1 and 365');
             $transport=strtolower((string)\env('MAIL_TRANSPORT','log'));
             $checks[]=$this->check('mail_transport',in_array($transport,['smtp','mail'],true),'Production MAIL_TRANSPORT must be smtp or mail');
             $checks[]=$this->check('mail_from',filter_var((string)\env('MAIL_FROM',''),FILTER_VALIDATE_EMAIL)!==false,'MAIL_FROM must be a valid email address');

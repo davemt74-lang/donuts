@@ -11,19 +11,19 @@ final class NotificationService
 
     public function queueOrderConfirmation(array $order): void
     {
-        [$subject,$body,$html]=(new EmailTemplateService())->orderConfirmation($order);
+        $url=$this->orderUrl($order);[$subject,$body,$html]=(new EmailTemplateService())->orderConfirmation($order,$url);
         $this->queue((string)$order['email'],$subject,$body,'order-confirmation:'.$order['id'],$html);
     }
 
     public function queueStatusUpdate(array $order,string $status): void
     {
-        [$subject,$body,$html]=(new EmailTemplateService())->statusUpdate($order,$status);
+        $url=$this->orderUrl($order);[$subject,$body,$html]=(new EmailTemplateService())->statusUpdate($order,$status,$url);
         $this->queue((string)$order['email'],$subject,$body,'order-status:'.$order['id'].':'.$status,$html);
     }
 
     public function queueFulfillmentUpdate(array $order,array $details): void
     {
-        [$subject,$body,$html]=(new EmailTemplateService())->fulfillmentUpdate($order,$details);
+        $url=$this->orderUrl($order);[$subject,$body,$html]=(new EmailTemplateService())->fulfillmentUpdate($order,$details,$url);
         $this->queue((string)$order['email'],$subject,$body,'fulfillment:'.$order['id'].':'.$order['status'].':'.hash('sha256',json_encode($details)),$html);
     }
 
@@ -31,6 +31,19 @@ final class NotificationService
     {
         [$subject,$body,$html]=(new EmailTemplateService())->passwordReset($firstName,$url,$expiresAt);
         $this->queue($email,$subject,$body,'password-reset:'.hash('sha256',$url),$html);
+    }
+
+    private function orderUrl(array $order): string
+    {
+        try{
+            return (new GuestOrderAccessService(
+                (string)\env('APP_KEY',''),
+                (string)\env('APP_URL','http://127.0.0.1:8080'),
+                (int)\env('ORDER_TRACKING_LINK_DAYS','90')
+            ))->link($order);
+        }catch(\Throwable){
+            return '';
+        }
     }
 
     public function queue(string $recipient,string $subject,string $body,string $idempotencyKey,string $htmlBody=''): void

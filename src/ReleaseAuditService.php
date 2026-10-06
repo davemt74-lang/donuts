@@ -50,7 +50,7 @@ final class ReleaseAuditService
     {
         return [
             'public/index.php','public/cart.php','public/checkout.php','public/pay.php','public/stripe-webhook.php',
-            'public/admin.php','public/setup-admin.php','public/health.php','public/sitemap.php',
+            'public/admin.php','public/setup-admin.php','public/health.php','public/sitemap.php','public/order-status.php',
             'scripts/migrate.php','scripts/preflight.php','scripts/send-notifications.php','scripts/recover-reservations.php','DEPLOYMENT.md',
         ];
     }
