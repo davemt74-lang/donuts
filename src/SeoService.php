@@ -5,7 +5,7 @@ namespace FudgeDonuts;
 
 final class SeoService
 {
-    public function __construct(private readonly CatalogRepository $catalog,private readonly string $baseUrl)
+    public function __construct(private readonly CatalogRepository $catalog,private string $baseUrl)
     {
         $this->baseUrl=rtrim($this->baseUrl,'/');
     }
