@@ -23,7 +23,7 @@ final class PreflightService
             $db=Database::connection();
             $db->query('SELECT 1');
             $checks[]=$this->check('database',true,'Database connection');
-            $required=['pack_sizes','flavors','users','orders','notification_outbox','auth_rate_limits','admin_users','password_reset_tokens','saved_boxes','order_payment_details','refund_records','cancellation_requests'];
+            $required=['pack_sizes','flavors','users','orders','notification_outbox','auth_rate_limits','admin_users','password_reset_tokens','saved_boxes','order_payment_details','refund_records','cancellation_requests','order_fulfillment_details'];
             foreach($required as $table){
                 $checks[]=$this->check('table_'.$table,$this->tableExists($db,$table),'Required table '.$table);
             }
