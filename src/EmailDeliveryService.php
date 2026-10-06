@@ -38,7 +38,7 @@ final class EmailDeliveryService
         $boundary='fd_'.bin2hex(random_bytes(12));
         $body="--{$boundary}\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit\r\n\r\n{$text}\r\n";
         $body.="--{$boundary}\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit\r\n\r\n{$html}\r\n--{$boundary}--\r\n";
-        return ['headers'=>"Content-Type: multipart/alternative; boundary="{$boundary}"",'body'=>$body];
+        return ['headers'=>'Content-Type: multipart/alternative; boundary="'.$boundary.'"','body'=>$body];
     }
 
     private function sendSmtp(string $to,string $subject,array $mime): void
