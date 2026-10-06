@@ -57,6 +57,7 @@ final class HttpResponseService
             header('Content-Type: text/html; charset=UTF-8');
             header('Cache-Control: private, no-store, max-age=0');
             header('Pragma: no-cache');
+            header('X-Robots-Tag: noindex, nofollow, noarchive');
             if($retryAfter!==null && $retryAfter>0) header('Retry-After: '.min($retryAfter,86400));
         }
         echo self::render($status,$title,$message,$actions,$reference,$admin);

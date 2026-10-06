@@ -162,3 +162,9 @@ Unexpected production errors include an operational request reference that can b
 File-backed SQLite runs with WAL journaling, a 5-second busy timeout, NORMAL synchronous mode, an in-memory temp store, and an approximately 20MB page cache. Production preflight verifies the concurrency-critical settings.
 
 The bundled Apache `public/.htaccess` enables compression where `mod_deflate` is available. Versioned CSS/JS/font assets may be cached for one year with `immutable`; storefront images use a seven-day cache window. If a CDN is added, preserve the application cache headers rather than replacing private/no-store responses.
+
+
+## Search visibility
+Public catalog/content pages emit canonical URLs and search-engine-safe metadata. Account, cart, checkout, payment, order-status, admin and internal action routes emit `X-Robots-Tag: noindex, nofollow, noarchive`.
+
+Apache rewrites `/robots.txt` to the dynamic robots policy so the Sitemap directive uses the configured production `APP_URL`. A static `robots.txt` remains as a conservative fallback when rewriting is unavailable. Product structured data must reflect actual sale behavior: individual flavors are described as products available in build-your-own boxes, while purchasable preset boxes include Offer pricing.
