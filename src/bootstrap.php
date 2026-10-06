@@ -35,6 +35,7 @@ if($environment==='production'){
 
 ini_set('session.use_strict_mode','1');
 ini_set('session.use_only_cookies','1');
+ini_set('session.cache_limiter','');
 ini_set('session.use_trans_sid','0');
 ini_set('session.cookie_httponly','1');
 ini_set('session.sid_length','48');
@@ -83,10 +84,23 @@ if(!\FudgeDonuts\SecurityService::touchAuthSession(
     $sessionExpired=true;
 }
 if($sessionExpired) session_regenerate_id(true);
-if(!empty($_SESSION['admin_id']) || !empty($_SESSION['user_id'])) \FudgeDonuts\SecurityService::applyPrivateCacheHeaders();
+$authenticated=!empty($_SESSION['admin_id']) || !empty($_SESSION['user_id']);
+if(PHP_SAPI!=='cli'){
+    \FudgeDonuts\PerformanceService::apply(
+        (string)($_SERVER['REQUEST_METHOD']??'GET'),
+        (string)($_SERVER['REQUEST_URI']??'/'),
+        $authenticated
+    );
+}
+if($authenticated) \FudgeDonuts\SecurityService::applyPrivateCacheHeaders();
 
 if((env('OBSERVABILITY_ENABLED','1')??'1')!=='0'){
     \FudgeDonuts\ObservabilityService::installRuntimeHandlers(dirname(__DIR__));
+}
+
+function asset_url(string $path): string
+{
+    return \FudgeDonuts\PerformanceService::assetUrl($path,dirname(__DIR__));
 }
 
 function csrf_token(): string
