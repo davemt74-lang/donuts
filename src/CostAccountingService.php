@@ -76,7 +76,7 @@ final class CostAccountingService
         $where='1=1';$params=[];
         if($start){$where.=' AND o.created_at>=?';$params[]=$start.' 00:00:00';}
         if($end){$where.=' AND o.created_at<=?';$params[]=$end.' 23:59:59';}
-        $s=$this->db->prepare("SELECT COUNT(*) orders,COALESCE(SUM(c.revenue_basis_cents),0) revenue_basis_cents,COALESCE(SUM(c.total_cost_cents),0) cost_cents,COALESCE(SUM(c.gross_margin_cents),0) margin_cents FROM order_cost_snapshots c JOIN orders o ON o.id=c.order_id WHERE {$where}");
+        $s=$this->db->prepare("SELECT COUNT(*) orders,COALESCE(SUM(c.revenue_basis_cents),0) revenue_basis_cents,COALESCE(SUM(c.total_cost_cents),0) cost_cents,COALESCE(SUM(c.gross_margin_cents),0) margin_cents FROM order_cost_snapshots c JOIN orders o ON o.id=c.order_id WHERE o.status NOT IN ('refunded','cancelled','payment_failed') AND {$where}");
         $s->execute($params);$row=$s->fetch()?:[];$revenue=(int)($row['revenue_basis_cents']??0);$margin=(int)($row['margin_cents']??0);
         return ['orders'=>(int)($row['orders']??0),'revenue_basis_cents'=>$revenue,'cost_cents'=>(int)($row['cost_cents']??0),'margin_cents'=>$margin,'margin_percent'=>$revenue>0?round(($margin/$revenue)*100,2):0.0];
     }
