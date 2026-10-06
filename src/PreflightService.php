@@ -11,7 +11,7 @@ final class PreflightService
     {
         $checks=[];
         $checks[]=$this->check('php_version',version_compare(PHP_VERSION,'8.1.0','>='),'PHP 8.1+ required');
-        foreach(['pdo','curl','mbstring','json'] as $ext){
+        foreach(['pdo','curl','mbstring','json','openssl'] as $ext){
             $checks[]=$this->check('ext_'.$ext,extension_loaded($ext),'PHP extension '.$ext.' required');
         }
 
@@ -33,7 +33,7 @@ final class PreflightService
                     $checks[]=$this->check('sqlite_wal',$journal==='wal','File-backed SQLite must use WAL journal mode');
                 }
             }
-            $required=['pack_sizes','flavors','users','orders','notification_outbox','notification_email_content','auth_rate_limits','admin_users','password_reset_tokens','saved_boxes','order_payment_details','refund_records','cancellation_requests','order_fulfillment_details','order_consents','order_payment_reconciliation','inventory_reservation_leases','newsletter_consent_events','admin_audit_log','customer_privacy_events','operational_events','scheduled_jobs','scheduled_job_runs','schema_migrations','shipping_methods','pickup_zip_codes','fulfillment_settings','tax_settings','order_tax_details','support_tickets','support_messages','analytics_visitors','analytics_events','order_attribution','order_cost_snapshots','product_reviews'];
+            $required=['pack_sizes','flavors','users','orders','notification_outbox','notification_email_content','auth_rate_limits','admin_users','password_reset_tokens','saved_boxes','order_payment_details','refund_records','cancellation_requests','order_fulfillment_details','order_consents','order_payment_reconciliation','inventory_reservation_leases','newsletter_consent_events','admin_audit_log','customer_privacy_events','operational_events','scheduled_jobs','scheduled_job_runs','schema_migrations','shipping_methods','pickup_zip_codes','fulfillment_settings','tax_settings','order_tax_details','support_tickets','support_messages','analytics_visitors','analytics_events','order_attribution','order_cost_snapshots','product_reviews','gift_card_purchases','gift_cards','gift_card_ledger','order_gift_card_applications'];
             foreach($required as $table){
                 $checks[]=$this->check('table_'.$table,$this->tableExists($db,$table),'Required table '.$table);
             }
@@ -100,6 +100,8 @@ final class PreflightService
             $checks[]=$this->check('analytics_enabled',in_array($analyticsEnabled,['0','1'],true),'ANALYTICS_ENABLED must be 0 or 1');
             $analyticsDays=(int)\env('ANALYTICS_RETENTION_DAYS','180');
             $checks[]=$this->check('analytics_retention_days',$analyticsDays>=30 && $analyticsDays<=730,'ANALYTICS_RETENTION_DAYS must be between 30 and 730');
+            $giftAmounts=array_values(array_filter(array_map('intval',explode(',',(string)\env('GIFT_CARD_AMOUNTS_CENTS','2500,5000,10000'))),fn($v)=>$v>=500&&$v<=100000));
+            $checks[]=$this->check('gift_card_amounts',count($giftAmounts)>0,'GIFT_CARD_AMOUNTS_CENTS must include at least one denomination between 500 and 100000 cents');
             $supportEmail=trim((string)\env('SUPPORT_EMAIL',''));
             $checks[]=$this->check('support_email',$supportEmail===''||filter_var($supportEmail,FILTER_VALIDATE_EMAIL)!==false,'SUPPORT_EMAIL must be blank or a valid email address');
             $transport=strtolower((string)\env('MAIL_TRANSPORT','log'));
