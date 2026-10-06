@@ -93,18 +93,27 @@ final class ShipmentService
 
     public function allShipped(int $orderId): bool
     {
-        $remaining=$this->remainingItems($orderId);
-        if(!$remaining) return false;
-        foreach($remaining as $row)if((int)$row['remaining']>0)return false;
-        $s=$this->db->prepare("SELECT COUNT(*) FROM order_shipments WHERE order_id=? AND status IN ('shipped','delivered')");
-        $s->execute([$orderId]);return (int)$s->fetchColumn()>0;
+        return $this->allUnitsAtLeast($orderId,['shipped','delivered']);
     }
 
     public function allDelivered(int $orderId): bool
     {
-        if(!$this->allShipped($orderId))return false;
-        $s=$this->db->prepare("SELECT COUNT(*) FROM order_shipments WHERE order_id=? AND status NOT IN ('delivered','cancelled')");
-        $s->execute([$orderId]);return (int)$s->fetchColumn()===0;
+        return $this->allUnitsAtLeast($orderId,['delivered']);
+    }
+
+    private function allUnitsAtLeast(int $orderId,array $shipmentStatuses): bool
+    {
+        $marks=implode(',',array_fill(0,count($shipmentStatuses),'?'));
+        $s=$this->db->prepare("SELECT oi.id,oi.quantity,COALESCE(SUM(CASE WHEN os.status IN ({$marks}) THEN si.quantity ELSE 0 END),0) fulfilled
+            FROM order_items oi
+            LEFT JOIN order_shipment_items si ON si.order_item_id=oi.id
+            LEFT JOIN order_shipments os ON os.id=si.shipment_id
+            WHERE oi.order_id=?
+            GROUP BY oi.id,oi.quantity");
+        $s->execute([...$shipmentStatuses,$orderId]);$rows=$s->fetchAll();
+        if(!$rows)return false;
+        foreach($rows as $row)if((int)$row['fulfilled']<(int)$row['quantity'])return false;
+        return true;
     }
 
     private function transition(int $shipmentId,string $to): array
