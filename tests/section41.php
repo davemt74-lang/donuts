@@ -5,7 +5,7 @@ $root=dirname(__DIR__);putenv('DB_DSN=sqlite::memory:');putenv('APP_KEY=test-obs
 use FudgeDonuts\{Database,ObservabilityService};
 
 $db=Database::connection();
-foreach(['006_orders.sql','007_inventory.sql','008_notifications.sql','013_admin_accounts.sql','021_inventory_reservation_leases.sql','024_observability.sql'] as $f)$db->exec((string)file_get_contents($root.'/database/'.$f));
+foreach(['001_catalog.sql','006_orders.sql','007_inventory.sql','008_notifications.sql','013_admin_accounts.sql','021_inventory_reservation_leases.sql','024_observability.sql'] as $f)$db->exec((string)file_get_contents($root.'/database/'.$f));
 
 $obs=new ObservabilityService($db);
 $id=$obs->record('error','test_failure','Something failed',['path'=>'/test','password'=>'secret']);
