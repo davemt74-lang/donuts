@@ -52,10 +52,28 @@ if((string)$order['status']==='pending_payment' && !empty($order['stripe_checkou
             $inventory->releaseOrder((int)$order['id']);
             $order=$orderService->preparePaymentAttempt((int)$order['id']);
         }else{
-            http_response_code(503);exit('Existing payment session could not be safely resumed. Please try again shortly.');
+            \FudgeDonuts\HttpResponseService::send(
+                503,
+                'Secure checkout is temporarily unavailable.',
+                'We couldn’t safely resume this payment session. Return to checkout and try again in a moment.',
+                [
+                    ['label'=>'Return to checkout','href'=>'/checkout-review.php'],
+                    ['label'=>'Contact support','href'=>'/contact.php']
+                ]
+            );
         }
     }catch(Throwable $e){
-        http_response_code(503);exit('Existing payment session could not be verified. Please try again shortly.');
+        \FudgeDonuts\ObservabilityService::captureThrowable($e,dirname(__DIR__),'payment_session_verification_failure');
+        \FudgeDonuts\HttpResponseService::send(
+            503,
+            'We couldn’t verify your payment session.',
+            'For your protection, we stopped here instead of guessing about the payment state. Return to checkout or contact support if you need help.',
+            [
+                ['label'=>'Return to checkout','href'=>'/checkout-review.php'],
+                ['label'=>'Contact support','href'=>'/contact.php']
+            ],
+            \FudgeDonuts\ObservabilityService::requestId()
+        );
     }
 }else{
     $order=$orderService->preparePaymentAttempt((int)$order['id']);
@@ -96,5 +114,15 @@ try{
   $inventory->releaseOrder((int)$order['id']);
   $payments->markFailed((int)$payment['id'],'Stripe checkout initialization failed');
   $orderService->markPaymentInitializationFailed((int)$order['id'],'Stripe checkout initialization failed');
-  http_response_code(503);echo 'Payment checkout could not be started. Please try again.';
+  \FudgeDonuts\ObservabilityService::captureThrowable($e,dirname(__DIR__),'payment_checkout_initialization_failure');
+  \FudgeDonuts\HttpResponseService::send(
+      503,
+      'Secure checkout couldn’t start.',
+      'Your order is still safe. Return to checkout and try again, or contact support if the problem continues.',
+      [
+          ['label'=>'Return to checkout','href'=>'/checkout-review.php'],
+          ['label'=>'Contact support','href'=>'/contact.php']
+      ],
+      \FudgeDonuts\ObservabilityService::requestId()
+  );
 }
