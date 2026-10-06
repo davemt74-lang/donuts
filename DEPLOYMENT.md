@@ -249,4 +249,8 @@ Printable internal product labels are available from the compliance dashboard. T
 ## Production batch traceability
 Use **Admin → Batches** to create a production lot for each flavor production run, including production time, best-by date and produced quantity. Assign exact lot quantities to orders while they are **Preparing** or **Ready**. Shipping is blocked when traceability is missing or when an assigned lot is on hold or recalled.
 
-A recall marks the lot unavailable, identifies every assigned order, and queues customer notices through the transactional email outbox. Review the affected-order list and support queue as part of the recall workflow.
+A recall marks the lot unavailable and identifies every assigned order. Recall state and customer notification are separate operations: after recalling a lot, use **Queue / retry failed recall notices** to create or re-open idempotent transactional messages, then monitor Admin → Email for delivery failures.
+
+Before shipment, an incorrect lot assignment can be corrected with **Clear & reassign**; the consumed lot quantities are restored atomically. After shipment, traceability is immutable. Expired lots, future-dated production lots, depleted lots, held lots, and recalled lots cannot be newly assigned. Shipping is blocked if an assigned lot later becomes held, recalled, expired, or otherwise inconsistent.
+
+Use the affected-order CSV export when a recall response requires an offline customer/order list.
