@@ -1,0 +1,43 @@
+name: Release Package
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          extensions: pdo_sqlite,curl,mbstring
+
+      - name: Create audit database
+        run: |
+          cp .env.example .env
+          mkdir -p storage
+          php scripts/migrate.php
+
+      - name: Release audit
+        run: php scripts/release-audit.php
+
+      - name: Build deploy package
+        run: |
+          rm -f .env
+          mkdir -p dist/Fudge-Donuts
+          rsync -a ./ dist/Fudge-Donuts/             --exclude '.git'             --exclude '.github'             --exclude 'dist'             --exclude '.env'             --exclude 'storage/*.sqlite'             --exclude 'storage/*.sqlite-*'
+          cd dist
+          zip -rq Fudge-Donuts-Deploy.zip Fudge-Donuts
+          sha256sum Fudge-Donuts-Deploy.zip > Fudge-Donuts-Deploy-SHA256.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fudge-donuts-deploy
+          path: |
+            dist/Fudge-Donuts-Deploy.zip
+            dist/Fudge-Donuts-Deploy-SHA256.txt
