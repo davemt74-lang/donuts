@@ -8,7 +8,7 @@ $id=(int)($_GET['id']??0);
 try{$order=(new FulfillmentOperationsService(Database::connection()))->packingSlip($id);}
 catch(Throwable $e){http_response_code(404);exit('Packing slip unavailable.');}
 $hidePrice=!empty($order['gift_options']['hide_price']);
-?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Packing Slip <?=htmlspecialchars($order['order_number'])?></title><link rel="stylesheet" href="/assets/app.css"></head><body class="packing-slip-body">
+?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Packing Slip <?=htmlspecialchars($order['order_number'])?></title><link rel="stylesheet" href="<?=htmlspecialchars(asset_url('/assets/app.css'))?>"></head><body class="packing-slip-body">
 <main class="packing-slip">
 <header class="packing-slip-head"><div><p class="eyebrow">Fudge Donuts</p><h1>Packing Slip</h1></div><div><strong><?=htmlspecialchars($order['order_number'])?></strong><small><?=htmlspecialchars($order['created_at'])?></small></div></header>
 <section class="packing-slip-grid">
