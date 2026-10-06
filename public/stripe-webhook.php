@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
-use FudgeDonuts\{Database,OrderService,PaymentRepository,StripeService};
+use FudgeDonuts\{Database,InventoryService,OrderService,PaymentRepository,StripeService};
 
 $payload=file_get_contents('php://input')?:'';
 $signature=(string)($_SERVER['HTTP_STRIPE_SIGNATURE']??'');
