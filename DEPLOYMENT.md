@@ -238,3 +238,9 @@ php scripts/process-checkout-recovery.php
 Run it on the cadence configured by `JOB_CHECKOUT_RECOVERY_INTERVAL_MINUTES` (60 minutes by default). A reminder is eligible only after `CHECKOUT_RECOVERY_REMINDER_HOURS` and only when the checkout email is currently explicitly **subscribed** in the marketing-consent ledger. Every recovery reminder contains a signed unsubscribe link. Unsubscribed and unknown addresses are never sent recovery marketing.
 
 Admin → Recovery shows active, restored, converted, expired, and reminder activity. Registered-customer privacy exports include recovery lifecycle metadata, and account closure purges associated recovery snapshots.
+
+
+## Food compliance
+Configure each active flavor in **Admin → Food Compliance** before launch. A profile cannot be published until ingredient statement, allergen statement, storage instructions, shelf life, and net weight are complete. Published flavor pages show that controlled compliance profile; incomplete profiles remain unpublished.
+
+Printable internal product labels are available from the compliance dashboard. The shared-kitchen notice is operational product information and should be reviewed against your actual kitchen processes and applicable food-labeling requirements before production use.
