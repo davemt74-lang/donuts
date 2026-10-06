@@ -52,7 +52,7 @@ final class ReleaseAuditService
     {
         return [
             'public/index.php','public/robots.php','public/robots.txt','public/cart.php','public/checkout.php','public/pay.php','public/stripe-webhook.php',
-            'public/admin.php','public/admin-audit.php','public/admin-operations.php','public/admin-shipping.php','public/admin-tax.php','public/admin-backups.php','public/setup-admin.php','public/health.php','public/sitemap.php','public/order-status.php','public/unsubscribe.php','public/admin-marketing.php','public/account-privacy.php','public/contact.php','public/admin-support.php','public/admin-packing-slip.php','public/admin-pickup-sheet.php','public/admin-fulfillment.csv.php','public/admin-production-plan.csv.php',
+            'public/admin.php','public/admin-audit.php','public/admin-operations.php','public/admin-shipping.php','public/admin-tax.php','public/admin-costs.php','public/admin-backups.php','public/setup-admin.php','public/health.php','public/sitemap.php','public/order-status.php','public/unsubscribe.php','public/admin-marketing.php','public/account-privacy.php','public/contact.php','public/admin-support.php','public/admin-packing-slip.php','public/admin-pickup-sheet.php','public/admin-fulfillment.csv.php','public/admin-production-plan.csv.php',
             'public/.htaccess','public/assets/app.css','public/assets/builder.js','public/assets/analytics.js','public/analytics.php','src/PerformanceService.php','src/HttpResponseService.php','src/ProductionPlanningService.php','scripts/migrate.php','scripts/post-deploy-check.php','scripts/http-smoke.php','scripts/preflight.php','scripts/backup-database.php','scripts/restore-database.php','scripts/send-notifications.php','scripts/check-operations.php','scripts/recover-reservations.php','DEPLOYMENT.md',
         ];
     }
@@ -63,7 +63,7 @@ final class ReleaseAuditService
             'pack_sizes','flavors','users','addresses','orders','order_items','payment_sessions','payment_events',
             'shipping_methods','pickup_zip_codes','flavor_inventory','inventory_reservations','notification_outbox',
             'discount_rules','site_content','admin_users','password_reset_tokens','saved_boxes','order_payment_details',
-            'refund_records','cancellation_requests','order_fulfillment_details','order_consents','order_payment_reconciliation','inventory_reservation_leases','newsletter_consent_events','admin_audit_log','customer_privacy_events','operational_events','scheduled_jobs','scheduled_job_runs','schema_migrations','fulfillment_settings','tax_settings','order_tax_details','support_tickets','support_messages','analytics_visitors','analytics_events','order_attribution',
+            'refund_records','cancellation_requests','order_fulfillment_details','order_consents','order_payment_reconciliation','inventory_reservation_leases','newsletter_consent_events','admin_audit_log','customer_privacy_events','operational_events','scheduled_jobs','scheduled_job_runs','schema_migrations','fulfillment_settings','tax_settings','order_tax_details','support_tickets','support_messages','analytics_visitors','analytics_events','order_attribution','order_cost_snapshots',
         ];
     }
 
