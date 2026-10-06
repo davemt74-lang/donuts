@@ -30,5 +30,5 @@ $grand=$summary['total_cents']+(int)($selected['price_cents']??0);
 <div class="review-total"><span>Cart</span><strong><?=money($summary['total_cents'])?></strong></div>
 <div class="review-total"><span>Delivery</span><strong><?=$selected?($selected['price_cents']===0?'Free':money((int)$selected['price_cents'])):'—'?></strong></div>
 <div class="review-total grand"><span>Total before tax</span><strong><?=money($grand)?></strong></div>
-<div class="actions"><a class="button secondary" href="/checkout.php">Edit details</a><?php if($selected):?><span class="muted">Payment activation follows order creation.</span><?php endif;?></div>
+<div class="actions"><a class="button secondary" href="/checkout.php">Edit details</a><?php if($selected):?><form method="post" action="/pay.php"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>"><button class="button" type="submit">Pay securely with Stripe</button></form><?php endif;?></div>
 </main></body></html>
