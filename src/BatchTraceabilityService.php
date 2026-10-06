@@ -82,6 +82,8 @@ final class BatchTraceabilityService
             $batchId=(int)$batchId;$qty=(int)$rawQty;if($batchId<=0||$qty<=0)continue;
             $batch=$this->batch($batchId);
             if($batch['status']!=='active') throw new \InvalidArgumentException('Only active batches can be assigned.');
+            if(strtotime((string)$batch['produced_at'])>time()) throw new \InvalidArgumentException('Future-dated production batches cannot be assigned.');
+            if(!empty($batch['best_by_date']) && (string)$batch['best_by_date']<gmdate('Y-m-d')) throw new \InvalidArgumentException('Expired production batches cannot be assigned.');
             if((int)$batch['quantity_remaining']<$qty) throw new \InvalidArgumentException('Batch '.$batch['batch_code'].' does not have enough remaining quantity.');
             $fid=(int)$batch['flavor_id'];$provided[$fid]=($provided[$fid]??0)+$qty;
             $assignments[]=['batch'=>$batch,'qty'=>$qty];
@@ -106,7 +108,8 @@ final class BatchTraceabilityService
     {
         $batch=$this->batch($batchId);
         if($batch['status']==='recalled') throw new \InvalidArgumentException('Recalled batches cannot be released.');
-        if($batch['status']==='depleted' && !$hold) throw new \InvalidArgumentException('Depleted batches cannot be reactivated.');
+        if($batch['status']==='depleted') throw new \InvalidArgumentException('Depleted batches cannot be placed on hold or reactivated.');
+        if(!in_array($batch['status'],['active','hold'],true)) throw new \InvalidArgumentException('Batch hold state cannot be changed.');
         $next=$hold?'hold':'active';
         $s=$this->db->prepare('UPDATE production_batches SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?');
         $s->execute([$next,$batchId]);
@@ -119,6 +122,7 @@ final class BatchTraceabilityService
         if(!$assigned) return ['ok'=>false,'reason'=>'Production batches have not been assigned.'];
         $totals=[];foreach($assigned as $a){
             if(in_array($a['status'],['hold','recalled'],true)) return ['ok'=>false,'reason'=>'An assigned production batch is on hold or recalled.'];
+            if(!empty($a['best_by_date']) && (string)$a['best_by_date']<gmdate('Y-m-d')) return ['ok'=>false,'reason'=>'An assigned production batch is past its best-by date.'];
             $fid=(int)$a['flavor_id'];$totals[$fid]=($totals[$fid]??0)+(int)$a['quantity'];
         }
         ksort($totals);
