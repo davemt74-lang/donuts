@@ -1,0 +1,3 @@
+<?php
+declare(strict_types=1);require dirname(__DIR__).'/src/bootstrap.php';use FudgeDonuts\{ContentService,Database};$c=new ContentService(Database::connection());
+?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Our Story · Fudge Donuts</title><link rel="stylesheet" href="/assets/app.css"></head><body><header class="nav"><a class="brand" href="/">Fudge Donuts</a></header><main class="section narrow"><p class="eyebrow">Our story</p><h1><?=htmlspecialchars($c->get('story_title'))?></h1><p class="lead"><?=nl2br(htmlspecialchars($c->get('story_body')))?></p></main></body></html>
