@@ -24,7 +24,7 @@ if($orderNumber!=='' && $token!==''){
 if(!$order){http_response_code(404);}
 $status=$order?(string)$order['status']:'';
 $fd=$order['fulfillment_details']??null;
-?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><?= $order?htmlspecialchars($order['order_number']).' · Order Status':'Order not found' ?> · Fudge Donuts</title><meta name="robots" content="noindex,nofollow"><link rel="stylesheet" href="/assets/app.css"></head><body>
+?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><?= $order?htmlspecialchars($order['order_number']).' · Order Status':'Order not found' ?> · Fudge Donuts</title><meta name="robots" content="noindex,nofollow"><link rel="stylesheet" href="<?=htmlspecialchars(asset_url('/assets/app.css'))?>"></head><body>
 <header class="nav"><a class="brand" href="/">Fudge Donuts</a><nav><a href="/">Shop</a><a href="/account.php">Account</a></nav></header>
 <main class="section narrow guest-order-page">
 <?php if(!$order):?>
