@@ -14,7 +14,7 @@ final class AdminDashboardService
         return [
             'today'=>$this->period(date('Y-m-d'),date('Y-m-d')),
             'last_30_days'=>$this->relativePeriod(30,0),
-            'previous_30_days'=>$this->relativePeriod(60,30),
+            'previous_30_days'=>$this->relativePeriod(30,30),
             'all_time'=>$this->period(null,null),
             'fulfillment'=>$this->fulfillmentQueue(),
             'recent_orders'=>$this->recentOrders(8),
@@ -50,9 +50,9 @@ final class AdminDashboardService
 
     private function relativePeriod(int $startDaysAgo,int $endDaysAgo): array
     {
-        $end=new \DateTimeImmutable('today');
-        $start=$end->modify('-'.$startDaysAgo.' days');
-        $finish=$endDaysAgo===0?$end:$end->modify('-'.$endDaysAgo.' days');
+        $today=new \DateTimeImmutable('today');
+        $finish=$endDaysAgo===0?$today:$today->modify('-'.$endDaysAgo.' days');
+        $start=$finish->modify('-'.($startDaysAgo-1).' days');
         return $this->period($start->format('Y-m-d'),$finish->format('Y-m-d'));
     }
 
