@@ -2,7 +2,7 @@
 
 ## Requirements
 - PHP 8.1+
-- PDO + the selected database driver
+- PDO SQLite (`pdo_sqlite`) — current certified database runtime
 - cURL
 - mbstring
 - JSON
@@ -18,10 +18,12 @@
 6. Run `php scripts/migrate.php`.
 7. Open `/setup-admin.php` once and create the first Super Admin. The setup route locks itself after creation.
 8. Run `php scripts/preflight.php`; every check must pass.
-9. Configure Stripe's webhook endpoint as `/stripe-webhook.php`.
-10. Schedule `php scripts/send-notifications.php` every few minutes.
-11. Upload storefront images into `public/images/`.
-12. Verify `/health.php` returns HTTP 200.
+9. Run `php scripts/release-audit.php`; every required check must pass. Missing image assets are reported as warnings until uploaded.
+10. Configure Stripe's webhook endpoint as `/stripe-webhook.php`.
+11. Schedule `php scripts/send-notifications.php` every few minutes.
+12. Upload storefront images into `public/images/`.
+13. Verify `/health.php` returns HTTP 200.
+14. Trigger the **Release Package** workflow to generate the deploy ZIP and SHA-256 manifest.
 
 ## Canonical image paths
 - `public/images/hero.png`
