@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
-use FudgeDonuts\{AdminService,Database,PromotionService};
+use FudgeDonuts\{AdminAuditService,AdminService,Database,PromotionService};
 require_admin_roles(['super_admin','admin']);
-$db=Database::connection();$svc=new PromotionService($db);$error='';
-if($_SERVER['REQUEST_METHOD']==='POST'){verify_csrf($_POST['_csrf']??null);try{$svc->save($_POST);header('Location: /admin-promotions.php');exit;}catch(Throwable $e){$error=$e->getMessage();}}
+$db=Database::connection();$svc=new PromotionService($db);$audit=new AdminAuditService($db);$error='';
+if($_SERVER['REQUEST_METHOD']==='POST'){verify_csrf($_POST['_csrf']??null);try{$svc->save($_POST);$audit->record((int)$_SESSION['admin_id'],'promotion_saved','promotion',(string)($_POST['code']??$_POST['name']??''),'Promotion configuration saved.',[],$_POST);header('Location: /admin-promotions.php');exit;}catch(Throwable $e){$error=$e->getMessage();}}
 $rules=(new AdminService($db))->discounts();
 ?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/assets/app.css"><title>Promotions · Admin</title></head><body class="admin-body">
 <header class="admin-topbar"><a class="admin-brand" href="/admin.php">Fudge Donuts <span>Admin</span></a><nav><a href="/admin.php">Dashboard</a><a href="/admin-flavors.php">Flavors</a><a href="/admin-packs.php">Packs</a><a href="/admin-orders.php">Orders</a><a href="/admin-inventory.php">Inventory</a><a class="active" href="/admin-promotions.php">Promotions</a><a href="/admin-content.php">Content</a><a href="/admin-reports.php">Reports</a><a href="/admin-notifications.php">Email</a></nav></header>
