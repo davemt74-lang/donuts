@@ -30,4 +30,5 @@ if(is_array($object) && !empty($object['id'])){
         if($orderId)(new InventoryService($db))->releaseOrder($orderId);
     }
 }
+$payments->markEventProcessed('stripe',(string)$event['id']);
 http_response_code(200);echo 'ok';
