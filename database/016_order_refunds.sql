@@ -1,4 +1,9 @@
-ALTER TABLE orders ADD COLUMN stripe_payment_intent_id VARCHAR(190) NULL;
+CREATE TABLE IF NOT EXISTS order_payment_details (
+  order_id INTEGER PRIMARY KEY,
+  stripe_payment_intent_id VARCHAR(190) NULL UNIQUE,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE
+);
 
 CREATE TABLE IF NOT EXISTS refund_records (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
