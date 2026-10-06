@@ -86,11 +86,8 @@ final class SecurityService
         $s->execute([$scope,$hash]);$row=$s->fetch();
 
         if(!$row || time()-(strtotime((string)$row['window_started_at'])?:0)>$windowSeconds){
-            $u=$this->db->prepare('INSERT OR REPLACE INTO auth_rate_limits(scope,subject_hash,attempts,window_started_at,blocked_until) VALUES(?,?,1,?,NULL');
-            try{$u->execute([$scope,$hash,$now]);}catch(\PDOException){
-                $u=$this->db->prepare('INSERT OR REPLACE INTO auth_rate_limits(scope,subject_hash,attempts,window_started_at,blocked_until) VALUES(?,?,1,?,NULL)');
-                $u->execute([$scope,$hash,$now]);
-            }
+            $u=$this->db->prepare('INSERT OR REPLACE INTO auth_rate_limits(scope,subject_hash,attempts,window_started_at,blocked_until) VALUES(?,?,1,?,NULL)');
+            $u->execute([$scope,$hash,$now]);
             return;
         }
 
