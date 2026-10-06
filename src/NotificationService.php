@@ -27,6 +27,19 @@ final class NotificationService
         $this->queue((string)$order['email'],$subject,$body,'fulfillment:'.$order['id'].':'.$order['status'].':'.hash('sha256',json_encode($details)),$html);
     }
 
+    public function queueShipmentUpdate(array $order,array $shipment): void
+    {
+        $url=$this->orderUrl($order);
+        $status=ucwords(str_replace('_',' ',(string)$shipment['status']));
+        $subject=$status.' · '.$order['order_number'];
+        $body="Shipment {$shipment['shipment_number']} for order {$order['order_number']} is now {$shipment['status']}.";
+        if(trim((string)$shipment['carrier'])!=='')$body.="\nCarrier: ".$shipment['carrier'];
+        if(trim((string)$shipment['tracking_number'])!=='')$body.="\nTracking: ".$shipment['tracking_number'];
+        if(trim((string)$shipment['tracking_url'])!=='')$body.="\nTrack package: ".$shipment['tracking_url'];
+        if($url!=='')$body.="\n\nOrder status: ".$url;
+        $this->queue((string)$order['email'],$subject,$body,'shipment:'.$shipment['id'].':'.$shipment['status']);
+    }
+
     public function queuePasswordReset(string $email,string $firstName,string $url,string $expiresAt): void
     {
         [$subject,$body,$html]=(new EmailTemplateService())->passwordReset($firstName,$url,$expiresAt);
