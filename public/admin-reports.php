@@ -2,7 +2,7 @@
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
 use FudgeDonuts\{Database,ReportingService};
-if(empty($_SESSION['admin'])){header('Location: /admin.php');exit;}
+require_admin_roles(['super_admin','admin']);
 $r=new ReportingService(Database::connection());
 $overview=$r->overview($_GET['start']??null,$_GET['end']??null);$statuses=$r->byStatus();$packs=$r->packPerformance();$flavors=$r->flavorPerformance();$daily=$r->dailySales(30);
 ?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/assets/app.css"><title>Reports · Admin</title></head><body>
