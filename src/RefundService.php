@@ -71,6 +71,10 @@ final class RefundService
             $e=$this->db->prepare("INSERT INTO order_events(order_id,event_type,note,payload) VALUES(?,?,?,?)");
             $e->execute([(int)$refund['order_id'],'refund_succeeded','Refund completed.',json_encode(['refund_id'=>$refundId,'provider_refund_id'=>$providerRefundId],JSON_THROW_ON_ERROR)]);
             $this->db->commit();
+            try{(new LoyaltyService($this->db))->applyRefund((int)$refund['order_id'],$refundId);}
+            catch(\Throwable $e){
+                try{ObservabilityService::captureThrowable($e,dirname(__DIR__),'loyalty_refund_adjustment_failure');}catch(\Throwable){}
+            }
         }catch(\Throwable $e){if($this->db->inTransaction())$this->db->rollBack();throw $e;}
     }
 
