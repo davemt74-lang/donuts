@@ -350,3 +350,9 @@ Configure boxes, wrappers, labels, ribbon, liners, and other fulfillment supplie
 When an order moves **Paid → Preparing**, required packaging is reserved atomically and removed from available stock. **Preparing → Ready/Shipped** consumes that reservation; cancelling/refunding while still Preparing releases it. Both single-order and batch fulfillment stop safely if packaging is unavailable.
 
 The packaging supply plan combines current available stock, paid-order demand, reorder points, and reorder quantities to produce a replenishment recommendation.
+
+
+## Packaging purchasing
+Use **Admin → Packaging POs** to map boxes, wrappers, labels, ribbon, and other packaging materials to active suppliers. Packaging supplier items store supplier SKU, unit cost, lead time, and minimum order quantity.
+
+Packaging purchase recommendations subtract quantities already on ordered or partially received packaging POs so the system does not recommend duplicate replenishment. Receiving a packaging PO updates packaging inventory atomically and records the stock movement.
