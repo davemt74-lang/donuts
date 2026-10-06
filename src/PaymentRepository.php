@@ -13,7 +13,16 @@ final class PaymentRepository
     {
         $s=$this->db->prepare('INSERT OR IGNORE INTO payment_events(provider,provider_event_id,event_type,payload) VALUES(?,?,?,?)');
         $s->execute([$provider,$eventId,$eventType,$payload]);
-        return $s->rowCount()===1;
+        $q=$this->db->prepare('SELECT processed_at FROM payment_events WHERE provider=? AND provider_event_id=?');
+        $q->execute([$provider,$eventId]);
+        $processed=$q->fetchColumn();
+        return $processed===false || $processed===null;
+    }
+
+    public function markEventProcessed(string $provider,string $eventId): void
+    {
+        $s=$this->db->prepare('UPDATE payment_events SET processed_at=CURRENT_TIMESTAMP WHERE provider=? AND provider_event_id=?');
+        $s->execute([$provider,$eventId]);
     }
 
     public function createSession(?int $userId,int $amountCents,array $snapshot): array
