@@ -60,7 +60,11 @@ final class CostAccountingService
     public function snapshotOrder(int $orderId): array
     {
         $existing=$this->db->prepare('SELECT * FROM order_cost_snapshots WHERE order_id=?');$existing->execute([$orderId]);$row=$existing->fetch();
-        if($row)return $row;
+        if($row){
+            foreach(['order_id','product_cost_cents','packaging_cost_cents','total_cost_cents','revenue_basis_cents','gross_margin_cents'] as $key)$row[$key]=(int)$row[$key];
+            $row['margin_percent']=(float)$row['margin_percent'];
+            return $row;
+        }
         $v=$this->estimateOrder($orderId);
         $s=$this->db->prepare('INSERT INTO order_cost_snapshots(order_id,product_cost_cents,packaging_cost_cents,total_cost_cents,revenue_basis_cents,gross_margin_cents,margin_percent) VALUES(?,?,?,?,?,?,?)');
         $s->execute([$orderId,$v['product_cost_cents'],$v['packaging_cost_cents'],$v['total_cost_cents'],$v['revenue_basis_cents'],$v['gross_margin_cents'],$v['margin_percent']]);
