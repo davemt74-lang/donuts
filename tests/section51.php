@@ -1,6 +1,9 @@
 <?php
 declare(strict_types=1);
-$root=dirname(__DIR__);require $root.'/src/PerformanceService.php';
+
+$root=dirname(__DIR__);
+require $root.'/src/PerformanceService.php';
+
 use FudgeDonuts\PerformanceService;
 
 $p=PerformanceService::policy('GET','/flavor.php?slug=smores',false);
@@ -10,6 +13,11 @@ assert(PerformanceService::policy('HEAD','/faq.php',false)['public']===true);
 assert(PerformanceService::policy('GET','/cart.php',false)['public']===false);
 assert(PerformanceService::policy('GET','/flavor.php',true)['public']===false);
 assert(PerformanceService::policy('POST','/faq.php',false)['public']===false);
+
+assert(PerformanceService::canSkipSession('GET','/flavor.php?slug=smores',false)===true);
+assert(PerformanceService::canSkipSession('HEAD','/story.php',false)===true);
+assert(PerformanceService::canSkipSession('GET','/story.php',true)===false);
+assert(PerformanceService::canSkipSession('GET','/cart.php',false)===false);
 
 $tmp=$root.'/public/assets/section51-test.css';
 file_put_contents($tmp,'x');
