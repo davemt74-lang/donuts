@@ -154,6 +154,17 @@ final class PackagingInventoryService
         return ['rows'=>$rows,'shortage_materials'=>$shortages,'suggested_purchase_units'=>$suggested];
     }
 
+    public function summary(): array
+    {
+        $plan=$this->plan();
+        $unconfigured=(int)$this->db->query("SELECT COUNT(*) FROM pack_sizes p WHERE p.active=1 AND NOT EXISTS (SELECT 1 FROM pack_packaging_requirements r JOIN packaging_materials m ON m.id=r.material_id AND m.active=1 WHERE r.pack_size_id=p.id)")->fetchColumn();
+        return [
+            'shortage_materials'=>(int)$plan['shortage_materials'],
+            'suggested_purchase_units'=>(int)$plan['suggested_purchase_units'],
+            'unconfigured_packs'=>$unconfigured,
+        ];
+    }
+
     public function movements(int $materialId,int $limit=100): array
     {
         $limit=max(1,min(500,$limit));$s=$this->db->prepare("SELECT x.*,o.order_number,a.email admin_email FROM packaging_stock_movements x LEFT JOIN orders o ON o.id=x.order_id LEFT JOIN admin_users a ON a.id=x.recorded_by WHERE x.material_id=? ORDER BY x.id DESC LIMIT {$limit}");$s->execute([$materialId]);return $s->fetchAll();
