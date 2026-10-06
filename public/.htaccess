@@ -1,3 +1,8 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^robots\.txt$ robots.php [L]
+</IfModule>
+
 Options -Indexes
 DirectoryIndex index.php
 
