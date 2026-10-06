@@ -84,9 +84,17 @@ smokeAssert(smokeHeader($checkout,'location')==='/cart.php','Empty checkout must
 smokeAssert(str_contains(strtolower(smokeHeader($checkout,'cache-control')),'no-store'),'Checkout redirect must be no-store.');
 
 smokePage($base,'Customer support','/contact.php',200,'How can we help?');
-smokePage($base,'Admin setup','/setup-admin.php',200,'Create your administrator');
-$admin=smokePage($base,'Admin install redirect','/admin.php',302);
-smokeAssert(smokeHeader($admin,'location')==='/setup-admin.php','Uninstalled Admin must redirect to setup.');
+
+$adminCount=(int)$db->query('SELECT COUNT(*) FROM admin_users')->fetchColumn();
+if($adminCount===0){
+    smokePage($base,'Admin setup','/setup-admin.php',200,'Create your administrator');
+    $admin=smokePage($base,'Admin install redirect','/admin.php',302);
+    smokeAssert(smokeHeader($admin,'location')==='/setup-admin.php','Uninstalled Admin must redirect to setup.');
+}else{
+    $setup=smokePage($base,'Locked Admin setup','/setup-admin.php',302);
+    smokeAssert(smokeHeader($setup,'location')==='/admin.php','Installed setup route must redirect to Admin.');
+    smokePage($base,'Admin login','/admin.php',200,'Store Admin');
+}
 
 $health=smokePage($base,'Health endpoint','/health.php',200);
 $data=json_decode($health['body'],true,512,JSON_THROW_ON_ERROR);
