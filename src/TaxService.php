@@ -56,6 +56,26 @@ final class TaxService
         return $params;
     }
 
+    public function calculateExclusiveForOrder(StripeService $stripe,array $order): int
+    {
+        $settings=$this->settings();
+        if($settings['automatic_tax_enabled']!=='1') return 0;
+        $calculation=$stripe->calculateTax(
+            (int)$order['total_cents'],
+            [
+                'line1'=>$order['line1']??'','line2'=>$order['line2']??'','city'=>$order['city']??'',
+                'region'=>$order['region']??'','postal_code'=>$order['postal_code']??'','country'=>$order['country']??'US',
+            ],
+            (string)$order['order_number'],
+            (string)$settings['product_tax_code']
+        );
+        $tax=array_key_exists('tax_amount_exclusive',$calculation)
+            ?(int)$calculation['tax_amount_exclusive']
+            :max(0,(int)($calculation['amount_total']??0)-(int)$order['total_cents']);
+        if($tax<0) throw new \RuntimeException('Stripe returned an invalid tax amount.');
+        return $tax;
+    }
+
     public function snapshotOrder(int $orderId): void
     {
         $s=$this->settings();
