@@ -98,3 +98,7 @@ php scripts/post-deploy-check.php
 ```
 
 The post-deploy check verifies migration state, SQLite integrity, required application files/tables, and operational health, then writes `storage/release-certification.json`.
+
+
+## Shipping and local pickup
+After migrations, configure fulfillment in **Admin → Shipping**. Set active shipping methods, rates, free-shipping thresholds, ETA ranges, local-pickup ZIP codes, pickup location/hours, and customer-facing instructions. Checkout always re-quotes the selected method server-side before payment.
