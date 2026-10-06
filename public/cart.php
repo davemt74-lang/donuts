@@ -34,7 +34,7 @@ $summary=$cart->summary($_SESSION,$_SESSION['coupon']??null);
 <?php if(!$summary['items']):?><div class="empty"><p>Your cart is empty.</p><a class="button" href="/">Choose a box</a></div>
 <?php else:?><div class="cart-layout"><section>
 <?php foreach($summary['items'] as $line):?><article class="cart-line">
-<div><h3><?=htmlspecialchars($line['box']['type']==='preset'?$line['box']['name']:'Custom '.$line['box']['size'].' Pack')?></h3><p><?php foreach($line['box']['items'] as $i):?><?=htmlspecialchars($i['name'])?> × <?=$i['quantity']?><?php if($i!==end($line['box']['items'])):?> · <?php endif;?><?php endforeach;?></p></div>
+<div><h3><?=htmlspecialchars($line['box']['type']==='preset'?$line['box']['name']:'Custom '.$line['box']['size'].' Pack')?></h3><p><?php foreach($line['box']['items'] as $i):?><a href="/flavor.php?slug=<?=urlencode($i['slug'])?>"><?=htmlspecialchars($i['name'])?></a> × <?=$i['quantity']?><?php if($i!==end($line['box']['items'])):?> · <?php endif;?><?php endforeach;?></p></div>
 <form method="post"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>"><input type="hidden" name="action" value="quantity"><input type="hidden" name="key" value="<?=htmlspecialchars($line['key'])?>"><input name="quantity" type="number" min="0" max="24" value="<?=$line['quantity']?>"><button class="link">Update</button></form>
 <strong><?=money($line['line_total_cents'])?></strong>
 <form method="post"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>"><input type="hidden" name="action" value="remove"><input type="hidden" name="key" value="<?=htmlspecialchars($line['key'])?>"><button class="link">Remove</button></form>
@@ -43,5 +43,5 @@ $summary=$cart->summary($_SESSION,$_SESSION['coupon']??null);
 <?php foreach($summary['discounts'] as $d):?><div class="discount"><span><?=htmlspecialchars($d['name'])?></span><strong>−<?=money($d['amount_cents'])?></strong></div><?php endforeach;?>
 <div class="total"><span>Total</span><strong><?=money($summary['total_cents'])?></strong></div>
 <form method="post" class="coupon"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>"><input type="hidden" name="action" value="coupon"><input name="code" placeholder="Promo code" value="<?=htmlspecialchars((string)($_SESSION['coupon']??''))?>"><button class="button secondary">Apply</button></form>
-<a class="button checkout" href="/checkout.php">Checkout</a></aside></div><?php endif;?>
+<div class="allergen-callout compact"><strong>Before checkout</strong><span>Review ingredient and allergen information for every flavor in your order.</span></div><a class="button checkout" href="/checkout.php">Checkout</a></aside></div><?php endif;?>
 </main></body></html>
