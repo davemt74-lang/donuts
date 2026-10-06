@@ -5,7 +5,7 @@ $root=dirname(__DIR__);putenv('DB_DSN=sqlite::memory:');require $root.'/src/boot
 use FudgeDonuts\{Database,FinishedGoodsAgingService};
 
 $db=Database::connection();
-foreach(['001_catalog.sql','013_admin_accounts.sql','037_batch_traceability.sql','045_finished_goods_aging.sql'] as $f)$db->exec((string)file_get_contents($root.'/database/'.$f));
+foreach(['001_catalog.sql','013_admin_accounts.sql','025_job_monitoring.sql','037_batch_traceability.sql','045_finished_goods_aging.sql'] as $f)$db->exec((string)file_get_contents($root.'/database/'.$f));
 $db->exec("INSERT INTO admin_users(email,password_hash,first_name,last_name,role) VALUES('aging@example.com','x','Aging','User','admin')");
 $adminId=(int)$db->lastInsertId();$flavorId=(int)$db->query('SELECT id FROM flavors ORDER BY id LIMIT 1')->fetchColumn();
 
@@ -15,6 +15,7 @@ $ins->execute(['SOON-75',$flavorId,gmdate('Y-m-d',time()+86400*2),4,4,$adminId])
 $db->exec("INSERT INTO production_batches(batch_code,flavor_id,produced_at,best_by_date,quantity_produced,quantity_remaining,status,created_by) VALUES('NODATE-75',{$flavorId},datetime('now','-1 day'),NULL,3,3,'active',{$adminId})");
 
 $svc=new FinishedGoodsAgingService($db);
+assert((int)$db->query("SELECT COUNT(*) FROM scheduled_jobs WHERE job_key='finished-goods-aging'")->fetchColumn()===1);
 assert($svc->warningDays()===3);
 $summary=$svc->summary();assert($summary['expired_batches']===1);assert($summary['expired_units']===5);assert($summary['expiring_batches']===1);assert($summary['expiring_units']===4);assert($summary['no_date_batches']===1);
 
