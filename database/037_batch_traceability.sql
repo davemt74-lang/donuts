@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS production_batches (
   produced_at DATETIME NOT NULL,
   best_by_date DATE NULL,
   quantity_produced INTEGER NOT NULL CHECK(quantity_produced>0),
-  quantity_remaining INTEGER NOT NULL CHECK(quantity_remaining>=0),
+  quantity_remaining INTEGER NOT NULL CHECK(quantity_remaining>=0 AND quantity_remaining<=quantity_produced),
   status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK(status IN ('active','depleted','hold','recalled')),
   notes TEXT NOT NULL DEFAULT '',
   recall_reason TEXT NOT NULL DEFAULT '',
