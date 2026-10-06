@@ -35,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <header class="nav"><a class="brand" href="/">Fudge Donuts</a><nav><a href="/">Home</a><a href="/builder.php?size=3">3 Pack</a><a href="/builder.php?size=6">6 Pack</a><a href="/builder.php?size=12">12 Pack</a></nav></header>
 <main class="section builder">
 <p class="eyebrow">Build your own</p><h1><?=$size?> Pack</h1>
-<p>Choose exactly <?=$size?> donuts. Premium flavors update your box price automatically.</p>
+<p>Choose exactly <?=$size?> donuts. Premium flavors update your box price automatically.</p><div class="allergen-callout compact"><strong>Food allergy notice</strong><span>Open any flavor for ingredient and allergen details. Products may be prepared in a shared kitchen.</span></div>
 <?php if ($error): ?><div class="notice error"><?=htmlspecialchars($error)?></div><?php endif; ?>
 <form method="post" id="pack-form" data-size="<?=$size?>" data-base-price="<?=(int)$pack['base_price_cents']?>">
 <input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>"><input type="hidden" name="size" value="<?=$size?>">
@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <?php foreach ($flavors as $f): $qty=(int)($draft[(int)$f['id']]??0); ?>
 <article class="flavor builder-card" data-surcharge="<?=(int)$f['surcharge_cents']?>">
 <img src="<?=htmlspecialchars($f['image_path'])?>" alt="<?=htmlspecialchars($f['name'])?>">
-<div class="builder-copy"><h3><?=htmlspecialchars($f['name'])?></h3><p><?=htmlspecialchars($f['description'])?></p>
+<div class="builder-copy"><h3><a href="/flavor.php?slug=<?=urlencode($f['slug'])?>" target="_blank" rel="noopener"><?=htmlspecialchars($f['name'])?></a></h3><p><?=htmlspecialchars($f['description'])?></p><?php if(trim((string)$f['allergens'])!==''):?><small class="allergen-summary">Allergens: <?=htmlspecialchars($f['allergens'])?></small><?php endif;?>
 <?php if ((int)$f['surcharge_cents']): ?><small>+<?=money((int)$f['surcharge_cents'])?> each</small><?php else: ?><small>Included</small><?php endif; ?></div>
 <div class="stepper"><button type="button" class="step minus" aria-label="Remove one <?=htmlspecialchars($f['name'])?>">−</button><input class="qty" readonly inputmode="numeric" value="<?=$qty?>" name="flavor[<?=(int)$f['id']?>]" aria-label="<?=htmlspecialchars($f['name'])?> quantity"><button type="button" class="step plus" aria-label="Add one <?=htmlspecialchars($f['name'])?>">+</button></div>
 </article>
