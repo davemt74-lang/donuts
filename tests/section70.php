@@ -10,12 +10,16 @@ $db->exec("INSERT INTO admin_users(email,password_hash,first_name,last_name,role
 $svc=new SupplierPurchasingService($db);
 $supplier=$svc->createSupplier(['name'=>'Cocoa Supply','contact_name'=>'Casey','email'=>'orders@cocoa.example','active'=>1],$admin);
 $item=$svc->createItem($supplier,['ingredient_name'=>'Chocolate','supplier_sku'=>'CHO-1','quantity_unit'=>'OZ','unit_cost_cents'=>35,'lead_time_days'=>3,'min_order_quantity'=>10]);
+$min=false;try{$svc->createPurchaseOrder($supplier,[['supplier_item_id'=>$item,'quantity_ordered'=>5]],'2026-10-10','Too small',$admin);}catch(InvalidArgumentException){$min=true;}assert($min);
+$dupe=false;try{$svc->createPurchaseOrder($supplier,[['supplier_item_id'=>$item,'quantity_ordered'=>20],['supplier_item_id'=>$item,'quantity_ordered'=>20]],'2026-10-10','Duplicate',$admin);}catch(InvalidArgumentException){$dupe=true;}assert($dupe);
 $po=$svc->createPurchaseOrder($supplier,[['supplier_item_id'=>$item,'quantity_ordered'=>50]],'2026-10-10','Test PO',$admin);
 assert($svc->purchaseOrder($po)['status']==='draft');$svc->markOrdered($po);assert($svc->purchaseOrder($po)['status']==='ordered');
 
 $lot1=$svc->receive((int)$svc->purchaseOrder($po)['items'][0]['id'],['quantity_received'=>20,'supplier_lot_code'=>'LOT-A','received_at'=>'2026-10-06 09:00:00','best_by_date'=>'2027-01-01'],$admin);
 assert($lot1>0);$p=$svc->purchaseOrder($po);assert($p['status']==='partially_received');assert(abs((float)$p['items'][0]['remaining_quantity']-30.0)<0.000001);
 $lot=$db->query('SELECT * FROM ingredient_lots WHERE id='.$lot1)->fetch();assert($lot['supplier_name']==='Cocoa Supply');assert($lot['quantity_unit']==='oz');
+$duplicateLot=false;try{$svc->receive((int)$p['items'][0]['id'],['quantity_received'=>5,'supplier_lot_code'=>'LOT-A','received_at'=>'2026-10-06 09:30:00','best_by_date'=>'2027-01-01'],$admin);}catch(InvalidArgumentException){$duplicateLot=true;}assert($duplicateLot);
+assert(abs((float)$svc->purchaseOrder($po)['items'][0]['remaining_quantity']-30.0)<0.000001);
 
 $lot2=$svc->receive((int)$p['items'][0]['id'],['quantity_received'=>30,'supplier_lot_code'=>'LOT-B','received_at'=>'2026-10-06 10:00:00','best_by_date'=>'2027-01-01'],$admin);
 assert($lot2>0);assert($svc->purchaseOrder($po)['status']==='received');
