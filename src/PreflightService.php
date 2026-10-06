@@ -23,7 +23,7 @@ final class PreflightService
             $db=Database::connection();
             $db->query('SELECT 1');
             $checks[]=$this->check('database',true,'Database connection');
-            $required=['pack_sizes','flavors','users','orders','notification_outbox','auth_rate_limits'];
+            $required=['pack_sizes','flavors','users','orders','notification_outbox','auth_rate_limits','admin_users'];
             foreach($required as $table){
                 $checks[]=$this->check('table_'.$table,$this->tableExists($db,$table),'Required table '.$table);
             }
@@ -34,7 +34,12 @@ final class PreflightService
         $production=(\env('APP_ENV','development')==='production');
         if($production){
             $checks[]=$this->check('app_key',strlen((string)\env('APP_KEY',''))>=32,'APP_KEY must be at least 32 characters');
-            $checks[]=$this->check('admin_password',strlen((string)\env('ADMIN_PASSWORD',''))>=12,'ADMIN_PASSWORD must be at least 12 characters');
+            try {
+                $adminCount=(int)$db->query("SELECT COUNT(*) FROM admin_users WHERE active=1")->fetchColumn();
+                $checks[]=$this->check('admin_account',$adminCount>0,'At least one active administrator is required');
+            } catch(\Throwable) {
+                $checks[]=$this->check('admin_account',false,'At least one active administrator is required');
+            }
             $checks[]=$this->check('stripe_secret',str_starts_with((string)\env('STRIPE_SECRET_KEY',''),'sk_'),'Stripe secret key required');
             $checks[]=$this->check('stripe_webhook',str_starts_with((string)\env('STRIPE_WEBHOOK_SECRET',''),'whsec_'),'Stripe webhook secret required');
             $checks[]=$this->check('app_url',str_starts_with((string)\env('APP_URL',''),'https://'),'Production APP_URL must use HTTPS');
