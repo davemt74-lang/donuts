@@ -22,3 +22,6 @@ CREATE INDEX IF NOT EXISTS idx_finished_goods_dispositions_reason ON finished_go
 
 INSERT OR IGNORE INTO finished_goods_aging_settings(setting_key,setting_value) VALUES
  ('warning_days','3');
+
+INSERT OR IGNORE INTO scheduled_jobs(job_key,description,expected_interval_minutes) VALUES
+ ('finished-goods-aging','Finished-goods expiry and aging control',60);
