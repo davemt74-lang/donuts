@@ -23,7 +23,7 @@ final class PreflightService
             $db=Database::connection();
             $db->query('SELECT 1');
             $checks[]=$this->check('database',true,'Database connection');
-            $required=['pack_sizes','flavors','users','orders','notification_outbox','notification_email_content','auth_rate_limits','admin_users','password_reset_tokens','saved_boxes','order_payment_details','refund_records','cancellation_requests','order_fulfillment_details','order_consents','order_payment_reconciliation','inventory_reservation_leases','newsletter_consent_events','admin_audit_log','customer_privacy_events','operational_events','scheduled_jobs','scheduled_job_runs','schema_migrations'];
+            $required=['pack_sizes','flavors','users','orders','notification_outbox','notification_email_content','auth_rate_limits','admin_users','password_reset_tokens','saved_boxes','order_payment_details','refund_records','cancellation_requests','order_fulfillment_details','order_consents','order_payment_reconciliation','inventory_reservation_leases','newsletter_consent_events','admin_audit_log','customer_privacy_events','operational_events','scheduled_jobs','scheduled_job_runs','schema_migrations','shipping_methods','pickup_zip_codes','fulfillment_settings'];
             foreach($required as $table){
                 $checks[]=$this->check('table_'.$table,$this->tableExists($db,$table),'Required table '.$table);
             }
