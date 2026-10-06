@@ -9,7 +9,17 @@ use FudgeDonuts\PackBuilderService;
 $size = (int)($_GET['size'] ?? $_POST['size'] ?? 12);
 $catalog = new CatalogRepository(Database::connection());
 $pack = $catalog->packBySize($size);
-if (!$pack || !(int)$pack['customizable']) { http_response_code(404); exit('Pack not found'); }
+if (!$pack || !(int)$pack['customizable']) {
+    \FudgeDonuts\HttpResponseService::send(
+        404,
+        'That box size isn’t available.',
+        'Choose one of the current Fudge Donuts box sizes and build a fresh assortment.',
+        [
+            ['label'=>'Shop available boxes','href'=>'/#shop'],
+            ['label'=>'Return home','href'=>'/']
+        ]
+    );
+}
 
 $builder = new PackBuilderService($catalog);
 $eligible = array_flip($catalog->eligibleFlavorIds((int)$pack['id']));
