@@ -68,7 +68,7 @@ final class BatchTraceabilityService
 
     public function assignmentsForOrder(int $orderId): array
     {
-        $s=$this->db->prepare('SELECT a.*,b.batch_code,b.flavor_id,b.status,b.best_by_date,f.name flavor_name FROM order_batch_assignments a JOIN production_batches b ON b.id=a.batch_id JOIN flavors f ON f.id=b.flavor_id WHERE a.order_id=? ORDER BY f.name,b.batch_code');
+        $s=$this->db->prepare('SELECT a.*,b.batch_code,b.flavor_id,b.status,b.produced_at,b.best_by_date,f.name flavor_name FROM order_batch_assignments a JOIN production_batches b ON b.id=a.batch_id JOIN flavors f ON f.id=b.flavor_id WHERE a.order_id=? ORDER BY f.name,b.batch_code');
         $s->execute([$orderId]);return $s->fetchAll();
     }
 
@@ -129,6 +129,7 @@ final class BatchTraceabilityService
         if($batch['status']==='recalled') throw new \InvalidArgumentException('Recalled batches cannot be released.');
         if($batch['status']==='depleted') throw new \InvalidArgumentException('Depleted batches cannot be placed on hold or reactivated.');
         if(!in_array($batch['status'],['active','hold'],true)) throw new \InvalidArgumentException('Batch hold state cannot be changed.');
+        if(!$hold && !empty($batch['best_by_date']) && (string)$batch['best_by_date']<gmdate('Y-m-d')) throw new \InvalidArgumentException('Expired batches cannot be released from hold.');
         $next=$hold?'hold':'active';
         $s=$this->db->prepare('UPDATE production_batches SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?');
         $s->execute([$next,$batchId]);
@@ -141,6 +142,7 @@ final class BatchTraceabilityService
         if(!$assigned) return ['ok'=>false,'reason'=>'Production batches have not been assigned.'];
         $totals=[];foreach($assigned as $a){
             if(in_array($a['status'],['hold','recalled'],true)) return ['ok'=>false,'reason'=>'An assigned production batch is on hold or recalled.'];
+            if(strtotime((string)$a['produced_at'])>time()) return ['ok'=>false,'reason'=>'An assigned production batch has a future production timestamp.'];
             if(!empty($a['best_by_date']) && (string)$a['best_by_date']<gmdate('Y-m-d')) return ['ok'=>false,'reason'=>'An assigned production batch is past its best-by date.'];
             $fid=(int)$a['flavor_id'];$totals[$fid]=($totals[$fid]??0)+(int)$a['quantity'];
         }
