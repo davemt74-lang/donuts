@@ -324,3 +324,9 @@ The allocator skips held, recalled, expired, future-dated, depleted, or ingredie
 Schedule `php scripts/process-finished-goods-aging.php` on the cadence configured by `JOB_FINISHED_GOODS_AGING_INTERVAL_MINUTES` (60 minutes by default).
 
 The worker places expired active production batches on hold and raises operational warnings for expired or near-expiry finished goods. **Admin → Aging** controls the warning horizon and records explicit dispositions for expired, quality, damage, donation, sample, or other removals. Disposition only consumes unassigned remaining batch quantity; assigned order quantities are already outside `quantity_remaining` and remain protected by shipment traceability checks.
+
+
+## Finished-goods replenishment
+Admin → Replenishment calculates a make-next queue from open Paid/Preparing/Ready order demand, recent flavor velocity, configured safety-stock days, active unexpired finished goods, and already planned/in-progress work orders.
+
+Only active, unexpired production batches count as safe stock. Held, recalled, expired, or depleted batches are excluded. Creating a replenishment work order still passes through the production scheduler's capacity controls.
