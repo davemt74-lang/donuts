@@ -2,13 +2,13 @@
 declare(strict_types=1);
 $root=dirname(__DIR__);putenv('APP_ENV=development');putenv('DB_DSN=sqlite::memory:');require $root.'/src/bootstrap.php';
 
-use FudgeDonuts\{Database,ReleaseAuditService};
+use FudgeDonuts\{Database,MigrationService,ReleaseAuditService};
 
 $db=Database::connection();
-$files=glob($root.'/database/*.sql')?:[];
-sort($files);
-foreach($files as $file)$db->exec((string)file_get_contents($file));
-foreach($files as $file)$db->exec((string)file_get_contents($file));
+$migrations=new MigrationService($db,$root.'/database');
+assert(count($migrations->applyPending())>0);
+assert(count($migrations->applyPending())===0);
+$migrations->assertClean();
 
 $audit=new ReleaseAuditService($db,$root);
 assert($audit->healthy()===true);
