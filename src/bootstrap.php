@@ -57,6 +57,10 @@ function env(string $key, ?string $default = null): ?string
     return $value === false ? $default : $value;
 }
 
+if((env('OBSERVABILITY_ENABLED','1')??'1')!=='0'){
+    \FudgeDonuts\ObservabilityService::installRuntimeHandlers(dirname(__DIR__));
+}
+
 function csrf_token(): string
 {
     if (empty($_SESSION['_csrf'])) $_SESSION['_csrf'] = bin2hex(random_bytes(32));
