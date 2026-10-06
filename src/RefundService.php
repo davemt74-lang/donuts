@@ -37,8 +37,13 @@ final class RefundService
 
         $giftPart=min($amountCents,$giftRemaining);$stripePart=$amountCents-$giftPart;
         $provider=$giftPart>0&&$stripePart>0?'mixed':($giftPart>0?'gift_card':'stripe');
-        $s=$this->db->prepare("INSERT INTO refund_records(order_id,amount_cents,reason,provider,requested_by_admin_id,status,gift_card_amount_cents,stripe_amount_cents) VALUES(?,?,?,?,?,'pending',?,?)");
-        $s->execute([$orderId,$amountCents,mb_substr(trim($reason),0,255),$provider,$adminId,$giftPart,$stripePart]);
+        if($this->giftCardRefundColumnsAvailable()){
+            $s=$this->db->prepare("INSERT INTO refund_records(order_id,amount_cents,reason,provider,requested_by_admin_id,status,gift_card_amount_cents,stripe_amount_cents) VALUES(?,?,?,?,?,'pending',?,?)");
+            $s->execute([$orderId,$amountCents,mb_substr(trim($reason),0,255),$provider,$adminId,$giftPart,$stripePart]);
+        }else{
+            $s=$this->db->prepare("INSERT INTO refund_records(order_id,amount_cents,reason,provider,requested_by_admin_id,status) VALUES(?,?,?,?,?,'pending')");
+            $s->execute([$orderId,$amountCents,mb_substr(trim($reason),0,255),'stripe',$adminId]);
+        }
         return (int)$this->db->lastInsertId();
     }
 
@@ -108,5 +113,15 @@ final class RefundService
         $s=$this->db->prepare("UPDATE cancellation_requests SET status=?,resolved_by_admin_id=?,resolved_at=CURRENT_TIMESTAMP WHERE id=? AND status='pending'");
         $s->execute([$status,$adminId,$requestId]);
         if($s->rowCount()!==1) throw new \RuntimeException('Cancellation request changed before resolution.');
+    }
+
+    private function giftCardRefundColumnsAvailable(): bool
+    {
+        try{
+            foreach($this->db->query("PRAGMA table_info(refund_records)")->fetchAll() as $row){
+                if(($row['name']??'')==='gift_card_amount_cents') return true;
+            }
+        }catch(\Throwable){}
+        return false;
     }
 }
