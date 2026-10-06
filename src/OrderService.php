@@ -31,6 +31,7 @@ final class OrderService
                 $i->execute([$orderId,$line['box']['type'],(int)$line['box']['size'],(int)$line['quantity'],(int)$line['box']['total_cents'],(int)$line['line_total_cents'],json_encode($line['box'],JSON_THROW_ON_ERROR)]);
             }
             if(!empty($cart['discounts'])) (new PromotionService($this->db))->recordOrderDiscounts($orderId,$cart['discounts']);
+            if(!empty($checkout['is_gift'])) (new GiftService($this->db))->persist($orderId,$checkout);
             $this->event($orderId,'created','Order created from validated checkout.');
             $this->db->commit();
             return $this->find($orderId);

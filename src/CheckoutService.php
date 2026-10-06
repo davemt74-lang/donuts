@@ -13,6 +13,7 @@ final class CheckoutService
         foreach($required as $field) if(trim((string)($data[$field]??''))==='') throw new \InvalidArgumentException('Complete all required checkout fields.');
         $giftMessage=trim((string)($data['gift_message']??''));
         if(mb_strlen($giftMessage)>300) throw new \InvalidArgumentException('Gift message must be 300 characters or fewer.');
+        $gift=(new GiftService())->normalizeCheckout($data);
         return [
             'email'=>$email,
             'first_name'=>trim((string)$data['first_name']),
@@ -26,6 +27,10 @@ final class CheckoutService
             'phone'=>trim((string)($data['phone']??'')),
             'gift_message'=>$giftMessage,
             'is_gift'=>!empty($data['is_gift']),
+            'hide_price'=>$gift['hide_price'],
+            'gift_packaging'=>$gift['gift_packaging'],
+            'gift_delivery_date'=>$gift['gift_delivery_date'],
+            'gift_recipient_email'=>$gift['gift_recipient_email'],
         ];
     }
 }
