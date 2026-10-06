@@ -7,7 +7,7 @@ require_admin_roles(['super_admin','admin','fulfillment']);
 $status=trim((string)($_GET['status']??'ready'));
 try{$rows=(new FulfillmentOperationsService(Database::connection()))->pickupRows($status?:null);}
 catch(Throwable $e){http_response_code(400);exit('Invalid pickup sheet filter.');}
-?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Pickup Sheet · Fudge Donuts</title><link rel="stylesheet" href="/assets/app.css"></head><body class="packing-slip-body">
+?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Pickup Sheet · Fudge Donuts</title><link rel="stylesheet" href="<?=htmlspecialchars(asset_url('/assets/app.css'))?>"></head><body class="packing-slip-body">
 <main class="packing-slip pickup-sheet"><header class="packing-slip-head"><div><p class="eyebrow">Fudge Donuts</p><h1>Pickup Sheet</h1></div><div><strong><?=htmlspecialchars(ucwords(str_replace('_',' ',$status?:'all')))?></strong><small><?=htmlspecialchars(gmdate('Y-m-d H:i'))?> UTC</small></div></header>
 <table class="packing-table"><thead><tr><th>Ready</th><th>Order</th><th>Customer</th><th>Contact</th><th>Status</th></tr></thead><tbody>
 <?php if(!$rows):?><tr><td colspan="5">No pickup orders in this view.</td></tr><?php endif;?>
