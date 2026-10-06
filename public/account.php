@@ -39,7 +39,7 @@ $orders=$accountService?$accountService->orders((int)$user['id']):[];
 $savedBoxes=$accountService?$accountService->savedBoxes((int)$user['id']):[];
 $accountFlash=(string)($_SESSION['account_flash']??'');unset($_SESSION['account_flash']);
 ?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Account · Fudge Donuts</title><link rel="stylesheet" href="/assets/app.css"></head><body>
-<header class="nav"><a class="brand" href="/">Fudge Donuts</a><nav><a href="/cart.php">Cart</a></nav></header><main class="section narrow">
+<header class="nav"><a class="brand" href="/">Fudge Donuts</a><nav><a href="/cart.php">Cart</a></nav></header><main class="section account-page">
 <?php if($error):?><div class="notice error"><?=htmlspecialchars($error)?></div><?php endif;?>
 <?php if(!$user):?>
 <p class="eyebrow">Your account</p><h1><?= $action==='register'?'Create account':'Welcome back' ?></h1>
