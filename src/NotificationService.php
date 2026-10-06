@@ -58,7 +58,7 @@ final class NotificationService
 
     public function markFailed(int $id,string $error): void
     {
-        $s=$this->db->prepare("UPDATE notification_outbox SET attempts=attempts+1,last_error=?,next_attempt_at=datetime(CURRENT_TIMESTAMP,'+15 minutes') WHERE id=?");
+        $s=$this->db->prepare("UPDATE notification_outbox SET attempts=attempts+1,last_error=?,status=CASE WHEN attempts+1>=5 THEN 'failed' ELSE 'pending' END,next_attempt_at=CASE WHEN attempts+1>=5 THEN NULL ELSE datetime(CURRENT_TIMESTAMP,'+15 minutes') END WHERE id=?");
         $s->execute([substr($error,0,1000),$id]);
     }
 }
