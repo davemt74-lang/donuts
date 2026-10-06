@@ -2,7 +2,7 @@
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
 
-use FudgeDonuts\{AnalyticsService,CartService,CatalogRepository,Database,DiscountService,InventoryService,OrderService,PackBuilderService,PaymentRepository,PresetPackService,ShippingService,StripeService,TaxService};
+use FudgeDonuts\{AnalyticsService,CartService,CatalogRepository,CostAccountingService,Database,DiscountService,GiftCardService,InventoryService,NotificationService,OrderService,PackBuilderService,PaymentRepository,PresetPackService,PromotionService,ShippingService,StripeService,TaxService};
 
 if($_SERVER['REQUEST_METHOD']!=='POST'){header('Location: /checkout-review.php');exit;}
 verify_csrf($_POST['_csrf']??null);
@@ -29,7 +29,7 @@ if((env('ANALYTICS_ENABLED','0')??'0')==='1' && !empty($_COOKIE['fd_analytics'])
 }
 
 $base=rtrim((string)env('APP_URL','http://127.0.0.1:8080'),'/');
-$payments=new PaymentRepository($db);$taxService=new TaxService($db);
+$payments=new PaymentRepository($db);$taxService=new TaxService($db);$giftCards=new GiftCardService($db,(string)env('APP_KEY',''));
 $stripe=new StripeService((string)env('STRIPE_SECRET_KEY',''),(string)env('STRIPE_WEBHOOK_SECRET',''));
 
 if(in_array((string)$order['status'],['paid','payment_review'],true)){
@@ -86,14 +86,47 @@ $holdMinutes=max(30,min(120,(int)env('CHECKOUT_HOLD_MINUTES','30')));
 $expiresAtUnix=time()+($holdMinutes*60);
 $expiresAtDb=gmdate('Y-m-d H:i:s',$expiresAtUnix);
 
-$payment=$payments->createSession(!empty($_SESSION['user_id'])?(int)$_SESSION['user_id']:null,(int)$order['total_cents'],[
+$inventory->reserveOrder((int)$order['id'],$cart,$expiresAtDb);
+$taxService->snapshotOrder((int)$order['id']);
+
+$giftCardId=(int)($_SESSION['gift_card_id']??0);
+$giftApplication=null;$calculatedTax=0;$stripeCharge=(int)$order['total_cents'];
+if($giftCardId>0){
+    $calculatedTax=$taxService->calculateExclusiveForOrder($stripe,$order);
+    $taxService->recordCalculated((int)$order['id'],$calculatedTax);
+    $giftApplication=$giftCards->reserveForOrder($giftCardId,(int)$order['id'],(int)$order['total_cents']+$calculatedTax);
+    $stripeCharge=max(0,(int)$order['total_cents']+$calculatedTax-(int)$giftApplication['reserved_cents']);
+}
+
+if($giftApplication && $stripeCharge===0){
+    $sessionId='giftcard_order_'.(int)$order['id'].'_'.substr(hash('sha256',(string)$_SESSION['checkout_attempt_token']),0,12);
+    try{
+        $orderService->attachStripeSession((int)$order['id'],$sessionId);
+        $matched=$orderService->markPaidByExternalTender($sessionId,0,(int)$giftApplication['reserved_cents'],$calculatedTax,'usd');
+        if(!$matched) throw new RuntimeException('Gift card settlement did not reconcile.');
+        $giftCards->redeemForOrder((int)$order['id']);
+        $taxService->recordCollected((int)$order['id'],$calculatedTax);
+        $inventory->commitOrder((int)$order['id']);
+        (new PromotionService($db))->redeemOrder((int)$order['id']);
+        (new NotificationService($db))->queueOrderConfirmation($orderService->find((int)$order['id']));
+        try{(new CostAccountingService($db))->snapshotOrder((int)$order['id']);}catch(Throwable $e){\FudgeDonuts\ObservabilityService::captureThrowable($e,dirname(__DIR__),'cost_snapshot_failure');}
+        if((env('ANALYTICS_ENABLED','0')??'0')==='1'){try{(new AnalyticsService($db))->recordPurchase((int)$order['id']);}catch(Throwable){}}
+        header('Location: '.$base.'/payment-success.php?session_id='.rawurlencode($sessionId),true,303);exit;
+    }catch(Throwable $e){
+        $orderService->markSettlementReview((int)$order['id'],'Gift card-only settlement requires review.');
+        $inventory->holdForReview((int)$order['id']);
+        \FudgeDonuts\ObservabilityService::captureThrowable($e,dirname(__DIR__),'gift_card_only_settlement_failure');
+        \FudgeDonuts\HttpResponseService::send(503,'Your payment needs review.','We held this order safely and did not create a second charge. Please contact support with your order number.',[['label'=>'Contact support','href'=>'/contact.php']],\FudgeDonuts\ObservabilityService::requestId());
+    }
+}
+
+$payment=$payments->createSession(!empty($_SESSION['user_id'])?(int)$_SESSION['user_id']:null,$stripeCharge,[
     'order_id'=>$order['id'],
     'order_number'=>$order['order_number'],
     'checkout_attempt'=>hash('sha256',(string)$_SESSION['checkout_attempt_token']),
+    'gift_card_cents'=>(int)($giftApplication['reserved_cents']??0),
 ]);
 
-$inventory->reserveOrder((int)$order['id'],$cart,$expiresAtDb);
-$taxService->snapshotOrder((int)$order['id']);
 try{
   $stripeParams=[
     'mode'=>'payment',
@@ -102,19 +135,25 @@ try{
     'customer_email'=>$order['email'],
     'client_reference_id'=>$order['order_number'],
     'metadata[order_id]'=>(string)$order['id'],
+    'metadata[gift_card_cents]'=>(string)((int)($giftApplication['reserved_cents']??0)),
     'expires_at'=>(string)$expiresAtUnix,
     'line_items[0][quantity]'=>'1',
     'line_items[0][price_data][currency]'=>'usd',
-    'line_items[0][price_data][unit_amount]'=>(string)$order['total_cents'],
-    'line_items[0][price_data][product_data][name]'=>'Fudge Donuts order '.$order['order_number'],
+    'line_items[0][price_data][unit_amount]'=>(string)$stripeCharge,
+    'line_items[0][price_data][product_data][name]'=>$giftApplication?'Fudge Donuts order balance after gift card':'Fudge Donuts order '.$order['order_number'],
   ];
-  $stripeParams=array_merge($stripeParams,$taxService->checkoutParams());
+  if($giftApplication){
+      $stripeParams['automatic_tax[enabled]']='false';
+      $stripeParams['line_items[0][price_data][tax_behavior]']='exclusive';
+  }else{
+      $stripeParams=array_merge($stripeParams,$taxService->checkoutParams());
+  }
   $session=$stripe->createCheckoutSession($stripeParams,$payment['idempotency_key']);
   $payments->attachProviderSession((int)$payment['id'],(string)$session['id']);
   $orderService->attachStripeSession((int)$order['id'],(string)$session['id']);
   header('Location: '.(string)$session['url'],true,303);exit;
 }catch(Throwable $e){
-  $inventory->releaseOrder((int)$order['id']);
+  $inventory->releaseOrder((int)$order['id']);$giftCards->releaseForOrder((int)$order['id']);
   $payments->markFailed((int)$payment['id'],'Stripe checkout initialization failed');
   $orderService->markPaymentInitializationFailed((int)$order['id'],'Stripe checkout initialization failed');
   \FudgeDonuts\ObservabilityService::captureThrowable($e,dirname(__DIR__),'payment_checkout_initialization_failure');
