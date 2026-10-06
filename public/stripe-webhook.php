@@ -35,6 +35,7 @@ if(is_array($object) && !empty($object['id'])){
             }
         }else{
             $payments->markReviewByProviderSession((string)$object['id']);
+            if($orderId)(new InventoryService($db))->holdForReview($orderId);
         }
     }elseif(in_array($event['type'],['checkout.session.expired','checkout.session.async_payment_failed'],true)){
         $orderId=$orderService->idByStripeSession((string)$object['id']);
