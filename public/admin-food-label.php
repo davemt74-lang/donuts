@@ -1,0 +1,9 @@
+<?php
+declare(strict_types=1);
+require dirname(__DIR__).'/src/bootstrap.php';
+use FudgeDonuts\{Database,FoodComplianceService};
+require_admin_roles(['super_admin','admin','fulfillment']);
+$id=(int)($_GET['flavor_id']??0);
+try{$p=(new FoodComplianceService(Database::connection()))->publicProfile($id);if(!$p)throw new RuntimeException();}
+catch(Throwable){http_response_code(404);exit('Published compliance label unavailable.');}
+?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><?=htmlspecialchars($p['name'])?> Label</title><link rel="stylesheet" href="<?=htmlspecialchars(asset_url('/assets/app.css'))?>"></head><body class="packing-slip-body"><main class="food-label"><p class="eyebrow">Fudge Donuts</p><h1><?=htmlspecialchars($p['name'])?></h1><p><strong>Net Wt.</strong> <?=number_format((float)$p['net_weight_oz'],2)?> oz</p><section><h2>Ingredients</h2><p><?=nl2br(htmlspecialchars($p['ingredient_statement']))?></p></section><section><h2>Allergen statement</h2><p><?=nl2br(htmlspecialchars($p['allergen_statement']))?></p></section><?php if($p['shared_kitchen_notice']):?><p><strong>Cross-contact notice:</strong> <?=htmlspecialchars($p['shared_kitchen_notice'])?></p><?php endif;?><section><h2>Storage</h2><p><?=nl2br(htmlspecialchars($p['storage_instructions']))?></p><p>Recommended shelf life: <?=(int)$p['shelf_life_days']?> days.</p></section><footer>Label version <?=htmlspecialchars($p['label_version'])?></footer></main><script>window.addEventListener('load',()=>{if(new URLSearchParams(location.search).get('print')==='1')window.print();});</script></body></html>
