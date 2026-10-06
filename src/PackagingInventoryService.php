@@ -9,6 +9,14 @@ final class PackagingInventoryService
 {
     public function __construct(private readonly PDO $db) {}
 
+    public function enabled(): bool
+    {
+        try{
+            $s=$this->db->prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='packaging_materials'");$s->execute();
+            return (bool)$s->fetchColumn();
+        }catch(\Throwable){return false;}
+    }
+
     public function materials(): array
     {
         return $this->db->query("SELECT m.*,
