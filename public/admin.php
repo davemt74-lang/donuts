@@ -52,12 +52,13 @@ $maxRevenue=max(1,...array_map(fn($d)=>(int)$d['revenue_cents'],$data['daily_sal
 $adminUser=$adminAuth->admin((int)$_SESSION['admin_id']);
 $mailStats=(new NotificationService($db))->stats();$supportStats=(new SupportService($db))->stats();$opsService=new ObservabilityService($db);$opsHealth=$opsService->health();$opsStats=$opsService->stats();
 ?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dashboard · Fudge Donuts Admin</title><link rel="stylesheet" href="/assets/app.css"></head><body class="admin-body">
+<a class="skip-link" href="#admin-main">Skip to admin content</a>
 <header class="admin-topbar">
   <a class="admin-brand" href="/admin.php">Fudge Donuts <span>Admin</span></a>
   <nav><a class="active" href="/admin.php">Dashboard</a><a href="/admin-flavors.php">Flavors</a><a href="/admin-packs.php">Packs</a><a href="/admin-orders.php">Orders</a><a href="/admin-support.php">Support</a><a href="/admin-inventory.php">Inventory</a><a href="/admin-shipping.php">Shipping</a><a href="/admin-tax.php">Tax</a><a href="/admin-promotions.php">Promotions</a><a href="/admin-content.php">Content</a><a href="/admin-reports.php">Reports</a><a href="/admin-notifications.php">Email</a><a href="/admin-marketing.php">Marketing</a><a href="/admin-audit.php">Audit</a><a href="/admin-operations.php">Operations</a><?php if(admin_has_role(['super_admin'])):?><a href="/admin-backups.php">Backups</a><a href="/admin-users.php">Administrators</a><?php endif;?></nav>
   <form method="post"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>"><button class="link" name="logout">Sign out</button></form>
 </header>
-<main class="admin-shell">
+<main id="admin-main" tabindex="-1" class="admin-shell">
   <div class="admin-page-head">
     <div><p class="eyebrow">Store overview</p><h1>Dashboard</h1><p class="admin-welcome">Welcome back<?=!empty($adminUser['first_name'])?', '.htmlspecialchars($adminUser['first_name']):''?>.</p></div>
     <div class="admin-quick-actions"><a class="button secondary" href="/admin-orders.php">View orders</a><a class="button" href="/admin-flavors.php">Add flavor</a></div>

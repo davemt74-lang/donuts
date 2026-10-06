@@ -40,13 +40,14 @@ $orders=$accountService?$accountService->orders((int)$user['id']):[];
 $savedBoxes=$accountService?$accountService->savedBoxes((int)$user['id']):[];
 $accountFlash=(string)($_SESSION['account_flash']??'');unset($_SESSION['account_flash']);
 ?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Account · Fudge Donuts</title><link rel="stylesheet" href="/assets/app.css"></head><body>
-<header class="nav"><a class="brand" href="/">Fudge Donuts</a><nav><a href="/cart.php">Cart</a></nav></header><main class="section account-page">
-<?php if($error):?><div class="notice error"><?=htmlspecialchars($error)?></div><?php endif;?>
+<a class="skip-link" href="#main-content">Skip to main content</a>
+<header class="nav"><a class="brand" href="/">Fudge Donuts</a><nav><a href="/cart.php">Cart</a></nav></header><main id="main-content" tabindex="-1" class="section account-page">
+<?php if($error):?><div class="notice error" role="alert"><?=htmlspecialchars($error)?></div><?php endif;?>
 <?php if(!$user):?>
 <p class="eyebrow">Your account</p><h1><?= $action==='register'?'Create account':'Welcome back' ?></h1>
 <form method="post" class="admin-form"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>"><input type="hidden" name="mode" value="<?=$action==='register'?'register':'login'?>">
-<?php if($action==='register'):?><input name="first_name" placeholder="First name"><input name="last_name" placeholder="Last name"><?php endif;?>
-<input type="email" name="email" required placeholder="Email"><input type="password" name="password" required minlength="12" placeholder="Password"><button class="button"><?=$action==='register'?'Create account':'Sign in'?></button></form>
+<?php if($action==='register'):?><label>First name<input name="first_name" autocomplete="given-name" placeholder="First name"></label><label>Last name<input name="last_name" autocomplete="family-name" placeholder="Last name"></label><?php endif;?>
+<label>Email<input type="email" name="email" required autocomplete="email" placeholder="Email"></label><label>Password<input type="password" name="password" required minlength="12" autocomplete="<?=$action==='register'?'new-password':'current-password'?>" placeholder="Password"></label><button class="button"><?=$action==='register'?'Create account':'Sign in'?></button></form>
 <p><?=$action==='register'?'Already have an account? <a href="/account.php">Sign in</a>':'New here? <a href="/account.php?action=register">Create an account</a>'?></p><?php if($action!=='register'):?><p><a href="/forgot-password.php">Forgot your password?</a></p><?php endif;?>
 <?php else:?>
 <p class="eyebrow">Account</p><h1>Hello, <?=htmlspecialchars($user['first_name']?:'there')?></h1><p><?=htmlspecialchars($user['email'])?></p><?php if(!empty($_GET['password'])):?><div class="notice">Your password has been updated.</div><?php endif;?><?php if(!empty($_GET['box'])):?><div class="notice">Your box has been saved.</div><?php endif;?><?php if($accountFlash):?><div class="notice error"><?=htmlspecialchars($accountFlash)?></div><?php endif;?>
