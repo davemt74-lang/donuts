@@ -28,7 +28,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
         header('Location: /admin-finished-goods-aging.php',true,303);exit;
     }catch(Throwable $e){$error=$e->getMessage();}
 }
-$svc->holdExpired();$summary=$svc->summary();$rows=$svc->rows();$history=$svc->dispositions(100);$warning=$svc->warningDays();
+$summary=$svc->summary();$rows=$svc->rows();$history=$svc->dispositions(100);$warning=$svc->warningDays();
 ?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Finished Goods Aging · Fudge Donuts Admin</title><link rel="stylesheet" href="/assets/app.css"></head><body class="admin-body">
 <header class="admin-topbar"><a class="admin-brand" href="/admin.php">Fudge Donuts <span>Admin</span></a><nav><a href="/admin.php">Dashboard</a><a href="/admin-batches.php">Batches</a><a href="/admin-batch-allocation.php">Allocation</a><a class="active" href="/admin-finished-goods-aging.php">Aging</a><a href="/admin-production-qa.php">QA & Waste</a><a href="/admin-inventory.php">Inventory</a></nav></header>
 <main class="admin-shell"><div class="admin-page-head"><div><p class="eyebrow">Waste prevention</p><h1>Finished-Goods Aging</h1><p class="admin-welcome">Hold expired batches, prioritize near-expiry stock, and account for every unit removed from saleable finished goods.</p></div><form method="post"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>"><input type="hidden" name="action" value="hold_expired"><button class="button secondary">Hold expired now</button></form></div>
