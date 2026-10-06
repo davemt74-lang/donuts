@@ -51,6 +51,42 @@ final class NotificationService
         return $this->db->query("SELECT o.*,COALESCE(c.html_body,'') html_body FROM notification_outbox o LEFT JOIN notification_email_content c ON c.outbox_id=o.id WHERE o.status='pending' AND (o.next_attempt_at IS NULL OR o.next_attempt_at<=CURRENT_TIMESTAMP) ORDER BY o.id LIMIT {$limit}")->fetchAll();
     }
 
+    public function stats(): array
+    {
+        $rows=$this->db->query("SELECT status,COUNT(*) count FROM notification_outbox GROUP BY status")->fetchAll();
+        $stats=['pending'=>0,'sent'=>0,'failed'=>0,'total'=>0];
+        foreach($rows as $row){
+            $status=(string)$row['status'];$count=(int)$row['count'];
+            if(array_key_exists($status,$stats))$stats[$status]=$count;
+            $stats['total']+=$count;
+        }
+        return $stats;
+    }
+
+    public function recent(int $limit=100,?string $status=null): array
+    {
+        $limit=max(1,min(500,$limit));
+        if($status!==null && $status!==''){
+            if(!in_array($status,['pending','sent','failed'],true)) throw new \InvalidArgumentException('Invalid notification status filter.');
+            $s=$this->db->prepare("SELECT o.*,COALESCE(c.html_body,'') html_body FROM notification_outbox o LEFT JOIN notification_email_content c ON c.outbox_id=o.id WHERE o.status=? ORDER BY o.id DESC LIMIT {$limit}");
+            $s->execute([$status]);return $s->fetchAll();
+        }
+        return $this->db->query("SELECT o.*,COALESCE(c.html_body,'') html_body FROM notification_outbox o LEFT JOIN notification_email_content c ON c.outbox_id=o.id ORDER BY o.id DESC LIMIT {$limit}")->fetchAll();
+    }
+
+    public function retry(int $id): void
+    {
+        $s=$this->db->prepare("UPDATE notification_outbox SET status='pending',attempts=0,next_attempt_at=NULL,last_error='' WHERE id=? AND status='failed'");
+        $s->execute([$id]);
+        if($s->rowCount()!==1) throw new \InvalidArgumentException('Only failed notifications can be retried.');
+    }
+
+    public function retryAllFailed(): int
+    {
+        $s=$this->db->prepare("UPDATE notification_outbox SET status='pending',attempts=0,next_attempt_at=NULL,last_error='' WHERE status='failed'");
+        $s->execute();return $s->rowCount();
+    }
+
     public function markSent(int $id): void
     {
         $s=$this->db->prepare("UPDATE notification_outbox SET status='sent',sent_at=CURRENT_TIMESTAMP,last_error='' WHERE id=?");$s->execute([$id]);
