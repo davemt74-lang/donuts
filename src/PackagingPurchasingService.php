@@ -41,14 +41,23 @@ final class PackagingPurchasingService
     {
         $plan=(new PackagingInventoryService($this->db))->plan();$items=$this->supplierItems();$byMaterial=[];
         foreach($items as $item)$byMaterial[(int)$item['material_id']][]=$item;
+        $openSupply=[];
+        $s=$this->db->query("SELECT i.material_id,COALESCE(SUM(i.quantity_ordered-i.quantity_received),0) qty
+            FROM packaging_purchase_order_items i JOIN packaging_purchase_orders p ON p.id=i.purchase_order_id
+            WHERE p.status IN ('ordered','partially_received') GROUP BY i.material_id");
+        foreach($s->fetchAll() as $supply)$openSupply[(int)$supply['material_id']]=(int)$supply['qty'];
+
         $rows=[];$critical=0;$cost=0;
         foreach($plan['rows'] as $row){
-            if((int)$row['suggested_purchase']<=0)continue;$choices=$byMaterial[(int)$row['id']]??[];
+            $materialId=(int)$row['id'];$incoming=(int)($openSupply[$materialId]??0);
+            $needed=max(0,(int)$row['suggested_purchase']-$incoming);
+            if($needed<=0)continue;
+            $choices=$byMaterial[$materialId]??[];
             usort($choices,fn($a,$b)=>((int)$a['unit_cost_cents']<=>(int)$b['unit_cost_cents']) ?: ((int)$a['lead_time_days']<=>(int)$b['lead_time_days']));
-            $best=$choices[0]??null;$qty=(int)$row['suggested_purchase'];
+            $best=$choices[0]??null;$qty=$needed;
             if($best && $best['min_order_quantity']!==null)$qty=max($qty,(int)$best['min_order_quantity']);
             if(!$best)$critical++;else $cost+=$qty*(int)$best['unit_cost_cents'];
-            $rows[]=$row+['supplier_item'=>$best,'recommended_order_quantity'=>$qty,'estimated_cost_cents'=>$best?$qty*(int)$best['unit_cost_cents']:0];
+            $rows[]=$row+['incoming_units'=>$incoming,'supplier_item'=>$best,'recommended_order_quantity'=>$qty,'estimated_cost_cents'=>$best?$qty*(int)$best['unit_cost_cents']:0];
         }
         return ['rows'=>$rows,'critical'=>$critical,'estimated_cost_cents'=>$cost];
     }
