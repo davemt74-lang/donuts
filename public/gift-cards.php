@@ -60,5 +60,5 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
 <label>Recipient email<input type="email" name="recipient_email" required autocomplete="email" maxlength="190" value="<?=htmlspecialchars((string)($_POST['recipient_email']??''))?>"></label>
 <label>Gift message<textarea name="message" maxlength="500" rows="5" placeholder="Optional message"><?=htmlspecialchars((string)($_POST['message']??''))?></textarea></label>
 <button class="button">Continue to secure payment</button></form>
-<p class="muted">Gift cards are not cash and are redeemed against eligible Fudge Donuts orders. Any unused balance remains on the card.</p>
+<p class="muted">Gift cards are not cash and are redeemed against eligible Fudge Donuts orders. Any unused balance remains on the card.</p><p><a href="/gift-card-balance.php">Check an existing gift card balance</a></p>
 </main></body></html>
