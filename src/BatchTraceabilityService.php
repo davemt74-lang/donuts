@@ -55,7 +55,10 @@ final class BatchTraceabilityService
             if(!in_array($status,['draft','released','hold','recalled','closed'],true)) throw new \InvalidArgumentException('Invalid batch status.');
             $where=' WHERE b.status=?';$params[]=$status;
         }
-        $s=$this->db->prepare("SELECT b.*,COUNT(DISTINCT opb.order_id) order_count,COALESCE(SUM(bf.quantity_produced),0) total_units FROM production_batches b LEFT JOIN order_production_batches opb ON opb.batch_id=b.id LEFT JOIN production_batch_flavors bf ON bf.batch_id=b.id{$where} GROUP BY b.id ORDER BY b.produced_at DESC,b.id DESC LIMIT {$limit}");
+        $s=$this->db->prepare("SELECT b.*,
+            (SELECT COUNT(*) FROM order_production_batches opb WHERE opb.batch_id=b.id) order_count,
+            (SELECT COALESCE(SUM(bf.quantity_produced),0) FROM production_batch_flavors bf WHERE bf.batch_id=b.id) total_units
+            FROM production_batches b{$where} ORDER BY b.produced_at DESC,b.id DESC LIMIT {$limit}");
         $s->execute($params);return $s->fetchAll();
     }
 
