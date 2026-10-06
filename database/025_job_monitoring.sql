@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS scheduled_job_runs (
 );
 CREATE INDEX IF NOT EXISTS idx_scheduled_job_runs_job ON scheduled_job_runs(job_key,id DESC);
 CREATE INDEX IF NOT EXISTS idx_scheduled_job_runs_status ON scheduled_job_runs(status,started_at);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_scheduled_job_one_running ON scheduled_job_runs(job_key) WHERE status='running';
 
 INSERT OR IGNORE INTO scheduled_jobs(job_key,description,expected_interval_minutes) VALUES
  ('notifications','Transactional email delivery',5),
