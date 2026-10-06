@@ -19,8 +19,11 @@ final class BatchTraceabilityService
         $notes=mb_substr(trim((string)($data['notes']??'')),0,4000);
         if(!preg_match('/^[A-Z0-9][A-Z0-9._-]{2,63}$/',$code)) throw new \InvalidArgumentException('Batch code must be 3–64 letters, numbers, dots, dashes or underscores.');
         if(!$this->flavorExists($flavorId)) throw new \InvalidArgumentException('Flavor not found.');
-        if($produced==='' || strtotime($produced)===false) throw new \InvalidArgumentException('Production date/time is required.');
+        $producedTs=$produced!==''?strtotime($produced):false;
+        if($producedTs===false) throw new \InvalidArgumentException('Production date/time is required.');
+        if($producedTs>time()+300) throw new \InvalidArgumentException('Production date/time cannot be in the future.');
         if($bestBy!==null && strtotime($bestBy)===false) throw new \InvalidArgumentException('Best-by date is invalid.');
+        if($bestBy!==null && $bestBy<gmdate('Y-m-d',$producedTs)) throw new \InvalidArgumentException('Best-by date cannot be before production date.');
         if($qty<=0) throw new \InvalidArgumentException('Produced quantity must be greater than zero.');
         try{
             $s=$this->db->prepare("INSERT INTO production_batches(batch_code,flavor_id,produced_at,best_by_date,quantity_produced,quantity_remaining,status,notes,created_by) VALUES(?,?,?,?,?,?,'active',?,?)");
@@ -100,6 +103,22 @@ final class BatchTraceabilityService
                 $dec->execute([$qty,$qty,$bid,$qty]);if($dec->rowCount()!==1) throw new \RuntimeException('A production batch changed during assignment.');
                 $ins->execute([$orderId,$bid,$qty,$adminId]);
             }
+            $this->db->commit();
+        }catch(\Throwable $e){if($this->db->inTransaction())$this->db->rollBack();throw $e;}
+    }
+
+    public function unassignOrder(int $orderId): void
+    {
+        $order=$this->order($orderId);
+        if(!in_array($order['status'],['preparing','ready'],true)) throw new \InvalidArgumentException('Batch assignment can only be changed while an order is preparing or ready.');
+        $assigned=$this->assignmentsForOrder($orderId);
+        if(!$assigned) return;
+
+        $this->db->beginTransaction();
+        try{
+            $restore=$this->db->prepare("UPDATE production_batches SET quantity_remaining=quantity_remaining+?,status=CASE WHEN status='depleted' THEN CASE WHEN best_by_date IS NOT NULL AND best_by_date<date('now') THEN 'hold' ELSE 'active' END ELSE status END,updated_at=CURRENT_TIMESTAMP WHERE id=?");
+            foreach($assigned as $a)$restore->execute([(int)$a['quantity'],(int)$a['batch_id']]);
+            $d=$this->db->prepare('DELETE FROM order_batch_assignments WHERE order_id=?');$d->execute([$orderId]);
             $this->db->commit();
         }catch(\Throwable $e){if($this->db->inTransaction())$this->db->rollBack();throw $e;}
     }
