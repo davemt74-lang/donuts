@@ -2,7 +2,7 @@
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
 
-use FudgeDonuts\{AuthService,CartService,CatalogRepository,CheckoutService,Database,DiscountService,OrderService,PackBuilderService,PresetPackService};
+use FudgeDonuts\{AuthService,CartService,CatalogRepository,CheckoutRecoveryService,CheckoutService,Database,DiscountService,OrderService,PackBuilderService,PresetPackService};
 
 $db=Database::connection();
 $catalog=new CatalogRepository($db);
@@ -32,6 +32,18 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
       unset($_SESSION['checkout_attempt_token'],$_SESSION['active_order_id'],$_SESSION['fulfillment']);
   }
   $_SESSION['checkout']=$validated;
+  try{
+      $recovery=new CheckoutRecoveryService($db,(string)env('APP_KEY',''),(string)env('APP_URL','http://127.0.0.1:8080'),(int)env('CHECKOUT_RECOVERY_DAYS','7'));
+      $_SESSION['checkout_recovery_id']=$recovery->capture(
+          !empty($_SESSION['checkout_recovery_id'])?(int)$_SESSION['checkout_recovery_id']:null,
+          !empty($_SESSION['user_id'])?(int)$_SESSION['user_id']:null,
+          (string)$validated['email'],
+          (array)($_SESSION['cart']??[]),
+          isset($_SESSION['coupon'])?(string)$_SESSION['coupon']:null
+      );
+  }catch(Throwable $recoveryError){
+      \FudgeDonuts\ObservabilityService::captureThrowable($recoveryError,dirname(__DIR__),'checkout_recovery_capture_failure');
+  }
   header('Location: /checkout-review.php');exit;
  }catch(Throwable $e){$error=$e->getMessage();}
 }
