@@ -25,4 +25,9 @@ final class Database
         if (str_starts_with((string)$dsn, 'sqlite:')) self::$pdo->exec('PRAGMA foreign_keys = ON');
         return self::$pdo;
     }
+
+    public static function disconnect(): void
+    {
+        self::$pdo=null;
+    }
 }
