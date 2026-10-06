@@ -1,9 +1,9 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
-use FudgeDonuts\{AdminService,Database,FulfillmentService,NotificationService,RefundService,StripeService};
+use FudgeDonuts\{AdminAuditService,AdminService,Database,FulfillmentService,NotificationService,RefundService,StripeService};
 require_admin_roles(['super_admin','admin','fulfillment']);
-$db=Database::connection();$admin=new AdminService($db);$refunds=new RefundService($db);$fulfillment=new FulfillmentService($db);$id=(int)($_GET['id']??$_POST['id']??0);$order=$admin->order($id);
+$db=Database::connection();$admin=new AdminService($db);$audit=new AdminAuditService($db);$refunds=new RefundService($db);$fulfillment=new FulfillmentService($db);$id=(int)($_GET['id']??$_POST['id']??0);$order=$admin->order($id);
 if(!$order){http_response_code(404);exit('Order not found');}
 $error='';$notice='';
 if($_SERVER['REQUEST_METHOD']==='POST'){
@@ -11,14 +11,15 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
  try{
    $action=(string)($_POST['action']??'');
    if($action==='status'){
-     $newStatus=(string)$_POST['status'];
+     $newStatus=(string)$_POST['status'];$beforeStatus=(string)$order['status'];
      $admin->transitionOrder($id,$newStatus,(string)($_POST['note']??''));
+     $audit->record((int)$_SESSION['admin_id'],'order_status_changed','order',$id,"Order {$order['order_number']} moved {$beforeStatus} → {$newStatus}.",['status'=>$beforeStatus],['status'=>$newStatus]);
      if($newStatus==='shipped')$fulfillment->markShipped($id);
      if($newStatus==='delivered')$fulfillment->markDelivered($id);
      $order=$admin->order($id);(new NotificationService($db))->queueFulfillmentUpdate($order,$fulfillment->details($id));
      $notice='Order status updated.';
    }elseif($action==='fulfillment'){
-     $fulfillment->save($id,$_POST);$order=$admin->order($id);(new NotificationService($db))->queueFulfillmentUpdate($order,$fulfillment->details($id));$notice='Fulfillment details saved.';
+     $beforeFulfillment=$fulfillment->details($id);$afterFulfillment=$fulfillment->save($id,$_POST);$audit->record((int)$_SESSION['admin_id'],'fulfillment_updated','order',$id,'Order fulfillment details updated.',$beforeFulfillment,$afterFulfillment);$order=$admin->order($id);(new NotificationService($db))->queueFulfillmentUpdate($order,$fulfillment->details($id));$notice='Fulfillment details saved.';
    }elseif($action==='refund'){
      require_admin_roles(['super_admin','admin']);
      $amount=(int)$_POST['amount_cents'];$rid=$refunds->create($id,$amount,(string)($_POST['reason']??''),(int)$_SESSION['admin_id']);
@@ -30,11 +31,12 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
          'metadata[order_id]'=>(string)$id,
          'metadata[refund_id]'=>(string)$rid,
        ],'refund_'.$rid);
-       $refunds->markSucceeded($rid,(string)$result['id']);$notice='Refund completed.';
+       $refunds->markSucceeded($rid,(string)$result['id']);$audit->record((int)$_SESSION['admin_id'],'refund_issued','order',$id,'Stripe refund issued.',['status'=>$order['status']],['refund_id'=>$rid,'amount_cents'=>$amount,'stripe_refund_id'=>(string)$result['id']]);$notice='Refund completed.';
      }catch(Throwable $e){$refunds->markFailed($rid,$e->getMessage());throw $e;}
    }elseif($action==='cancel_resolution'){
      $requestId=(int)$_POST['request_id'];$resolution=(string)$_POST['resolution'];$refunds->resolveCancellation($requestId,$resolution,(int)$_SESSION['admin_id']);
      if($resolution==='approved' && in_array($order['status'],['pending_payment','paid','preparing'],true)){$admin->transitionOrder($id,'cancelled','Customer cancellation request approved.');}
+     $audit->record((int)$_SESSION['admin_id'],'cancellation_resolved','order',$id,'Customer cancellation request '.$resolution.'.',[],['resolution'=>$resolution,'request_id'=>$requestId]);
      $notice='Cancellation request updated.';
    }
    $order=$admin->order($id);
@@ -42,7 +44,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
 }
 $refundRows=$refunds->forOrder($id);$cancel=$refunds->pendingCancellation($id);$refundable=$refunds->refundableCents($id);$fulfillmentDetails=$fulfillment->details($id);
 ?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/assets/app.css"><title><?=htmlspecialchars($order['order_number'])?> · Admin</title></head><body class="admin-body">
-<header class="admin-topbar"><a class="admin-brand" href="/admin.php">Fudge Donuts <span>Admin</span></a><nav><a href="/admin.php">Dashboard</a><a class="active" href="/admin-orders.php">Orders</a><a href="/admin-inventory.php">Inventory</a><a href="/admin-reports.php">Reports</a><a href="/admin-notifications.php">Email</a><a href="/admin-marketing.php">Marketing</a></nav></header>
+<header class="admin-topbar"><a class="admin-brand" href="/admin.php">Fudge Donuts <span>Admin</span></a><nav><a href="/admin.php">Dashboard</a><a class="active" href="/admin-orders.php">Orders</a><a href="/admin-inventory.php">Inventory</a><a href="/admin-reports.php">Reports</a><a href="/admin-notifications.php">Email</a><a href="/admin-marketing.php">Marketing</a><a href="/admin-audit.php">Audit</a></nav></header>
 <main class="admin-shell"><div class="admin-page-head"><div><p class="eyebrow">Order detail</p><h1><?=htmlspecialchars($order['order_number'])?></h1></div><a class="button secondary" href="/admin-orders.php">Back to orders</a></div>
 <?php if($error):?><div class="notice error"><?=htmlspecialchars($error)?></div><?php endif;?><?php if($notice):?><div class="notice"><?=htmlspecialchars($notice)?></div><?php endif;?>
 <div class="dashboard-grid dashboard-main"><section class="dashboard-panel"><h2>Customer & fulfillment</h2><p><strong><?=htmlspecialchars($order['first_name'].' '.$order['last_name'])?></strong><br><?=htmlspecialchars($order['email'])?><br><?=htmlspecialchars($order['line1'])?><br><?=htmlspecialchars($order['city'].', '.$order['region'].' '.$order['postal_code'])?></p><p><?=htmlspecialchars($order['fulfillment_name'])?> · <?=htmlspecialchars(ucwords(str_replace('_',' ',$order['status'])))?></p></section><section class="dashboard-panel"><h2>Totals</h2><div class="review-total"><span>Subtotal</span><strong><?=money((int)$order['subtotal_cents'])?></strong></div><div class="review-total"><span>Discounts</span><strong>−<?=money((int)$order['discount_cents'])?></strong></div><div class="review-total"><span>Shipping</span><strong><?=money((int)$order['shipping_cents'])?></strong></div><div class="review-total"><span>Tax</span><strong><?=money((int)$order['tax_cents'])?></strong></div><div class="review-total grand"><span>Total</span><strong><?=money((int)$order['total_cents'])?></strong></div></section></div>
