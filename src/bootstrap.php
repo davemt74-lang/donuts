@@ -77,11 +77,23 @@ function admin_has_role(array $roles): bool
 
 function require_admin_roles(array $roles): void
 {
-    if(empty($_SESSION['admin'])){
+    if(empty($_SESSION['admin']) || empty($_SESSION['admin_id'])){
         header('Location: /admin.php');
         exit;
     }
-    if(!admin_has_role($roles)){
+    try {
+        $admin=(new \FudgeDonuts\AdminAuthService(\FudgeDonuts\Database::connection()))->admin((int)$_SESSION['admin_id']);
+    } catch (Throwable) {
+        $admin=null;
+    }
+    if(!$admin || !(int)$admin['active']){
+        unset($_SESSION['admin'],$_SESSION['admin_id'],$_SESSION['admin_role']);
+        session_regenerate_id(true);
+        header('Location: /admin.php');
+        exit;
+    }
+    $_SESSION['admin_role']=(string)$admin['role'];
+    if(!in_array((string)$admin['role'],$roles,true)){
         http_response_code(403);
         exit('Forbidden');
     }
