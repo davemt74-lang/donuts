@@ -81,48 +81,46 @@ final class OrderService
         $s->execute([(int)$orderId,$paymentIntentId]);
     }
 
-    public function markPaidByStripeSession(string $sessionId,int $stripeSubtotalCents,int $amountTotal,int $taxCents,string $currency='usd'): void
+    public function markPaidByStripeSession(string $sessionId,int $stripeSubtotalCents,int $amountTotal,int $taxCents,string $currency='usd'): bool
     {
         $currency=strtolower(trim($currency));
-        if($stripeSubtotalCents<0 || $amountTotal<0 || $taxCents<0 || $taxCents>$amountTotal) throw new \RuntimeException('Stripe returned invalid payment totals.');
+        $s=$this->db->prepare("SELECT * FROM orders WHERE stripe_checkout_session_id=?");
+        $s->execute([$sessionId]);$order=$s->fetch();
+        if(!$order) return false;
+        if($order['status']==='paid') return true;
+        if($order['status']==='payment_review') return false;
+        if($order['status']!=='pending_payment') throw new \RuntimeException('Unexpected order payment state.');
+
+        $reconciliation=(new PaymentReconciliationService($this->db))->reconcile((int)$order['id'],$sessionId,[
+            'amount_subtotal'=>$stripeSubtotalCents,
+            'amount_total'=>$amountTotal,
+            'currency'=>$currency,
+            'total_details'=>['amount_tax'=>$taxCents],
+        ]);
+        if(!$reconciliation['matched']){
+            $this->markPaymentReviewByStripeSession($sessionId,'Stripe total or currency reconciliation failed.');
+            return false;
+        }
+
         $this->db->beginTransaction();
         try{
-            $s=$this->db->prepare("SELECT * FROM orders WHERE stripe_checkout_session_id=?");
-            $s->execute([$sessionId]);$order=$s->fetch();
-            if(!$order){$this->db->rollBack();return;}
-            if($order['status']==='paid'){$this->db->rollBack();return;}
-            if($order['status']!=='pending_payment') throw new \RuntimeException('Unexpected order payment state.');
-
-            $expectedPreTax=(int)$order['total_cents'];
-            $providerPreTax=$amountTotal-$taxCents;
-            $currencyMatches=$currency===strtolower((string)$order['currency']);
-            $totalsMatch=$providerPreTax===$expectedPreTax;
-            $reconciliationStatus=($currencyMatches && $totalsMatch)?'matched':'mismatch';
-            $details=json_encode([
-                'expected_pre_tax_cents'=>$expectedPreTax,
-                'provider_pre_tax_cents'=>$providerPreTax,
-                'stripe_subtotal_cents'=>$stripeSubtotalCents,
-                'stripe_tax_cents'=>$taxCents,
-                'stripe_total_cents'=>$amountTotal,
-                'expected_currency'=>strtolower((string)$order['currency']),
-                'stripe_currency'=>$currency,
-            ],JSON_THROW_ON_ERROR);
-
-            $r=$this->db->prepare("INSERT INTO order_payment_reconciliation(order_id,stripe_session_id,expected_pre_tax_cents,stripe_subtotal_cents,stripe_tax_cents,stripe_total_cents,currency,status,details) VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(order_id) DO UPDATE SET stripe_session_id=excluded.stripe_session_id,expected_pre_tax_cents=excluded.expected_pre_tax_cents,stripe_subtotal_cents=excluded.stripe_subtotal_cents,stripe_tax_cents=excluded.stripe_tax_cents,stripe_total_cents=excluded.stripe_total_cents,currency=excluded.currency,status=excluded.status,details=excluded.details,reconciled_at=CURRENT_TIMESTAMP");
-            $r->execute([(int)$order['id'],$sessionId,$expectedPreTax,$stripeSubtotalCents,$taxCents,$amountTotal,$currency,$reconciliationStatus,$details]);
-
-            if($reconciliationStatus!=='matched'){
-                $this->event((int)$order['id'],'payment_reconciliation_failed','Stripe payment total or currency did not match the server-calculated order.',json_decode($details,true,512,JSON_THROW_ON_ERROR));
-                $this->db->commit();
-                throw new \RuntimeException('Stripe payment reconciliation failed.');
-            }
-
             $u=$this->db->prepare("UPDATE orders SET status='paid',tax_cents=?,total_cents=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='pending_payment'");
             $u->execute([$taxCents,$amountTotal,(int)$order['id']]);
             if($u->rowCount()!==1) throw new \RuntimeException('Order changed before payment reconciliation completed.');
             $this->event((int)$order['id'],'paid','Stripe confirmed and reconciled payment.',['amount_total'=>$amountTotal,'tax_cents'=>$taxCents,'currency'=>$currency]);
             $this->db->commit();
+            return true;
         }catch(\Throwable $e){if($this->db->inTransaction())$this->db->rollBack();throw $e;}
+    }
+
+    public function markPaymentReviewByStripeSession(string $sessionId,string $reason=''): void
+    {
+        $s=$this->db->prepare("UPDATE orders SET status='payment_review',updated_at=CURRENT_TIMESTAMP WHERE stripe_checkout_session_id=? AND status='pending_payment'");
+        $s->execute([$sessionId]);
+        if($s->rowCount()){
+            $q=$this->db->prepare('SELECT id FROM orders WHERE stripe_checkout_session_id=?');$q->execute([$sessionId]);$orderId=(int)$q->fetchColumn();
+            $this->event($orderId,'payment_review',$reason!==''?$reason:'Payment requires manual review.');
+        }
     }
 
     public function markPaymentFailedByStripeSession(string $sessionId,string $reason=''): void
