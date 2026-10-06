@@ -70,14 +70,17 @@ final class SupplierPurchasingService
     public function createPurchaseOrder(int $supplierId,array $lines,string $expectedAt,string $notes,int $adminId): int
     {
         $supplier=$this->supplier($supplierId);if(!(int)$supplier['active']) throw new \InvalidArgumentException('Supplier is inactive.');
-        $clean=[];foreach($lines as $line){
+        $clean=[];$seen=[];foreach($lines as $line){
             $itemId=(int)($line['supplier_item_id']??0);$qty=(float)($line['quantity_ordered']??0);if($itemId<1||$qty<=0)continue;
+            if(isset($seen[$itemId])) throw new \InvalidArgumentException('A supplier item can appear only once on a purchase order.');
+            $seen[$itemId]=true;
             $item=$this->item($itemId);if((int)$item['supplier_id']!==$supplierId||!(int)$item['active'])throw new \InvalidArgumentException('Purchase order item is not active for this supplier.');
             if($item['min_order_quantity']!==null && $qty+0.000001<(float)$item['min_order_quantity'])throw new \InvalidArgumentException($item['ingredient_name'].' is below its minimum order quantity.');
             $clean[]=['item'=>$item,'qty'=>$qty];
         }
         if(!$clean) throw new \InvalidArgumentException('Purchase order needs at least one item.');
         $expectedAt=trim($expectedAt);if($expectedAt!==''&&strtotime($expectedAt)===false)throw new \InvalidArgumentException('Expected date is invalid.');
+        if($expectedAt!=='' && substr($expectedAt,0,10)<gmdate('Y-m-d')) throw new \InvalidArgumentException('Expected date cannot be in the past.');
         $number='PO-'.gmdate('Ymd').'-'.strtoupper(bin2hex(random_bytes(3)));
 
         $this->db->beginTransaction();
