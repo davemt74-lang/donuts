@@ -20,7 +20,8 @@ if($paid && $order){
         $_SESSION['checkout_attempt_token'],
         $_SESSION['active_order_id'],
         $_SESSION['pending_box'],
-        $_SESSION['gift_card_id']
+        $_SESSION['gift_card_id'],
+        $_SESSION['loyalty_points']
     );
     foreach(array_keys($_SESSION) as $key) if(str_starts_with((string)$key,'builder_')) unset($_SESSION[$key]);
 }
