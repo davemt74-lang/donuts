@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
-use FudgeDonuts\{Database,GuestOrderAccessService,OrderService};
+use FudgeDonuts\{CheckoutRecoveryService,Database,GuestOrderAccessService,OrderService};
 
 $sessionId=trim((string)($_GET['session_id']??''));
 $order=null;
@@ -12,6 +12,9 @@ if($paid && $order && empty($_SESSION['user_id'])){
     try{$guestOrderUrl=(new GuestOrderAccessService((string)env('APP_KEY',''),(string)env('APP_URL','http://127.0.0.1:8080'),(int)env('ORDER_TRACKING_LINK_DAYS','90')))->link($order);}catch(Throwable){}
 }
 if($paid && $order){
+    if(!empty($_SESSION['checkout_recovery_id'])){
+        try{(new CheckoutRecoveryService(Database::connection(),(string)env('APP_KEY',''),(string)env('APP_URL','http://127.0.0.1:8080'),(int)env('CHECKOUT_RECOVERY_DAYS','7')))->markConverted((int)$_SESSION['checkout_recovery_id'],(int)$order['id']);}catch(Throwable){}
+    }
     unset(
         $_SESSION['cart'],
         $_SESSION['coupon'],
@@ -20,7 +23,8 @@ if($paid && $order){
         $_SESSION['checkout_attempt_token'],
         $_SESSION['active_order_id'],
         $_SESSION['pending_box'],
-        $_SESSION['gift_card_id']
+        $_SESSION['gift_card_id'],
+        $_SESSION['checkout_recovery_id']
     );
     foreach(array_keys($_SESSION) as $key) if(str_starts_with((string)$key,'builder_')) unset($_SESSION[$key]);
 }
