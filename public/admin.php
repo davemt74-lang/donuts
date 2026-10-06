@@ -49,7 +49,7 @@ $mailStats=(new NotificationService($db))->stats();
 ?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dashboard · Fudge Donuts Admin</title><link rel="stylesheet" href="/assets/app.css"></head><body class="admin-body">
 <header class="admin-topbar">
   <a class="admin-brand" href="/admin.php">Fudge Donuts <span>Admin</span></a>
-  <nav><a class="active" href="/admin.php">Dashboard</a><a href="/admin-flavors.php">Flavors</a><a href="/admin-packs.php">Packs</a><a href="/admin-orders.php">Orders</a><a href="/admin-inventory.php">Inventory</a><a href="/admin-promotions.php">Promotions</a><a href="/admin-content.php">Content</a><a href="/admin-reports.php">Reports</a><a href="/admin-notifications.php">Email</a><?php if(admin_has_role(['super_admin'])):?><a href="/admin-users.php">Administrators</a><?php endif;?></nav>
+  <nav><a class="active" href="/admin.php">Dashboard</a><a href="/admin-flavors.php">Flavors</a><a href="/admin-packs.php">Packs</a><a href="/admin-orders.php">Orders</a><a href="/admin-inventory.php">Inventory</a><a href="/admin-promotions.php">Promotions</a><a href="/admin-content.php">Content</a><a href="/admin-reports.php">Reports</a><a href="/admin-notifications.php">Email</a><a href="/admin-marketing.php">Marketing</a><?php if(admin_has_role(['super_admin'])):?><a href="/admin-users.php">Administrators</a><?php endif;?></nav>
   <form method="post"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>"><button class="link" name="logout">Sign out</button></form>
 </header>
 <main class="admin-shell">
