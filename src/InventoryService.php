@@ -108,6 +108,15 @@ final class InventoryService
         $s=$this->db->prepare('SELECT * FROM inventory_reservation_leases WHERE order_id=?');$s->execute([$orderId]);return $s->fetch()?:null;
     }
 
+    public function reservationStats(): array
+    {
+        $stats=['active'=>0,'expired'=>0,'review_hold'=>0];
+        $rows=$this->db->query("SELECT status,COUNT(*) count FROM inventory_reservation_leases WHERE status IN ('active','review_hold') GROUP BY status")->fetchAll();
+        foreach($rows as $row) $stats[(string)$row['status']]=(int)$row['count'];
+        $stats['expired']=(int)$this->db->query("SELECT COUNT(*) FROM inventory_reservation_leases WHERE status='active' AND expires_at<=CURRENT_TIMESTAMP")->fetchColumn();
+        return $stats;
+    }
+
     public function setInventory(int $flavorId,bool $track,int $stock,int $lowThreshold): void
     {
         $s=$this->db->prepare('INSERT INTO flavor_inventory(flavor_id,track_inventory,stock_on_hand,reserved,low_stock_threshold) VALUES(?,?,?,?,?) ON CONFLICT(flavor_id) DO UPDATE SET track_inventory=excluded.track_inventory,stock_on_hand=excluded.stock_on_hand,low_stock_threshold=excluded.low_stock_threshold,updated_at=CURRENT_TIMESTAMP');
