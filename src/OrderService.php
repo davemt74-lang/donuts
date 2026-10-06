@@ -14,12 +14,16 @@ final class OrderService
         if(empty($cart['items'])) throw new \InvalidArgumentException('Cart is empty.');
         $shipping=(int)$fulfillment['price_cents'];
         $total=(int)$cart['total_cents']+$shipping;
+        $fingerprint=hash('sha256',json_encode([$userId,$cart,$checkout,$fulfillment],JSON_THROW_ON_ERROR));
+        $existing=$this->db->prepare('SELECT id FROM orders WHERE checkout_fingerprint=?');
+        $existing->execute([$fingerprint]);
+        if($id=$existing->fetchColumn()) return $this->find((int)$id);
         $number='FD-'.gmdate('Ymd').'-'.strtoupper(bin2hex(random_bytes(3)));
 
         $this->db->beginTransaction();
         try{
-            $s=$this->db->prepare('INSERT INTO orders(order_number,user_id,email,first_name,last_name,line1,line2,city,region,postal_code,country,phone,is_gift,gift_message,fulfillment_code,fulfillment_name,fulfillment_type,subtotal_cents,discount_cents,shipping_cents,total_cents) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
-            $s->execute([$number,$userId,$checkout['email'],$checkout['first_name'],$checkout['last_name'],$checkout['line1'],$checkout['line2'],$checkout['city'],$checkout['region'],$checkout['postal_code'],$checkout['country'],$checkout['phone'],$checkout['is_gift']?1:0,$checkout['gift_message'],$fulfillment['code'],$fulfillment['name'],$fulfillment['type'],$cart['subtotal_cents'],$cart['discount_cents'],$shipping,$total]);
+            $s=$this->db->prepare('INSERT INTO orders(order_number,checkout_fingerprint,user_id,email,first_name,last_name,line1,line2,city,region,postal_code,country,phone,is_gift,gift_message,fulfillment_code,fulfillment_name,fulfillment_type,subtotal_cents,discount_cents,shipping_cents,total_cents) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
+            $s->execute([$number,$fingerprint,$userId,$checkout['email'],$checkout['first_name'],$checkout['last_name'],$checkout['line1'],$checkout['line2'],$checkout['city'],$checkout['region'],$checkout['postal_code'],$checkout['country'],$checkout['phone'],$checkout['is_gift']?1:0,$checkout['gift_message'],$fulfillment['code'],$fulfillment['name'],$fulfillment['type'],$cart['subtotal_cents'],$cart['discount_cents'],$shipping,$total]);
             $orderId=(int)$this->db->lastInsertId();
 
             $i=$this->db->prepare('INSERT INTO order_items(order_id,kind,pack_size,quantity,unit_price_cents,line_total_cents,configuration_json) VALUES(?,?,?,?,?,?,?)');
