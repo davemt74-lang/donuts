@@ -63,7 +63,7 @@ final class ProductionPlanningService
     {
         $s=$this->db->prepare("SELECT oi.quantity,oi.configuration_json
             FROM order_items oi JOIN orders o ON o.id=oi.order_id
-            WHERE o.status NOT IN ('cancelled','payment_failed') AND o.created_at>=datetime('now',?)");
+            WHERE o.status IN ('paid','preparing','ready','shipped','delivered','completed','refunded') AND o.created_at>=datetime('now',?)");
         $s->execute(['-'.$days.' days']);$totals=[];
         foreach($s->fetchAll() as $row){
             $box=json_decode((string)$row['configuration_json'],true);
