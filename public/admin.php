@@ -22,7 +22,7 @@ if (isset($_POST['save_flavor'])) {
 }
 $flavors = $repo->flavors(false);
 ?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/assets/app.css"><title>Admin · Fudge Donuts</title></head><body>
-<header class="nav"><a class="brand" href="/admin.php">Fudge Donuts Admin</a><nav><a href="/admin.php">Catalog</a><a href="/admin-orders.php">Orders</a><a href="/admin-inventory.php">Inventory</a><a href="/admin-promotions.php">Promotions</a><a href="/admin-settings.php">Store Settings</a></nav><form method="post"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>"><button class="link" name="logout">Logout</button></form></header>
+<header class="nav"><a class="brand" href="/admin.php">Fudge Donuts Admin</a><nav><a href="/admin.php">Catalog</a><a href="/admin-orders.php">Orders</a><a href="/admin-inventory.php">Inventory</a><a href="/admin-promotions.php">Promotions</a><a href="/admin-content.php">Content</a><a href="/admin-settings.php">Store Settings</a></nav><form method="post"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>"><button class="link" name="logout">Logout</button></form></header>
 <main class="section"><h1>Flavor Catalog</h1><?php if($error):?><div class="notice"><?=htmlspecialchars($error)?></div><?php endif;?>
 <table><thead><tr><th>Flavor</th><th>Surcharge</th><th>Status</th><th>Image</th></tr></thead><tbody>
 <?php foreach($flavors as $f):?><tr><td><?=htmlspecialchars($f['name'])?></td><td><?=money((int)$f['surcharge_cents'])?></td><td><?=(int)$f['active']?((int)$f['sold_out']?'Sold out':'Active'):'Inactive'?></td><td><?=htmlspecialchars($f['image_path'])?></td></tr><?php endforeach;?>
