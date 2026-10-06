@@ -16,44 +16,43 @@ final class CustomerDirectoryService
         $limit=max(1,min(500,$limit));$query=mb_strtolower(trim($query));
         $params=[];$where='';
         if($query!==''){
-            $where="WHERE lower(e.email) LIKE ? OR lower(COALESCE(u.first_name,'')) LIKE ? OR lower(COALESCE(u.last_name,'')) LIKE ? OR lower(COALESCE(lo.first_name,'')) LIKE ? OR lower(COALESCE(lo.last_name,'')) LIKE ?";
+            $where="WHERE lower(d.email) LIKE ? OR lower(COALESCE(d.first_name,'')) LIKE ? OR lower(COALESCE(d.last_name,'')) LIKE ? OR lower(COALESCE(lo.first_name,'')) LIKE ? OR lower(COALESCE(lo.last_name,'')) LIKE ?";
             $needle='%'.$query.'%';$params=[$needle,$needle,$needle,$needle,$needle];
         }
         $statusSql="'".implode("','",self::REVENUE_STATUSES)."'";
-        $sql="WITH emails AS (
-                SELECT lower(email) email FROM users
-                UNION
-                SELECT lower(email) email FROM orders
+        $sql="WITH account_stats AS (
+                SELECT u.id user_id,lower(u.email) email,u.first_name,u.last_name,u.created_at account_created_at,
+                       COUNT(o.id) order_count,
+                       COALESCE(SUM(CASE WHEN o.status IN ({$statusSql}) THEN o.total_cents ELSE 0 END),0) lifetime_cents,
+                       MIN(o.created_at) first_order_at,MAX(o.created_at) last_order_at,MAX(o.id) latest_order_id
+                FROM users u
+                LEFT JOIN orders o ON o.user_id=u.id OR (o.user_id IS NULL AND lower(o.email)=lower(u.email))
+                GROUP BY u.id,u.email,u.first_name,u.last_name,u.created_at
               ),
-              order_stats AS (
-                SELECT lower(email) email,
+              guest_stats AS (
+                SELECT NULL user_id,lower(o.email) email,'' first_name,'' last_name,NULL account_created_at,
                        COUNT(*) order_count,
-                       SUM(CASE WHEN status IN ({$statusSql}) THEN total_cents ELSE 0 END) lifetime_cents,
-                       MIN(created_at) first_order_at,
-                       MAX(created_at) last_order_at,
-                       MAX(id) latest_order_id
-                FROM orders GROUP BY lower(email)
+                       COALESCE(SUM(CASE WHEN o.status IN ({$statusSql}) THEN o.total_cents ELSE 0 END),0) lifetime_cents,
+                       MIN(o.created_at) first_order_at,MAX(o.created_at) last_order_at,MAX(o.id) latest_order_id
+                FROM orders o
+                WHERE o.user_id IS NULL
+                  AND NOT EXISTS(SELECT 1 FROM users u WHERE lower(u.email)=lower(o.email))
+                GROUP BY lower(o.email)
               ),
-              support_stats AS (
-                SELECT lower(email) email,
-                       SUM(CASE WHEN status IN ('open','in_progress','waiting_customer') THEN 1 ELSE 0 END) active_support,
-                       COUNT(*) support_count
-                FROM support_tickets GROUP BY lower(email)
+              directory AS (
+                SELECT * FROM account_stats
+                UNION ALL
+                SELECT * FROM guest_stats
               )
-              SELECT e.email,u.id user_id,u.first_name,u.last_name,u.created_at account_created_at,
-                     COALESCE(o.order_count,0) order_count,COALESCE(o.lifetime_cents,0) lifetime_cents,
-                     o.first_order_at,o.last_order_at,o.latest_order_id,
-                     trim(COALESCE(lo.first_name,'')||' '||COALESCE(lo.last_name,'')) latest_name,
-                     COALESCE(s.active_support,0) active_support,COALESCE(s.support_count,0) support_count,
-                     COALESCE(n.status,'none') marketing_status
-              FROM emails e
-              LEFT JOIN users u ON lower(u.email)=e.email
-              LEFT JOIN order_stats o ON o.email=e.email
-              LEFT JOIN orders lo ON lo.id=o.latest_order_id
-              LEFT JOIN support_stats s ON s.email=e.email
-              LEFT JOIN newsletter_subscribers n ON lower(n.email)=e.email
+              SELECT d.*,trim(COALESCE(lo.first_name,'')||' '||COALESCE(lo.last_name,'')) latest_name,
+                     COALESCE(n.status,'none') marketing_status,
+                     (SELECT COUNT(*) FROM support_tickets s WHERE (d.user_id IS NOT NULL AND s.user_id=d.user_id) OR (s.user_id IS NULL AND lower(s.email)=d.email)) support_count,
+                     (SELECT COUNT(*) FROM support_tickets s WHERE ((d.user_id IS NOT NULL AND s.user_id=d.user_id) OR (s.user_id IS NULL AND lower(s.email)=d.email)) AND s.status IN ('open','in_progress','waiting_customer')) active_support
+              FROM directory d
+              LEFT JOIN orders lo ON lo.id=d.latest_order_id
+              LEFT JOIN newsletter_subscribers n ON lower(n.email)=d.email
               {$where}
-              ORDER BY COALESCE(o.last_order_at,u.created_at) DESC,e.email
+              ORDER BY COALESCE(d.last_order_at,d.account_created_at) DESC,d.email
               LIMIT {$limit}";
         $s=$this->db->prepare($sql);$s->execute($params);$rows=$s->fetchAll();
         foreach($rows as &$row){
@@ -69,11 +68,15 @@ final class CustomerDirectoryService
     public function stats(): array
     {
         $statusSql="'".implode("','",self::REVENUE_STATUSES)."'";
-        $known=(int)$this->db->query("SELECT COUNT(*) FROM (SELECT lower(email) email FROM users UNION SELECT lower(email) FROM orders)")->fetchColumn();
         $accounts=(int)$this->db->query('SELECT COUNT(*) FROM users')->fetchColumn();
-        $repeat=(int)$this->db->query("SELECT COUNT(*) FROM (SELECT lower(email) email FROM orders GROUP BY lower(email) HAVING COUNT(*)>1)")->fetchColumn();
+        $guests=(int)$this->db->query("SELECT COUNT(*) FROM (SELECT lower(o.email) email FROM orders o WHERE o.user_id IS NULL AND NOT EXISTS(SELECT 1 FROM users u WHERE lower(u.email)=lower(o.email)) GROUP BY lower(o.email))")->fetchColumn();
+        $repeat=(int)$this->db->query("SELECT COUNT(*) FROM (
+            SELECT 'u'||u.id customer_key FROM users u LEFT JOIN orders o ON o.user_id=u.id OR (o.user_id IS NULL AND lower(o.email)=lower(u.email)) GROUP BY u.id HAVING COUNT(o.id)>1
+            UNION ALL
+            SELECT 'g'||lower(o.email) customer_key FROM orders o WHERE o.user_id IS NULL AND NOT EXISTS(SELECT 1 FROM users u WHERE lower(u.email)=lower(o.email)) GROUP BY lower(o.email) HAVING COUNT(*)>1
+        )")->fetchColumn();
         $lifetime=(int)$this->db->query("SELECT COALESCE(SUM(total_cents),0) FROM orders WHERE status IN ({$statusSql})")->fetchColumn();
-        return ['customers'=>$known,'accounts'=>$accounts,'guests'=>max(0,$known-$accounts),'repeat'=>$repeat,'lifetime_cents'=>$lifetime];
+        return ['customers'=>$accounts+$guests,'accounts'=>$accounts,'guests'=>$guests,'repeat'=>$repeat,'lifetime_cents'=>$lifetime];
     }
 
     public function profile(string $key): array
