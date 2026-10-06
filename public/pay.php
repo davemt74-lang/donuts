@@ -2,7 +2,7 @@
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
 
-use FudgeDonuts\{CartService,CatalogRepository,Database,DiscountService,InventoryService,OrderService,PackBuilderService,PaymentRepository,PresetPackService,ShippingService,StripeService};
+use FudgeDonuts\{CartService,CatalogRepository,Database,DiscountService,InventoryService,OrderService,PackBuilderService,PaymentRepository,PresetPackService,ShippingService,StripeService,TaxService};
 
 if($_SERVER['REQUEST_METHOD']!=='POST'){header('Location: /checkout-review.php');exit;}
 verify_csrf($_POST['_csrf']??null);
@@ -26,7 +26,7 @@ $order=$orderService->create(
 $_SESSION['active_order_id']=(int)$order['id'];
 
 $base=rtrim((string)env('APP_URL','http://127.0.0.1:8080'),'/');
-$payments=new PaymentRepository($db);
+$payments=new PaymentRepository($db);$taxService=new TaxService($db);
 $stripe=new StripeService((string)env('STRIPE_SECRET_KEY',''),(string)env('STRIPE_WEBHOOK_SECRET',''));
 
 if(in_array((string)$order['status'],['paid','payment_review'],true)){
@@ -72,21 +72,23 @@ $payment=$payments->createSession(!empty($_SESSION['user_id'])?(int)$_SESSION['u
 ]);
 
 $inventory->reserveOrder((int)$order['id'],$cart,$expiresAtDb);
+$taxService->snapshotOrder((int)$order['id']);
 try{
-  $session=$stripe->createCheckoutSession([
+  $stripeParams=[
     'mode'=>'payment',
     'success_url'=>$base.'/payment-success.php?session_id={CHECKOUT_SESSION_ID}',
     'cancel_url'=>$base.'/checkout-review.php',
     'customer_email'=>$order['email'],
     'client_reference_id'=>$order['order_number'],
     'metadata[order_id]'=>(string)$order['id'],
-    'automatic_tax[enabled]'=>'true',
     'expires_at'=>(string)$expiresAtUnix,
     'line_items[0][quantity]'=>'1',
     'line_items[0][price_data][currency]'=>'usd',
     'line_items[0][price_data][unit_amount]'=>(string)$order['total_cents'],
     'line_items[0][price_data][product_data][name]'=>'Fudge Donuts order '.$order['order_number'],
-  ],$payment['idempotency_key']);
+  ];
+  $stripeParams=array_merge($stripeParams,$taxService->checkoutParams());
+  $session=$stripe->createCheckoutSession($stripeParams,$payment['idempotency_key']);
   $payments->attachProviderSession((int)$payment['id'],(string)$session['id']);
   $orderService->attachStripeSession((int)$order['id'],(string)$session['id']);
   header('Location: '.(string)$session['url'],true,303);exit;
