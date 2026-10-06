@@ -224,3 +224,17 @@ Evidence submission and dispute acceptance remain in Stripe Dashboard; the store
 Admin → Customers unifies registered customers, guest buyers, support-only contacts, and gift-card purchasers by normalized email identity. Profiles show lifetime order value, refunds, order history, support context, gift-card purchases, internal notes, and service tags.
 
 CRM notes and tags are internal service metadata. They are included in registered-customer privacy exports and automatically purged during account closure. Do not use CRM notes for sensitive profiling or information unrelated to customer service and store operations.
+
+
+## Checkout recovery
+Checkout continuity snapshots contain only the checkout email plus cart/coupon configuration—no shipping address. Signed recovery links are valid for `CHECKOUT_RECOVERY_DAYS` and always rebuild the cart against current catalog availability, pricing, promotions, inventory rules, shipping, and tax.
+
+Schedule:
+
+```bash
+php scripts/process-checkout-recovery.php
+```
+
+Run it on the cadence configured by `JOB_CHECKOUT_RECOVERY_INTERVAL_MINUTES` (60 minutes by default). A reminder is eligible only after `CHECKOUT_RECOVERY_REMINDER_HOURS` and only when the checkout email is currently explicitly **subscribed** in the marketing-consent ledger. Every recovery reminder contains a signed unsubscribe link. Unsubscribed and unknown addresses are never sent recovery marketing.
+
+Admin → Recovery shows active, restored, converted, expired, and reminder activity. Registered-customer privacy exports include recovery lifecycle metadata, and account closure purges associated recovery snapshots.
