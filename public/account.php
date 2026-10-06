@@ -16,7 +16,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
   if($mode==='register'){
    $client=SecurityService::clientIdentifier();$security->assertLoginAllowed('register-ip',$client,5,3600);$security->recordLoginFailure('register-ip',$client,5,3600);
    $id=$auth->register((string)($_POST['email']??''),(string)($_POST['password']??''),(string)($_POST['first_name']??''),(string)($_POST['last_name']??''));
-   session_regenerate_id(true);$_SESSION['user_id']=$id;SecurityService::initializeAuthSession($_SESSION,'user');rotate_csrf_token();header('Location: /account.php');exit;
+   session_regenerate_id(true);unset($_SESSION['loyalty_points']);$_SESSION['user_id']=$id;SecurityService::initializeAuthSession($_SESSION,'user');rotate_csrf_token();header('Location: /account.php');exit;
   }
   if($mode==='login'){
    $email=(string)($_POST['email']??'');$client=SecurityService::clientIdentifier();
@@ -24,9 +24,9 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
    $user=$auth->login($email,(string)($_POST['password']??''));
    if(!$user){$security->recordLoginFailure('account',$email);$security->recordLoginFailure('account-ip',$client,30,900);throw new InvalidArgumentException('Email or password is incorrect.');}
    $security->clearLoginFailures('account',$email);$security->clearLoginFailures('account-ip',$client);
-   session_regenerate_id(true);$_SESSION['user_id']=(int)$user['id'];SecurityService::initializeAuthSession($_SESSION,'user');rotate_csrf_token();header('Location: /account.php');exit;
+   session_regenerate_id(true);unset($_SESSION['loyalty_points']);$_SESSION['user_id']=(int)$user['id'];SecurityService::initializeAuthSession($_SESSION,'user');rotate_csrf_token();header('Location: /account.php');exit;
   }
-  if($mode==='logout'){unset($_SESSION['user_id'],$_SESSION['user_authenticated_at'],$_SESSION['user_last_activity']);session_regenerate_id(true);rotate_csrf_token();header('Location: /');exit;}
+  if($mode==='logout'){unset($_SESSION['user_id'],$_SESSION['user_authenticated_at'],$_SESSION['user_last_activity'],$_SESSION['loyalty_points']);session_regenerate_id(true);rotate_csrf_token();header('Location: /');exit;}
   if($mode==='address'){
    if(empty($_SESSION['user_id'])) throw new InvalidArgumentException('Sign in first.');
    $auth->saveAddress((int)$_SESSION['user_id'],$_POST);header('Location: /account.php');exit;
