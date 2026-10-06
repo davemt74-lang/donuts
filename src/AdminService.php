@@ -57,6 +57,12 @@ final class AdminService
         }
         $this->db->beginTransaction();
         try{
+            $packaging=new PackagingInventoryService($this->db);
+            if($packaging->enabled()){
+                if($from==='paid' && $to==='preparing')$packaging->reserveOrder($orderId);
+                elseif($from==='preparing' && in_array($to,['ready','shipped'],true))$packaging->consumeOrder($orderId);
+                elseif($from==='preparing' && in_array($to,['cancelled','refunded'],true))$packaging->releaseOrder($orderId);
+            }
             $s=$this->db->prepare('UPDATE orders SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status=?');
             $s->execute([$to,$orderId,$from]);
             if($s->rowCount()!==1)throw new \RuntimeException('Order changed before update.');

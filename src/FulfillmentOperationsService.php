@@ -29,7 +29,13 @@ final class FulfillmentOperationsService
         try{
             $u=$this->db->prepare('UPDATE orders SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status=?');
             $e=$this->db->prepare('INSERT INTO order_events(order_id,event_type,note) VALUES(?,?,?)');
+            $packaging=new PackagingInventoryService($this->db);
             foreach($ids as $id){
+                if((new DisputeService($this->db))->hasBlockingDispute($id)) throw new \RuntimeException('A selected order has an open Stripe dispute and cannot advance.');
+                if($packaging->enabled()){
+                    if($from==='paid' && $to==='preparing')$packaging->reserveOrder($id);
+                    elseif($from==='preparing' && $to==='ready')$packaging->consumeOrder($id);
+                }
                 $u->execute([$to,$id,$from]);
                 if($u->rowCount()!==1) throw new \RuntimeException('An order changed during the batch update.');
                 $e->execute([$id,'status_changed',"{$from} → {$to} (batch)"]);
