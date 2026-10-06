@@ -188,3 +188,9 @@ Admin → Inventory includes a production forecast built from actual paid/fulfil
 Configure flavor unit cost and pack-level packaging cost in **Admin → Costs & Margin**. Paid orders receive an immutable cost snapshot after Stripe payment reconciliation, and the missed-webhook recovery worker creates the same snapshot if it settles the order later.
 
 Gross-margin reporting uses merchandise subtotal after discounts and subtracts flavor + packaging cost. It currently excludes labor, payment processing fees, postage, rent, and other overhead. Fully refunded orders are excluded from the live margin summary while their original snapshots remain available for audit.
+
+
+## Verified customer reviews
+Signed-in customers can review only flavors found in their paid/fulfilled order history. Reviews are pending by default and require approval in **Admin → Reviews** before appearing publicly.
+
+Approved reviews are identity-minimal on the storefront (shown as “Verified customer”). Only approved reviews contribute to public rating averages and Product `aggregateRating` structured data. Editing a review returns it to moderation.
