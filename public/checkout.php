@@ -2,7 +2,7 @@
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
 
-use FudgeDonuts\{AuthService,CartService,CatalogRepository,CheckoutService,Database,DiscountService,PackBuilderService,PresetPackService};
+use FudgeDonuts\{AuthService,CartService,CatalogRepository,CheckoutService,Database,DiscountService,OrderService,PackBuilderService,PresetPackService};
 
 $db=Database::connection();
 $catalog=new CatalogRepository($db);
@@ -14,10 +14,24 @@ $user=!empty($_SESSION['user_id'])?$auth->user((int)$_SESSION['user_id']):null;
 $addresses=$user?$auth->addresses((int)$user['id']):[];
 $default=$addresses[0]??[];
 $error='';
+if(!empty($_SESSION['active_order_id'])){
+    try{
+        $active=(new OrderService($db))->find((int)$_SESSION['active_order_id']);
+        if(!in_array($active['status'],['pending_payment','payment_failed','payment_review'],true)){
+            unset($_SESSION['checkout_attempt_token'],$_SESSION['active_order_id'],$_SESSION['fulfillment']);
+        }
+    }catch(Throwable){
+        unset($_SESSION['checkout_attempt_token'],$_SESSION['active_order_id'],$_SESSION['fulfillment']);
+    }
+}
 if($_SERVER['REQUEST_METHOD']==='POST'){
  verify_csrf($_POST['_csrf']??null);
  try{
-  $_SESSION['checkout']=(new CheckoutService())->validate($_POST);
+  $validated=(new CheckoutService())->validate($_POST);
+  if(($validated!==($_SESSION['checkout']??null))){
+      unset($_SESSION['checkout_attempt_token'],$_SESSION['active_order_id'],$_SESSION['fulfillment']);
+  }
+  $_SESSION['checkout']=$validated;
   header('Location: /checkout-review.php');exit;
  }catch(Throwable $e){$error=$e->getMessage();}
 }
