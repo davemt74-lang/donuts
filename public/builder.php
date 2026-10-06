@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = $e->getMessage();
     }
 }
-?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Build a <?=$size?> Pack · Fudge Donuts</title><link rel="stylesheet" href="/assets/app.css"></head><body>
+?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Build a <?=$size?> Pack · Fudge Donuts</title><link rel="stylesheet" href="<?=htmlspecialchars(asset_url('/assets/app.css'))?>"></head><body>
 <a class="skip-link" href="#main-content">Skip to main content</a>
 <header class="nav"><a class="brand" href="/">Fudge Donuts</a><nav><a href="/">Home</a><a href="/builder.php?size=3">3 Pack</a><a href="/builder.php?size=6">6 Pack</a><a href="/builder.php?size=12">12 Pack</a></nav></header>
 <main id="main-content" tabindex="-1" class="section builder">
@@ -51,4 +51,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <?php endforeach; ?>
 </div>
 <div class="builder-bar"><div><strong><span id="count">0</span> / <?=$size?> selected</strong><div id="builder-status" class="muted" role="status" aria-live="polite" aria-atomic="true">Choose <?=$size?> donuts</div></div><div class="builder-total"><span>Box total</span><strong id="total"><?=money((int)$pack['base_price_cents'])?></strong></div><button class="button" id="continue" type="submit" disabled>Review box</button></div>
-</form></main><script src="/assets/builder.js"></script></body></html>
+</form></main><script src="<?=htmlspecialchars(asset_url('/assets/builder.js'))?>"></script></body></html>
