@@ -102,6 +102,29 @@ final class BatchTraceabilityService
         }catch(\Throwable $e){if($this->db->inTransaction())$this->db->rollBack();throw $e;}
     }
 
+    public function setHold(int $batchId,bool $hold): void
+    {
+        $batch=$this->batch($batchId);
+        if($batch['status']==='recalled') throw new \InvalidArgumentException('Recalled batches cannot be released.');
+        if($batch['status']==='depleted' && !$hold) throw new \InvalidArgumentException('Depleted batches cannot be reactivated.');
+        $next=$hold?'hold':'active';
+        $s=$this->db->prepare('UPDATE production_batches SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?');
+        $s->execute([$next,$batchId]);
+    }
+
+    public function orderShipmentReady(int $orderId): array
+    {
+        $needed=$this->requiredFlavorQuantities($orderId);$assigned=$this->assignmentsForOrder($orderId);
+        if(!$needed) return ['ok'=>true,'reason'=>''];
+        if(!$assigned) return ['ok'=>false,'reason'=>'Production batches have not been assigned.'];
+        $totals=[];foreach($assigned as $a){
+            if(in_array($a['status'],['hold','recalled'],true)) return ['ok'=>false,'reason'=>'An assigned production batch is on hold or recalled.'];
+            $fid=(int)$a['flavor_id'];$totals[$fid]=($totals[$fid]??0)+(int)$a['quantity'];
+        }
+        ksort($totals);
+        return $totals===$needed?['ok'=>true,'reason'=>'']:['ok'=>false,'reason'=>'Production batch quantities do not match the order.'];
+    }
+
     public function recall(int $batchId,string $reason,int $adminId): array
     {
         $reason=mb_substr(trim($reason),0,4000);if($reason==='') throw new \InvalidArgumentException('Recall reason is required.');
