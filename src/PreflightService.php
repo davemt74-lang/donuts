@@ -33,7 +33,7 @@ final class PreflightService
                     $checks[]=$this->check('sqlite_wal',$journal==='wal','File-backed SQLite must use WAL journal mode');
                 }
             }
-            $required=['pack_sizes','flavors','users','orders','notification_outbox','notification_email_content','auth_rate_limits','admin_users','password_reset_tokens','saved_boxes','order_payment_details','refund_records','cancellation_requests','order_fulfillment_details','order_consents','order_payment_reconciliation','inventory_reservation_leases','newsletter_consent_events','admin_audit_log','customer_privacy_events','operational_events','scheduled_jobs','scheduled_job_runs','schema_migrations','shipping_methods','pickup_zip_codes','fulfillment_settings','tax_settings','order_tax_details','support_tickets','support_messages','analytics_visitors','analytics_events','order_attribution','order_cost_snapshots','product_reviews','gift_card_purchases','gift_cards','gift_card_ledger','order_gift_card_applications','stripe_disputes','customer_admin_notes','customer_tags'];
+            $required=['pack_sizes','flavors','users','orders','notification_outbox','notification_email_content','auth_rate_limits','admin_users','password_reset_tokens','saved_boxes','order_payment_details','refund_records','cancellation_requests','order_fulfillment_details','order_consents','order_payment_reconciliation','inventory_reservation_leases','newsletter_consent_events','admin_audit_log','customer_privacy_events','operational_events','scheduled_jobs','scheduled_job_runs','schema_migrations','shipping_methods','pickup_zip_codes','fulfillment_settings','tax_settings','order_tax_details','support_tickets','support_messages','analytics_visitors','analytics_events','order_attribution','order_cost_snapshots','product_reviews','gift_card_purchases','gift_cards','gift_card_ledger','order_gift_card_applications','stripe_disputes','customer_admin_notes','customer_tags','checkout_recoveries'];
             foreach($required as $table){
                 $checks[]=$this->check('table_'.$table,$this->tableExists($db,$table),'Required table '.$table);
             }
@@ -63,6 +63,10 @@ final class PreflightService
             $checks[]=$this->check('user_session_max',$userMax>=1 && $userMax<=720,'USER_SESSION_MAX_HOURS must be between 1 and 720');
             $holdMinutes=(int)\env('CHECKOUT_HOLD_MINUTES','30');
             $checks[]=$this->check('checkout_hold_minutes',$holdMinutes>=30 && $holdMinutes<=120,'CHECKOUT_HOLD_MINUTES must be between 30 and 120');
+            $recoveryDays=(int)\env('CHECKOUT_RECOVERY_DAYS','7');$recoveryHours=(int)\env('CHECKOUT_RECOVERY_REMINDER_HOURS','2');$recoveryInterval=(int)\env('JOB_CHECKOUT_RECOVERY_INTERVAL_MINUTES','60');
+            $checks[]=$this->check('checkout_recovery_days',$recoveryDays>=1 && $recoveryDays<=30,'CHECKOUT_RECOVERY_DAYS must be between 1 and 30');
+            $checks[]=$this->check('checkout_recovery_reminder_hours',$recoveryHours>=1 && $recoveryHours<=72,'CHECKOUT_RECOVERY_REMINDER_HOURS must be between 1 and 72');
+            $checks[]=$this->check('job_checkout_recovery_interval',$recoveryInterval>=15 && $recoveryInterval<=1440,'JOB_CHECKOUT_RECOVERY_INTERVAL_MINUTES must be between 15 and 1440');
             $trackingDays=(int)\env('ORDER_TRACKING_LINK_DAYS','90');
             $checks[]=$this->check('order_tracking_link_days',$trackingDays>=1 && $trackingDays<=365,'ORDER_TRACKING_LINK_DAYS must be between 1 and 365');
             $backupDays=(int)\env('BACKUP_RETENTION_DAYS','14');$backupMax=(int)\env('BACKUP_MAX_FILES','60');

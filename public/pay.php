@@ -2,7 +2,7 @@
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
 
-use FudgeDonuts\{AnalyticsService,CartService,CatalogRepository,CostAccountingService,Database,DiscountService,GiftCardService,InventoryService,NotificationService,OrderService,PackBuilderService,PaymentRepository,PresetPackService,PromotionService,ShippingService,StripeService,TaxService};
+use FudgeDonuts\{AnalyticsService,CartService,CatalogRepository,CheckoutRecoveryService,CostAccountingService,Database,DiscountService,GiftCardService,InventoryService,NotificationService,OrderService,PackBuilderService,PaymentRepository,PresetPackService,PromotionService,ShippingService,StripeService,TaxService};
 
 if($_SERVER['REQUEST_METHOD']!=='POST'){header('Location: /checkout-review.php');exit;}
 verify_csrf($_POST['_csrf']??null);
@@ -24,6 +24,12 @@ $order=$orderService->create(
     (string)$_SESSION['checkout_attempt_token']
 );
 $_SESSION['active_order_id']=(int)$order['id'];
+if(!empty($_SESSION['checkout_recovery_id'])){
+    try{
+        (new CheckoutRecoveryService($db,(string)env('APP_KEY',''),(string)env('APP_URL','http://127.0.0.1:8080'),(int)env('CHECKOUT_RECOVERY_DAYS','7')))
+            ->attachOrder((int)$_SESSION['checkout_recovery_id'],(int)$order['id']);
+    }catch(Throwable $e){\FudgeDonuts\ObservabilityService::captureThrowable($e,dirname(__DIR__),'checkout_recovery_order_link_failure');}
+}
 if((env('ANALYTICS_ENABLED','0')??'0')==='1' && !empty($_COOKIE['fd_analytics'])){
     try{(new AnalyticsService($db))->attributeOrder((int)$order['id'],(string)$_COOKIE['fd_analytics']);}catch(Throwable){}
 }
@@ -124,6 +130,7 @@ if($giftApplication && $stripeCharge===0){
         (new NotificationService($db))->queueOrderConfirmation($orderService->find((int)$order['id']));
         try{(new CostAccountingService($db))->snapshotOrder((int)$order['id']);}catch(Throwable $e){\FudgeDonuts\ObservabilityService::captureThrowable($e,dirname(__DIR__),'cost_snapshot_failure');}
         if((env('ANALYTICS_ENABLED','0')??'0')==='1'){try{(new AnalyticsService($db))->recordPurchase((int)$order['id']);}catch(Throwable){}}
+        try{(new CheckoutRecoveryService($db,(string)env('APP_KEY',''),(string)env('APP_URL','http://127.0.0.1:8080'),(int)env('CHECKOUT_RECOVERY_DAYS','7')))->markConvertedByOrder((int)$order['id']);}catch(Throwable){}
         header('Location: '.$base.'/payment-success.php?session_id='.rawurlencode($sessionId),true,303);exit;
     }catch(Throwable $e){
         $orderService->markSettlementReview((int)$order['id'],'Gift card-only settlement requires review.');
