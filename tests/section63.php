@@ -19,5 +19,10 @@ $crm->addTag('buyer@example.com',$aid,'vip');$crm->addNote('buyer@example.com',$
 assert(count($crm->search('FD-C2'))===1);assert(count($crm->search('buyer'))===1);
 $privacy=new CustomerPrivacyService($db);$export=$privacy->exportData($uid);assert($export['crm']['tags'][0]['tag']==='vip');assert(count($export['crm']['notes'])===1);
 assert($crm->purgeInternalData('buyer@example.com')===2);assert($crm->profile('buyer@example.com')['notes']===[]);
+$crm->addTag('buyer@example.com',$aid,'returning');$crm->addNote('buyer@example.com',$aid,'Temporary service note.');
+$privacy->closeAccount($uid,'long-enough-password');
+$noteCount=(int)$db->query("SELECT COUNT(*) FROM customer_admin_notes")->fetchColumn();$tagCount=(int)$db->query("SELECT COUNT(*) FROM customer_tags")->fetchColumn();
+assert($noteCount===0);assert($tagCount===0);assert((int)$db->query("SELECT COUNT(*) FROM users")->fetchColumn()===0);
+assert($crm->summary('buyer@example.com')['registered']===false);
 
 echo "Section 63 checks passed\n";
