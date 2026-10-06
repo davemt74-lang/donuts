@@ -10,6 +10,7 @@ final class AdminService
     private const ORDER_TRANSITIONS = [
         'pending_payment'=>['paid','payment_failed','cancelled'],
         'payment_failed'=>['pending_payment','cancelled'],
+        'payment_review'=>['cancelled','refunded'],
         'paid'=>['preparing','refunded','cancelled'],
         'preparing'=>['ready','shipped','refunded','cancelled'],
         'ready'=>['completed','cancelled'],
