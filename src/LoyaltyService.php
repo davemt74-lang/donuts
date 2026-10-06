@@ -192,6 +192,12 @@ final class LoyaltyService
         $limit=max(1,min(500,$limit));$s=$this->db->prepare("SELECT * FROM loyalty_ledger WHERE user_id=? ORDER BY id DESC LIMIT {$limit}");$s->execute([$userId]);return $s->fetchAll();
     }
 
+    public function recentLedger(int $limit=100): array
+    {
+        $limit=max(1,min(500,$limit));
+        return $this->db->query("SELECT l.*,u.email FROM loyalty_ledger l JOIN users u ON u.id=l.user_id ORDER BY l.id DESC LIMIT {$limit}")->fetchAll();
+    }
+
     public function programStats(): array
     {
         $settings=$this->settings();$centsPerPoint=(int)$settings['cents_per_point'];
