@@ -69,6 +69,9 @@ smokeAssert(str_contains(strtolower(smokeHeader($flavor,'cache-control')),'publi
 smokeAssert(str_contains(smokeHeader($flavor,'cache-control'),'max-age=300'),'Flavor cache TTL missing.');
 smokeAssert(smokeHeader($flavor,'set-cookie')==='','Anonymous flavor page must not create a PHP session.');
 
+$missingFlavor=smokePage($base,'Branded flavor 404','/flavor.php?slug=section53-missing',404,'That flavor isn’t available.');
+smokeAssert(str_contains(strtolower(smokeHeader($missingFlavor,'cache-control')),'no-store'),'Error responses must be no-store.');
+
 $faq=smokePage($base,'FAQ','/faq.php',200,'FAQ');
 smokeAssert(str_contains(strtolower(smokeHeader($faq,'cache-control')),'public'),'FAQ must be public-cacheable.');
 smokeAssert(smokeHeader($faq,'set-cookie')==='','FAQ must not create a PHP session.');
