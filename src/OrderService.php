@@ -81,20 +81,46 @@ final class OrderService
         $s->execute([(int)$orderId,$paymentIntentId]);
     }
 
-    public function markPaidByStripeSession(string $sessionId,int $amountTotal,int $taxCents): void
+    public function markPaidByStripeSession(string $sessionId,int $stripeSubtotalCents,int $amountTotal,int $taxCents,string $currency='usd'): bool
     {
+        $currency=strtolower(trim($currency));
+        $s=$this->db->prepare("SELECT * FROM orders WHERE stripe_checkout_session_id=?");
+        $s->execute([$sessionId]);$order=$s->fetch();
+        if(!$order) return false;
+        if($order['status']==='paid') return true;
+        if($order['status']==='payment_review') return false;
+        if($order['status']!=='pending_payment') throw new \RuntimeException('Unexpected order payment state.');
+
+        $reconciliation=(new PaymentReconciliationService($this->db))->reconcile((int)$order['id'],$sessionId,[
+            'amount_subtotal'=>$stripeSubtotalCents,
+            'amount_total'=>$amountTotal,
+            'currency'=>$currency,
+            'total_details'=>['amount_tax'=>$taxCents],
+        ]);
+        if(!$reconciliation['matched']){
+            $this->markPaymentReviewByStripeSession($sessionId,'Stripe total or currency reconciliation failed.');
+            return false;
+        }
+
         $this->db->beginTransaction();
         try{
-            $s=$this->db->prepare("SELECT * FROM orders WHERE stripe_checkout_session_id=?");
-            $s->execute([$sessionId]);$order=$s->fetch();
-            if(!$order){$this->db->rollBack();return;}
-            if($order['status']==='paid'){$this->db->rollBack();return;}
-            if($order['status']!=='pending_payment') throw new \RuntimeException('Unexpected order payment state.');
-            $u=$this->db->prepare("UPDATE orders SET status='paid',tax_cents=?,total_cents=?,updated_at=CURRENT_TIMESTAMP WHERE id=?");
+            $u=$this->db->prepare("UPDATE orders SET status='paid',tax_cents=?,total_cents=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='pending_payment'");
             $u->execute([$taxCents,$amountTotal,(int)$order['id']]);
-            $this->event((int)$order['id'],'paid','Stripe confirmed payment.',['amount_total'=>$amountTotal,'tax_cents'=>$taxCents]);
+            if($u->rowCount()!==1) throw new \RuntimeException('Order changed before payment reconciliation completed.');
+            $this->event((int)$order['id'],'paid','Stripe confirmed and reconciled payment.',['amount_total'=>$amountTotal,'tax_cents'=>$taxCents,'currency'=>$currency]);
             $this->db->commit();
+            return true;
         }catch(\Throwable $e){if($this->db->inTransaction())$this->db->rollBack();throw $e;}
+    }
+
+    public function markPaymentReviewByStripeSession(string $sessionId,string $reason=''): void
+    {
+        $s=$this->db->prepare("UPDATE orders SET status='payment_review',updated_at=CURRENT_TIMESTAMP WHERE stripe_checkout_session_id=? AND status='pending_payment'");
+        $s->execute([$sessionId]);
+        if($s->rowCount()){
+            $q=$this->db->prepare('SELECT id FROM orders WHERE stripe_checkout_session_id=?');$q->execute([$sessionId]);$orderId=(int)$q->fetchColumn();
+            $this->event($orderId,'payment_review',$reason!==''?$reason:'Payment requires manual review.');
+        }
     }
 
     public function markPaymentFailedByStripeSession(string $sessionId,string $reason=''): void
@@ -125,6 +151,7 @@ final class OrderService
         if(!$order) throw new \RuntimeException('Order not found.');
         $i=$this->db->prepare('SELECT * FROM order_items WHERE order_id=? ORDER BY id');$i->execute([$id]);$order['items']=$i->fetchAll();
         try{$p=$this->db->prepare('SELECT stripe_payment_intent_id FROM order_payment_details WHERE order_id=?');$p->execute([$id]);$order['stripe_payment_intent_id']=$p->fetchColumn()?:null;}catch(\Throwable){$order['stripe_payment_intent_id']=null;}
+        try{$r=$this->db->prepare('SELECT * FROM order_payment_reconciliation WHERE order_id=?');$r->execute([$id]);$order['payment_reconciliation']=$r->fetch()?:null;}catch(\Throwable){$order['payment_reconciliation']=null;}
         return $order;
     }
 

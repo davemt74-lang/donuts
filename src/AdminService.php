@@ -10,6 +10,7 @@ final class AdminService
     private const ORDER_TRANSITIONS = [
         'pending_payment'=>['paid','payment_failed','cancelled'],
         'payment_failed'=>['pending_payment','cancelled'],
+        'payment_review'=>['cancelled','refunded'],
         'paid'=>['preparing','refunded','cancelled'],
         'preparing'=>['ready','shipped','refunded','cancelled'],
         'ready'=>['completed','cancelled'],
@@ -41,6 +42,7 @@ final class AdminService
         $i=$this->db->prepare('SELECT * FROM order_items WHERE order_id=? ORDER BY id');$i->execute([$id]);$order['items']=$i->fetchAll();
         $e=$this->db->prepare('SELECT * FROM order_events WHERE order_id=? ORDER BY id DESC');$e->execute([$id]);$order['events']=$e->fetchAll();
         try{$p=$this->db->prepare('SELECT stripe_payment_intent_id FROM order_payment_details WHERE order_id=?');$p->execute([$id]);$order['stripe_payment_intent_id']=$p->fetchColumn()?:null;}catch(\Throwable){$order['stripe_payment_intent_id']=null;}
+        try{$r=$this->db->prepare('SELECT * FROM order_payment_reconciliation WHERE order_id=?');$r->execute([$id]);$order['payment_reconciliation']=$r->fetch()?:null;}catch(\Throwable){$order['payment_reconciliation']=null;}
         return $order;
     }
 
