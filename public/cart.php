@@ -24,7 +24,11 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
     }
     if($action==='remove')$cart->remove($_SESSION,(string)($_POST['key']??''));
     if($action==='quantity')$cart->setQuantity($_SESSION,(string)($_POST['key']??''),(int)($_POST['quantity']??1));
-    if($action==='coupon')$_SESSION['coupon']=strtoupper(trim((string)($_POST['code']??'')))?:null;
+    if($action==='coupon'){
+        $newCoupon=strtoupper(trim((string)($_POST['code']??'')))?:null;
+        if($newCoupon!==($_SESSION['coupon']??null)) $cart->invalidateCheckoutAttempt($_SESSION);
+        $_SESSION['coupon']=$newCoupon;
+    }
     header('Location: /cart.php');exit;
 }
 $summary=$cart->summary($_SESSION,$_SESSION['coupon']??null);
