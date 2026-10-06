@@ -17,7 +17,7 @@ final class IngredientTraceabilityService
         $received=trim((string)($data['received_at']??''));
         $bestBy=trim((string)($data['best_by_date']??''))?:null;
         $qty=trim((string)($data['quantity_received']??''));$qty=$qty===''?null:(float)$qty;
-        $unit=mb_substr(trim((string)($data['quantity_unit']??'')),0,32);
+        $unit=mb_strtolower(mb_substr(trim((string)($data['quantity_unit']??'')),0,32));
         $notes=mb_substr(trim((string)($data['notes']??'')),0,4000);
 
         if($ingredient==='') throw new \InvalidArgumentException('Ingredient name is required.');
@@ -92,10 +92,10 @@ final class IngredientTraceabilityService
         if($batchTs!==false && $receivedTs>$batchTs) throw new \InvalidArgumentException('Ingredient lot was received after this production batch was produced.');
         if(!empty($lot['best_by_date']) && (string)$lot['best_by_date']<gmdate('Y-m-d')) throw new \InvalidArgumentException('Expired ingredient lots cannot be linked.');
         if($quantity!==null && $quantity<=0) throw new \InvalidArgumentException('Ingredient quantity used must be greater than zero.');
-        $unit=mb_substr(trim($unit),0,32);
+        $unit=mb_strtolower(mb_substr(trim($unit),0,32));
         if($quantity!==null && $lot['quantity_received']!==null){
             $receivedUnit=trim((string)$lot['quantity_unit']);
-            if($receivedUnit!=='' && $unit!==$receivedUnit) throw new \InvalidArgumentException('Ingredient usage unit must match the received lot unit.');
+            if($receivedUnit!=='' && mb_strtolower($unit)!==mb_strtolower($receivedUnit)) throw new \InvalidArgumentException('Ingredient usage unit must match the received lot unit.');
             $q=$this->db->prepare('SELECT COALESCE(SUM(quantity_used),0) FROM production_batch_ingredients WHERE ingredient_lot_id=? AND batch_id<>?');
             $q->execute([$lotId,$batchId]);$used=(float)$q->fetchColumn();
             if($used+$quantity>(float)$lot['quantity_received']+0.000001) throw new \InvalidArgumentException('Ingredient usage exceeds the received lot quantity.');
@@ -118,6 +118,16 @@ final class IngredientTraceabilityService
 
     public function batchRisk(int $batchId): array
     {
+        try{
+            $coverage=(new RecipeService($this->db))->coverage($batchId);
+            if($coverage['controlled'] && !$coverage['complete']){
+                $names=array_map(fn($m)=>(string)$m['ingredient_name'],$coverage['missing']);
+                return ['ok'=>false,'linked'=>false,'reason'=>'Recipe-controlled batch is missing required ingredient provenance: '.implode(', ',$names).'.'];
+            }
+        }catch(\PDOException $e){
+            $msg=strtolower($e->getMessage());
+            if(!str_contains($msg,'batch_recipe_requirements') && !str_contains($msg,'flavor_recipes')) throw $e;
+        }
         $lots=$this->ingredientsForBatch($batchId);
         if(!$lots) return ['ok'=>true,'linked'=>false,'reason'=>''];
         foreach($lots as $lot){

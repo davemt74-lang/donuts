@@ -25,12 +25,22 @@ final class BatchTraceabilityService
         if($bestBy!==null && strtotime($bestBy)===false) throw new \InvalidArgumentException('Best-by date is invalid.');
         if($bestBy!==null && $bestBy<gmdate('Y-m-d',$producedTs)) throw new \InvalidArgumentException('Best-by date cannot be before production date.');
         if($qty<=0) throw new \InvalidArgumentException('Produced quantity must be greater than zero.');
+        $this->db->beginTransaction();
         try{
             $s=$this->db->prepare("INSERT INTO production_batches(batch_code,flavor_id,produced_at,best_by_date,quantity_produced,quantity_remaining,status,notes,created_by) VALUES(?,?,?,?,?,?,'active',?,?)");
             $s->execute([$code,$flavorId,$produced,$bestBy,$qty,$qty,$notes,$adminId]);
-            return (int)$this->db->lastInsertId();
+            $id=(int)$this->db->lastInsertId();
+            try{(new RecipeService($this->db))->snapshotBatch($id);}catch(\PDOException $e){
+                $message=strtolower($e->getMessage());
+                if(!str_contains($message,'flavor_recipes') && !str_contains($message,'batch_recipe_requirements')) throw $e;
+            }
+            $this->db->commit();return $id;
         }catch(\PDOException $e){
+            if($this->db->inTransaction())$this->db->rollBack();
             if(str_contains(strtolower($e->getMessage()),'unique')) throw new \InvalidArgumentException('Batch code already exists.');
+            throw $e;
+        }catch(\Throwable $e){
+            if($this->db->inTransaction())$this->db->rollBack();
             throw $e;
         }
     }
