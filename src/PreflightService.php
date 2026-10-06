@@ -43,6 +43,12 @@ final class PreflightService
             $checks[]=$this->check('stripe_secret',str_starts_with((string)\env('STRIPE_SECRET_KEY',''),'sk_'),'Stripe secret key required');
             $checks[]=$this->check('stripe_webhook',str_starts_with((string)\env('STRIPE_WEBHOOK_SECRET',''),'whsec_'),'Stripe webhook secret required');
             $checks[]=$this->check('app_url',str_starts_with((string)\env('APP_URL',''),'https://'),'Production APP_URL must use HTTPS');
+            $adminIdle=(int)\env('ADMIN_SESSION_IDLE_MINUTES','30');$adminMax=(int)\env('ADMIN_SESSION_MAX_HOURS','12');
+            $userIdle=(int)\env('USER_SESSION_IDLE_MINUTES','120');$userMax=(int)\env('USER_SESSION_MAX_HOURS','168');
+            $checks[]=$this->check('admin_session_idle',$adminIdle>=5 && $adminIdle<=240,'ADMIN_SESSION_IDLE_MINUTES must be between 5 and 240');
+            $checks[]=$this->check('admin_session_max',$adminMax>=1 && $adminMax<=24,'ADMIN_SESSION_MAX_HOURS must be between 1 and 24');
+            $checks[]=$this->check('user_session_idle',$userIdle>=15 && $userIdle<=1440,'USER_SESSION_IDLE_MINUTES must be between 15 and 1440');
+            $checks[]=$this->check('user_session_max',$userMax>=1 && $userMax<=720,'USER_SESSION_MAX_HOURS must be between 1 and 720');
             $holdMinutes=(int)\env('CHECKOUT_HOLD_MINUTES','30');
             $checks[]=$this->check('checkout_hold_minutes',$holdMinutes>=30 && $holdMinutes<=120,'CHECKOUT_HOLD_MINUTES must be between 30 and 120');
             $trackingDays=(int)\env('ORDER_TRACKING_LINK_DAYS','90');
