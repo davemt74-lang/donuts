@@ -330,3 +330,9 @@ The worker places expired active production batches on hold and raises operation
 Admin → Replenishment calculates a make-next queue from open Paid/Preparing/Ready order demand, recent flavor velocity, configured safety-stock days, active unexpired finished goods, and already planned/in-progress work orders.
 
 Only active, unexpired production batches count as safe stock. Held, recalled, expired, or depleted batches are excluded. Creating a replenishment work order still passes through the production scheduler's capacity controls.
+
+
+## Finished-goods cycle counts
+Use **Admin → Cycle Counts** to reconcile physical finished-goods inventory by production batch. The system records the pre-count quantity, physical quantity, variance reason, operator, and timestamp.
+
+Positive adjustments cannot exceed the batch quantity still legally available after current order assignments and prior dispositions, so cycle counts cannot recreate already-consumed stock. Batches that count to zero are moved to depleted automatically.
