@@ -38,6 +38,27 @@ final class OrderService
         }catch(\Throwable $e){$this->db->rollBack();throw $e;}
     }
 
+    public function preparePaymentAttempt(int $orderId): array
+    {
+        $order=$this->find($orderId);
+        if($order['status']==='paid') throw new \RuntimeException('Order is already paid.');
+        if(!in_array($order['status'],['pending_payment','payment_failed'],true)) throw new \RuntimeException('Order is not eligible for payment.');
+        if($order['status']==='payment_failed'){
+            $s=$this->db->prepare("UPDATE orders SET status='pending_payment',stripe_checkout_session_id=NULL,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='payment_failed'");
+            $s->execute([$orderId]);
+            if($s->rowCount()!==1) throw new \RuntimeException('Order changed before payment retry.');
+            $this->event($orderId,'payment_retry_started','Customer started another payment attempt.');
+        }
+        return $this->find($orderId);
+    }
+
+    public function markPaymentInitializationFailed(int $orderId,string $reason=''): void
+    {
+        $s=$this->db->prepare("UPDATE orders SET status='payment_failed',stripe_checkout_session_id=NULL,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='pending_payment'");
+        $s->execute([$orderId]);
+        if($s->rowCount()) $this->event($orderId,'payment_failed',$reason!==''?$reason:'Payment checkout initialization failed.');
+    }
+
     public function attachStripeSession(int $orderId,string $sessionId): void
     {
         $s=$this->db->prepare("UPDATE orders SET stripe_checkout_session_id=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='pending_payment'");
@@ -70,6 +91,12 @@ final class OrderService
             $q=$this->db->prepare('SELECT id FROM orders WHERE stripe_checkout_session_id=?');$q->execute([$sessionId]);
             $this->event((int)$q->fetchColumn(),'payment_failed',$reason);
         }
+    }
+
+    public function findByStripeSession(string $sessionId): ?array
+    {
+        $s=$this->db->prepare('SELECT id FROM orders WHERE stripe_checkout_session_id=?');$s->execute([$sessionId]);
+        $id=$s->fetchColumn();return $id===false?null:$this->find((int)$id);
     }
 
     public function idByStripeSession(string $sessionId): ?int
