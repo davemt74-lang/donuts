@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
-use FudgeDonuts\{AdminAuditService,AdminService,Database,FulfillmentService,GiftCardService,NotificationService,RefundService,StripeService,TaxService};
+use FudgeDonuts\{AdminAuditService,AdminService,Database,FulfillmentService,GiftCardService,InventoryService,NotificationService,RefundService,StripeService,TaxService};
 require_admin_roles(['super_admin','admin','fulfillment']);
 $db=Database::connection();$admin=new AdminService($db);$audit=new AdminAuditService($db);$refunds=new RefundService($db);$fulfillment=new FulfillmentService($db);$id=(int)($_GET['id']??$_POST['id']??0);$order=$admin->order($id);
 if(!$order){
@@ -21,7 +21,20 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
    $action=(string)($_POST['action']??'');
    if($action==='status'){
      $newStatus=(string)$_POST['status'];$beforeStatus=(string)$order['status'];
+     if($newStatus==='cancelled' && in_array($beforeStatus,['pending_payment','payment_failed'],true) && !empty($order['stripe_checkout_session_id'])){
+       $stripeSession=(string)$order['stripe_checkout_session_id'];
+       try{
+         $stripeClient=new StripeService((string)env('STRIPE_SECRET_KEY',''),(string)env('STRIPE_WEBHOOK_SECRET',''));
+         $remote=$stripeClient->retrieveCheckoutSession($stripeSession);
+         if(($remote['status']??'')==='complete') throw new RuntimeException('Completed payment cannot be cancelled as an unpaid order.');
+         if(($remote['status']??'')==='open')$stripeClient->expireCheckoutSession($stripeSession);
+       }catch(Throwable $e){throw new RuntimeException('The active payment session could not be safely cancelled.',0,$e);}
+     }
      $admin->transitionOrder($id,$newStatus,(string)($_POST['note']??''));
+     if($newStatus==='cancelled' && in_array($beforeStatus,['pending_payment','payment_failed'],true)){
+       (new InventoryService($db))->releaseOrder($id);
+       (new GiftCardService($db,(string)env('APP_KEY','')))->releaseForOrder($id);
+     }
      $audit->record((int)$_SESSION['admin_id'],'order_status_changed','order',$id,"Order {$order['order_number']} moved {$beforeStatus} → {$newStatus}.",['status'=>$beforeStatus],['status'=>$newStatus]);
      if($newStatus==='shipped')$fulfillment->markShipped($id);
      if($newStatus==='delivered')$fulfillment->markDelivered($id);
@@ -59,7 +72,10 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
      }
    }elseif($action==='cancel_resolution'){
      $requestId=(int)$_POST['request_id'];$resolution=(string)$_POST['resolution'];$refunds->resolveCancellation($requestId,$resolution,(int)$_SESSION['admin_id']);
-     if($resolution==='approved' && in_array($order['status'],['pending_payment','paid','preparing'],true)){$admin->transitionOrder($id,'cancelled','Customer cancellation request approved.');}
+     if($resolution==='approved' && in_array($order['status'],['pending_payment','paid','preparing'],true)){
+       $beforeCancel=(string)$order['status'];$admin->transitionOrder($id,'cancelled','Customer cancellation request approved.');
+       if($beforeCancel==='pending_payment'){(new InventoryService($db))->releaseOrder($id);(new GiftCardService($db,(string)env('APP_KEY','')))->releaseForOrder($id);}
+     }
      $audit->record((int)$_SESSION['admin_id'],'cancellation_resolved','order',$id,'Customer cancellation request '.$resolution.'.',[],['resolution'=>$resolution,'request_id'=>$requestId]);
      $notice='Cancellation request updated.';
    }
