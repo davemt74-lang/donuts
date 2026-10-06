@@ -37,6 +37,12 @@ final class ReleaseAuditService
         }catch(\Throwable){
             $checks[]=['name'=>'food_compliance:published','ok'=>false,'required'=>false,'message'=>'Food compliance readiness could not be evaluated'];
         }
+        try{
+            $ingredients=(new IngredientTraceabilityService($this->db))->summary();
+            $checks[]=['name'=>'ingredient_traceability:linked','ok'=>$ingredients['unlinked_batches']===0,'required'=>false,'message'=>'All production batches have at least one supplier ingredient lot linked'];
+        }catch(\Throwable){
+            $checks[]=['name'=>'ingredient_traceability:linked','ok'=>false,'required'=>false,'message'=>'Ingredient lot traceability readiness could not be evaluated'];
+        }
 
         return $checks;
     }
@@ -58,7 +64,7 @@ final class ReleaseAuditService
     {
         return [
             'public/index.php','public/robots.php','public/robots.txt','public/cart.php','public/checkout.php','public/pay.php','public/stripe-webhook.php',
-            'public/admin.php','public/admin-audit.php','public/admin-operations.php','public/admin-shipping.php','public/admin-tax.php','public/admin-costs.php','public/admin-backups.php','public/setup-admin.php','public/health.php','public/sitemap.php','public/order-status.php','public/unsubscribe.php','public/admin-marketing.php','public/account-privacy.php','public/reorder.php','public/gift-cards.php','public/gift-card-success.php','public/gift-card-balance.php','public/contact.php','public/review.php','public/admin-support.php','public/admin-reviews.php','public/admin-gift-cards.php','public/admin-disputes.php','public/admin-customers.php','public/admin-customer.php','public/recover-checkout.php','public/admin-checkout-recovery.php','public/admin-food-compliance.php','public/admin-food-label.php','public/admin-batches.php','public/admin-order-batches.php','public/admin-batch-affected.csv.php','public/admin-packing-slip.php','public/admin-pickup-sheet.php','public/admin-fulfillment.csv.php','public/admin-production-plan.csv.php',
+            'public/admin.php','public/admin-audit.php','public/admin-operations.php','public/admin-shipping.php','public/admin-tax.php','public/admin-costs.php','public/admin-backups.php','public/setup-admin.php','public/health.php','public/sitemap.php','public/order-status.php','public/unsubscribe.php','public/admin-marketing.php','public/account-privacy.php','public/reorder.php','public/gift-cards.php','public/gift-card-success.php','public/gift-card-balance.php','public/contact.php','public/review.php','public/admin-support.php','public/admin-reviews.php','public/admin-gift-cards.php','public/admin-disputes.php','public/admin-customers.php','public/admin-customer.php','public/recover-checkout.php','public/admin-checkout-recovery.php','public/admin-food-compliance.php','public/admin-food-label.php','public/admin-batches.php','public/admin-order-batches.php','public/admin-batch-affected.csv.php','public/admin-ingredient-lots.php','public/admin-ingredient-affected.csv.php','public/admin-packing-slip.php','public/admin-pickup-sheet.php','public/admin-fulfillment.csv.php','public/admin-production-plan.csv.php',
             'public/.htaccess','public/assets/app.css','public/assets/builder.js','public/assets/analytics.js','public/analytics.php','src/PerformanceService.php','src/HttpResponseService.php','src/GiftCardService.php','src/DisputeService.php','src/CustomerCrmService.php','src/CheckoutRecoveryService.php','src/ProductionPlanningService.php','src/ReorderService.php','scripts/migrate.php','scripts/post-deploy-check.php','scripts/http-smoke.php','scripts/preflight.php','scripts/backup-database.php','scripts/restore-database.php','scripts/send-notifications.php','scripts/check-operations.php','scripts/recover-reservations.php','scripts/process-checkout-recovery.php','DEPLOYMENT.md',
         ];
     }
@@ -69,7 +75,7 @@ final class ReleaseAuditService
             'pack_sizes','flavors','users','addresses','orders','order_items','payment_sessions','payment_events',
             'shipping_methods','pickup_zip_codes','flavor_inventory','inventory_reservations','notification_outbox',
             'discount_rules','site_content','admin_users','password_reset_tokens','saved_boxes','order_payment_details',
-            'refund_records','cancellation_requests','order_fulfillment_details','order_consents','order_payment_reconciliation','inventory_reservation_leases','newsletter_consent_events','admin_audit_log','customer_privacy_events','operational_events','scheduled_jobs','scheduled_job_runs','schema_migrations','fulfillment_settings','tax_settings','order_tax_details','support_tickets','support_messages','analytics_visitors','analytics_events','order_attribution','order_cost_snapshots','product_reviews','gift_card_purchases','gift_cards','gift_card_ledger','order_gift_card_applications','stripe_disputes','customer_admin_notes','customer_tags','checkout_recoveries','flavor_compliance_profiles','production_batches','order_batch_assignments',
+            'refund_records','cancellation_requests','order_fulfillment_details','order_consents','order_payment_reconciliation','inventory_reservation_leases','newsletter_consent_events','admin_audit_log','customer_privacy_events','operational_events','scheduled_jobs','scheduled_job_runs','schema_migrations','fulfillment_settings','tax_settings','order_tax_details','support_tickets','support_messages','analytics_visitors','analytics_events','order_attribution','order_cost_snapshots','product_reviews','gift_card_purchases','gift_cards','gift_card_ledger','order_gift_card_applications','stripe_disputes','customer_admin_notes','customer_tags','checkout_recoveries','flavor_compliance_profiles','production_batches','order_batch_assignments','ingredient_lots','production_batch_ingredients',
         ];
     }
 
