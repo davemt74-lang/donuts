@@ -238,3 +238,14 @@ php scripts/process-checkout-recovery.php
 Run it on the cadence configured by `JOB_CHECKOUT_RECOVERY_INTERVAL_MINUTES` (60 minutes by default). A reminder is eligible only after `CHECKOUT_RECOVERY_REMINDER_HOURS` and only when the checkout email is currently explicitly **subscribed** in the marketing-consent ledger. Every recovery reminder contains a signed unsubscribe link. Unsubscribed and unknown addresses are never sent recovery marketing.
 
 Admin → Recovery shows active, restored, converted, expired, and reminder activity. Registered-customer privacy exports include recovery lifecycle metadata, and account closure purges associated recovery snapshots.
+
+
+## Production batch traceability
+Use **Admin → Batches** to create production lots, record per-flavor quantities, release batches for fulfillment, place batches on hold, and record recalls.
+
+Assign a released batch to an order once the order enters fulfillment. Batch assignments become immutable after shipment so historical traceability cannot be rewritten after product leaves your control.
+
+For a recall:
+1. Move the batch to **Recalled** and record the reason.
+2. Review affected orders and export the affected-customer CSV if needed.
+3. Queue recall notices from the batch page. Notifications are idempotent per batch/order, so repeating the action will not duplicate customer messages.
