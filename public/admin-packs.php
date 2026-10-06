@@ -1,0 +1,24 @@
+<?php
+declare(strict_types=1);
+require dirname(__DIR__).'/src/bootstrap.php';
+use FudgeDonuts\{CatalogRepository,Database};
+require_admin_roles(['super_admin','admin']);
+$db=Database::connection();$catalog=new CatalogRepository($db);$error='';$notice='';
+if($_SERVER['REQUEST_METHOD']==='POST'){
+ verify_csrf($_POST['_csrf']??null);
+ try{
+  $action=(string)($_POST['action']??'');
+  if($action==='pack'){$catalog->savePack($_POST);$notice='Pack updated.';}
+  elseif($action==='eligibility'){$catalog->setEligibility((int)$_POST['pack_id'],array_map('intval',(array)($_POST['flavor_ids']??[])));$notice='Pack eligibility updated.';}
+  elseif($action==='preset'){$catalog->savePreset($_POST);$notice='Preset saved.';}
+ }catch(Throwable $e){$error=$e->getMessage();}
+}
+$packs=$catalog->packs(false);$flavors=$catalog->flavors(false);$presets=$catalog->presets(false);
+?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/assets/app.css"><title>Packs · Admin</title></head><body>
+<header class="nav"><a class="brand" href="/admin.php">Fudge Donuts Admin</a><nav><a href="/admin.php">Flavors</a><a href="/admin-packs.php">Packs</a><a href="/admin-orders.php">Orders</a></nav></header>
+<main class="section"><p class="eyebrow">Catalog</p><h1>Packs & assortments</h1><?php if($error):?><div class="notice error"><?=htmlspecialchars($error)?></div><?php endif;?><?php if($notice):?><div class="notice"><?=htmlspecialchars($notice)?></div><?php endif;?>
+<h2>Pack pricing</h2><div class="grid packs"><?php foreach($packs as $p):?><form method="post" class="card admin-form"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>"><input type="hidden" name="action" value="pack"><input type="hidden" name="id" value="<?=(int)$p['id']?>"><h3><?=htmlspecialchars($p['name'])?></h3><label>Name<input name="name" value="<?=htmlspecialchars($p['name'])?>"></label><label>Size<input type="number" name="size" min="1" value="<?=(int)$p['size']?>"></label><label>Base price cents<input type="number" name="base_price_cents" min="0" value="<?=(int)$p['base_price_cents']?>"></label><label><input type="checkbox" name="customizable" value="1" <?=(int)$p['customizable']?'checked':''?>> Custom builder enabled</label><label><input type="checkbox" name="active" value="1" <?=(int)$p['active']?'checked':''?>> Active</label><button class="button secondary">Save pack</button></form><?php endforeach;?></div>
+<h2>Flavor eligibility</h2><?php foreach($packs as $p):$eligible=array_flip($catalog->eligibleFlavorIds((int)$p['id']));?><form method="post" class="admin-panel"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>"><input type="hidden" name="action" value="eligibility"><input type="hidden" name="pack_id" value="<?=(int)$p['id']?>"><h3><?=htmlspecialchars($p['name'])?></h3><div class="chip-list"><?php foreach($flavors as $f):?><label class="chip"><input type="checkbox" name="flavor_ids[]" value="<?=(int)$f['id']?>" <?=isset($eligible[(int)$f['id']])?'checked':''?>> <?=htmlspecialchars($f['name'])?></label><?php endforeach;?></div><button class="button secondary">Save eligibility</button></form><?php endforeach;?>
+<h2>Preset assortments</h2><table><thead><tr><th>Name</th><th>Pack</th><th>Slug</th><th>Status</th></tr></thead><tbody><?php foreach($presets as $p):?><tr><td><?=htmlspecialchars($p['name'])?></td><td><?=(int)$p['size']?> pack</td><td><?=htmlspecialchars($p['slug'])?></td><td><?=(int)$p['active']?'Active':'Inactive'?></td></tr><?php endforeach;?></tbody></table>
+<form method="post" class="admin-form"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>"><input type="hidden" name="action" value="preset"><input name="name" required placeholder="Preset name"><input name="slug" required pattern="[a-z0-9-]+" placeholder="preset-slug"><select name="pack_size_id"><?php foreach($packs as $p):?><option value="<?=(int)$p['id']?>"><?=htmlspecialchars($p['name'])?></option><?php endforeach;?></select><input name="image_path" placeholder="/images/preset-name.png"><textarea name="description" placeholder="Description"></textarea><label><input type="checkbox" name="active" value="1" checked> Active</label><p>Quantities must total the selected pack size.</p><?php foreach($flavors as $f):?><label><?=htmlspecialchars($f['name'])?><input type="number" min="0" name="items[<?=(int)$f['id']?>]" value="0"></label><?php endforeach;?><button class="button">Create preset</button></form>
+</main></body></html>
