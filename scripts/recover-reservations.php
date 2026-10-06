@@ -2,9 +2,10 @@
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
 
-use FudgeDonuts\{Database,InventoryService,NotificationService,OrderService,PaymentRepository,PromotionService,StripeService};
+use FudgeDonuts\{Database,InventoryService,JobMonitorService,NotificationService,OrderService,PaymentRepository,PromotionService,StripeService};
 
 $db=Database::connection();
+$monitor=new JobMonitorService($db);$runId=$monitor->start('reservations','Abandoned checkout reservation recovery',(int)env('JOB_RESERVATIONS_INTERVAL_MINUTES','5'));
 $inventory=new InventoryService($db);
 $orders=new OrderService($db);
 $payments=new PaymentRepository($db);
@@ -80,5 +81,7 @@ foreach($inventory->expiredLeases(200) as $lease){
         $errors++;
     }
 }
-fwrite(STDOUT,"Reservation recovery: released={$released} committed={$committed} review_holds={$held} deferred={$errors}\n");
+$summary="released={$released} committed={$committed} review_holds={$held} deferred={$errors}";
+if($errors>0)$monitor->fail($runId,$summary);else $monitor->succeed($runId,$summary);
+fwrite(STDOUT,"Reservation recovery: {$summary}\n");
 exit($errors>0?2:0);
