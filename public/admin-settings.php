@@ -2,7 +2,7 @@
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
 use FudgeDonuts\{AdminService,Database};
-if(empty($_SESSION['admin'])){header('Location: /admin.php');exit;}
+require_admin_roles(['super_admin','admin']);
 $admin=new AdminService(Database::connection());$error='';
 if($_SERVER['REQUEST_METHOD']==='POST'){
  verify_csrf($_POST['_csrf']??null);

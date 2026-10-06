@@ -2,7 +2,7 @@
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
 use FudgeDonuts\{AdminService,Database,PromotionService};
-if(empty($_SESSION['admin'])){header('Location: /admin.php');exit;}
+require_admin_roles(['super_admin','admin']);
 $db=Database::connection();$svc=new PromotionService($db);$error='';
 if($_SERVER['REQUEST_METHOD']==='POST'){verify_csrf($_POST['_csrf']??null);try{$svc->save($_POST);header('Location: /admin-promotions.php');exit;}catch(Throwable $e){$error=$e->getMessage();}}
 $rules=(new AdminService($db))->discounts();
