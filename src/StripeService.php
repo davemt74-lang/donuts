@@ -23,6 +23,27 @@ final class StripeService
         return $this->request('/v1/refunds',$params,$idempotencyKey);
     }
 
+    public function calculateTax(int $preTaxCents,array $address,string $reference,string $taxCode=''): array
+    {
+        if($this->secretKey==='') throw new \RuntimeException('Stripe secret key is not configured.');
+        if($preTaxCents<0) throw new \InvalidArgumentException('Tax calculation amount cannot be negative.');
+        $params=[
+            'currency'=>'usd',
+            'line_items[0][amount]'=>(string)$preTaxCents,
+            'line_items[0][reference]'=>$reference,
+            'line_items[0][tax_behavior]'=>'exclusive',
+            'customer_details[address_source]'=>'shipping',
+            'customer_details[address][line1]'=>(string)($address['line1']??''),
+            'customer_details[address][line2]'=>(string)($address['line2']??''),
+            'customer_details[address][city]'=>(string)($address['city']??''),
+            'customer_details[address][state]'=>(string)($address['region']??''),
+            'customer_details[address][postal_code]'=>(string)($address['postal_code']??''),
+            'customer_details[address][country]'=>(string)($address['country']??'US'),
+        ];
+        if($taxCode!=='')$params['line_items[0][tax_code]']=$taxCode;
+        return $this->request('/v1/tax/calculations',$params,'tax_'.hash('sha256',$reference.'|'.$preTaxCents.'|'.json_encode($address)));
+    }
+
     public function expireCheckoutSession(string $sessionId): array
     {
         if($this->secretKey==='') throw new \RuntimeException('Stripe secret key is not configured.');

@@ -118,6 +118,37 @@ final class OrderService
         }catch(\Throwable $e){if($this->db->inTransaction())$this->db->rollBack();throw $e;}
     }
 
+    public function markPaidByExternalTender(string $sessionId,int $stripeChargedCents,int $externalTenderCents,int $calculatedTaxCents,string $currency='usd'): bool
+    {
+        $s=$this->db->prepare("SELECT * FROM orders WHERE stripe_checkout_session_id=?");$s->execute([$sessionId]);$order=$s->fetch();
+        if(!$order)return false;
+        if($order['status']==='paid')return true;
+        if($order['status']==='payment_review')return false;
+        if($order['status']!=='pending_payment')throw new \RuntimeException('Unexpected order payment state.');
+
+        $rec=(new PaymentReconciliationService($this->db))->reconcileExternalTender((int)$order['id'],$sessionId,$stripeChargedCents,$externalTenderCents,$calculatedTaxCents,$currency);
+        if(!$rec['matched']){
+            $this->markPaymentReviewByStripeSession($sessionId,'Mixed tender reconciliation failed.');
+            return false;
+        }
+        $gross=(int)$order['total_cents']+$calculatedTaxCents;
+        $this->db->beginTransaction();
+        try{
+            $u=$this->db->prepare("UPDATE orders SET status='paid',tax_cents=?,total_cents=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='pending_payment'");
+            $u->execute([$calculatedTaxCents,$gross,(int)$order['id']]);
+            if($u->rowCount()!==1) throw new \RuntimeException('Order changed before mixed tender settlement.');
+            $this->event((int)$order['id'],'paid','Gift card and Stripe tender reconciled.',['stripe_cents'=>$stripeChargedCents,'gift_card_cents'=>$externalTenderCents,'tax_cents'=>$calculatedTaxCents,'currency'=>$currency]);
+            $this->db->commit();return true;
+        }catch(\Throwable $e){if($this->db->inTransaction())$this->db->rollBack();throw $e;}
+    }
+
+    public function markSettlementReview(int $orderId,string $reason): void
+    {
+        $s=$this->db->prepare("UPDATE orders SET status='payment_review',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status IN ('pending_payment','paid')");
+        $s->execute([$orderId]);
+        if($s->rowCount()) $this->event($orderId,'payment_review',$reason);
+    }
+
     public function markPaymentReviewByStripeSession(string $sessionId,string $reason=''): void
     {
         $s=$this->db->prepare("UPDATE orders SET status='payment_review',updated_at=CURRENT_TIMESTAMP WHERE stripe_checkout_session_id=? AND status='pending_payment'");

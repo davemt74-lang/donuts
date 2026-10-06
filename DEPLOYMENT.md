@@ -200,3 +200,13 @@ Approved reviews are identity-minimal on the storefront (shown as “Verified cu
 Signed-in customers can rebuild eligible historical orders from Account → Orders. Reorders never copy historical prices. Every box is rebuilt through the current pack/preset catalog, current flavor eligibility and sold-out state, current surcharges/base prices, and current tracked inventory.
 
 The entire reorder is atomic: if any historical box can no longer be built, no portion of that reorder is added to the live cart. Existing cart contents remain unchanged.
+
+
+## Gift cards
+Digital gift cards are sold at `/gift-cards.php` and delivered only after Stripe's signed checkout webhook confirms payment. Configure available denominations with `GIFT_CARD_AMOUNTS_CENTS` (for example `2500,5000,10000`).
+
+Gift-card codes are generated from cryptographically secure random bytes, stored as a lookup hash plus AES-256-GCM encrypted ciphertext, and are never shown in the Admin card list. `APP_KEY` protects the encrypted code and must never be rotated without a migration/re-encryption plan for existing cards.
+
+At order checkout, gift cards behave as payment tender rather than discounts. Tax is calculated on the full taxable order before stored value is applied. A gift card can cover part or all of the order; any Stripe remainder is reconciled together with the reserved gift-card amount before fulfillment begins.
+
+Refunds return value to the original tenders. The refundable gift-card portion is restored first, and any remainder is sent back through Stripe. Retry keys prevent a repeated refund operation from crediting gift-card value twice. Admin → Gift Cards shows outstanding stored-value liability, reserved value, balances, and enable/disable controls without exposing full codes.

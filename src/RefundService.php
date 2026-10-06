@@ -14,7 +14,7 @@ final class RefundService
         $s=$this->db->prepare("SELECT total_cents FROM orders WHERE id=? AND status IN ('payment_review','paid','preparing','ready','shipped','delivered','completed')");
         $s->execute([$orderId]);$total=$s->fetchColumn();
         if($total===false) return 0;
-        $r=$this->db->prepare("SELECT COALESCE(SUM(amount_cents),0) FROM refund_records WHERE order_id=? AND status IN ('pending','succeeded')");
+        $r=$this->db->prepare("SELECT COALESCE(SUM(amount_cents),0) FROM refund_records WHERE order_id=? AND status IN ('pending','review','succeeded')");
         $r->execute([$orderId]);
         return max(0,(int)$total-(int)$r->fetchColumn());
     }
@@ -23,12 +23,38 @@ final class RefundService
     {
         $available=$this->refundableCents($orderId);
         if($amountCents<=0 || $amountCents>$available) throw new \InvalidArgumentException('Refund amount exceeds the refundable balance.');
-        $s=$this->db->prepare("INSERT INTO refund_records(order_id,amount_cents,reason,requested_by_admin_id,status) VALUES(?,?,?,?,'pending')");
-        $s->execute([$orderId,$amountCents,mb_substr(trim($reason),0,255),$adminId]);
+
+        $giftRemaining=0;
+        try{
+            $g=$this->db->prepare("SELECT redeemed_cents,refunded_cents FROM order_gift_card_applications WHERE order_id=? AND status='redeemed'");
+            $g->execute([$orderId]);$application=$g->fetch();
+            if($application){
+                $p=$this->db->prepare("SELECT COALESCE(SUM(gift_card_amount_cents),0) FROM refund_records WHERE order_id=? AND status IN ('pending','review')");
+                $p->execute([$orderId]);
+                $giftRemaining=max(0,(int)$application['redeemed_cents']-(int)$application['refunded_cents']-(int)$p->fetchColumn());
+            }
+        }catch(\Throwable){$giftRemaining=0;}
+
+        $giftPart=min($amountCents,$giftRemaining);$stripePart=$amountCents-$giftPart;
+        $provider=$giftPart>0&&$stripePart>0?'mixed':($giftPart>0?'gift_card':'stripe');
+        if($this->giftCardRefundColumnsAvailable()){
+            $s=$this->db->prepare("INSERT INTO refund_records(order_id,amount_cents,reason,provider,requested_by_admin_id,status,gift_card_amount_cents,stripe_amount_cents) VALUES(?,?,?,?,?,'pending',?,?)");
+            $s->execute([$orderId,$amountCents,mb_substr(trim($reason),0,255),$provider,$adminId,$giftPart,$stripePart]);
+        }else{
+            $s=$this->db->prepare("INSERT INTO refund_records(order_id,amount_cents,reason,provider,requested_by_admin_id,status) VALUES(?,?,?,?,?,'pending')");
+            $s->execute([$orderId,$amountCents,mb_substr(trim($reason),0,255),'stripe',$adminId]);
+        }
         return (int)$this->db->lastInsertId();
     }
 
-    public function markSucceeded(int $refundId,string $providerRefundId): void
+    public function refund(int $refundId): array
+    {
+        $s=$this->db->prepare('SELECT * FROM refund_records WHERE id=?');$s->execute([$refundId]);$row=$s->fetch();
+        if(!$row) throw new \InvalidArgumentException('Refund not found.');
+        return $row;
+    }
+
+    public function markSucceeded(int $refundId,?string $providerRefundId): void
     {
         $this->db->beginTransaction();
         try{
@@ -46,6 +72,12 @@ final class RefundService
             $e->execute([(int)$refund['order_id'],'refund_succeeded','Refund completed.',json_encode(['refund_id'=>$refundId,'provider_refund_id'=>$providerRefundId],JSON_THROW_ON_ERROR)]);
             $this->db->commit();
         }catch(\Throwable $e){if($this->db->inTransaction())$this->db->rollBack();throw $e;}
+    }
+
+    public function markReview(int $refundId,?string $providerRefundId,string $reason): void
+    {
+        $s=$this->db->prepare("UPDATE refund_records SET status='review',provider_refund_id=?,reason=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='pending'");
+        $s->execute([$providerRefundId,mb_substr($reason,0,255),$refundId]);
     }
 
     public function markFailed(int $refundId,string $reason): void
@@ -81,5 +113,15 @@ final class RefundService
         $s=$this->db->prepare("UPDATE cancellation_requests SET status=?,resolved_by_admin_id=?,resolved_at=CURRENT_TIMESTAMP WHERE id=? AND status='pending'");
         $s->execute([$status,$adminId,$requestId]);
         if($s->rowCount()!==1) throw new \RuntimeException('Cancellation request changed before resolution.');
+    }
+
+    private function giftCardRefundColumnsAvailable(): bool
+    {
+        try{
+            foreach($this->db->query("PRAGMA table_info(refund_records)")->fetchAll() as $row){
+                if(($row['name']??'')==='gift_card_amount_cents') return true;
+            }
+        }catch(\Throwable){}
+        return false;
     }
 }

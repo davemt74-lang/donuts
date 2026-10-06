@@ -56,6 +56,26 @@ final class TaxService
         return $params;
     }
 
+    public function calculateExclusiveForOrder(StripeService $stripe,array $order): int
+    {
+        $settings=$this->settings();
+        if($settings['automatic_tax_enabled']!=='1') return 0;
+        $calculation=$stripe->calculateTax(
+            (int)$order['total_cents'],
+            [
+                'line1'=>$order['line1']??'','line2'=>$order['line2']??'','city'=>$order['city']??'',
+                'region'=>$order['region']??'','postal_code'=>$order['postal_code']??'','country'=>$order['country']??'US',
+            ],
+            (string)$order['order_number'],
+            (string)$settings['product_tax_code']
+        );
+        $tax=array_key_exists('tax_amount_exclusive',$calculation)
+            ?(int)$calculation['tax_amount_exclusive']
+            :max(0,(int)($calculation['amount_total']??0)-(int)$order['total_cents']);
+        if($tax<0) throw new \RuntimeException('Stripe returned an invalid tax amount.');
+        return $tax;
+    }
+
     public function snapshotOrder(int $orderId): void
     {
         $s=$this->settings();
@@ -63,11 +83,24 @@ final class TaxService
         $q->execute([$orderId,$s['automatic_tax_enabled']==='1'?1:0,$s['product_tax_code'],$s['tax_behavior']]);
     }
 
+    public function recordCalculated(int $orderId,int $taxCents): void
+    {
+        if($taxCents<0) throw new \InvalidArgumentException('Tax amount cannot be negative.');
+        $q=$this->db->prepare('UPDATE order_tax_details SET calculated_tax_cents=?,updated_at=CURRENT_TIMESTAMP WHERE order_id=?');
+        $q->execute([$taxCents,$orderId]);
+    }
+
     public function recordCollected(int $orderId,int $taxCents): void
     {
         if($taxCents<0) throw new \InvalidArgumentException('Tax amount cannot be negative.');
         $q=$this->db->prepare('UPDATE order_tax_details SET stripe_tax_cents=?,updated_at=CURRENT_TIMESTAMP WHERE order_id=?');
         $q->execute([$taxCents,$orderId]);
+    }
+
+    public function calculatedForOrder(int $orderId): int
+    {
+        try{$s=$this->db->prepare('SELECT calculated_tax_cents FROM order_tax_details WHERE order_id=?');$s->execute([$orderId]);return max(0,(int)($s->fetchColumn()?:0));}
+        catch(\Throwable){return 0;}
     }
 
     public function orderDetail(int $orderId): ?array
