@@ -44,7 +44,7 @@ final class ShipmentService
         $o=$this->db->prepare('SELECT fulfillment_type,status FROM orders WHERE id=?');$o->execute([$orderId]);$order=$o->fetch();
         if(!$order) throw new \InvalidArgumentException('Order not found.');
         if($order['fulfillment_type']!=='shipping') throw new \InvalidArgumentException('Shipments are only available for shipping orders.');
-        if(in_array((string)$order['status'],['cancelled','refunded','payment_failed','pending_payment','payment_review'],true)) throw new \InvalidArgumentException('This order is not ready for shipment planning.');
+        if(in_array((string)$order['status'],['cancelled','refunded','payment_failed','pending_payment','payment_review','delivered','completed'],true)) throw new \InvalidArgumentException('This order is not ready for shipment planning.');
 
         $carrier=mb_substr(trim((string)($data['carrier']??'')),0,80);
         $tracking=mb_substr(trim((string)($data['tracking_number']??'')),0,190);
@@ -141,10 +141,16 @@ final class ShipmentService
         $s=$this->db->prepare('SELECT status FROM orders WHERE id=?');$s->execute([$orderId]);$status=(string)$s->fetchColumn();
         if($this->allDelivered($orderId) && in_array($status,['preparing','ready','shipped'],true)){
             $u=$this->db->prepare("UPDATE orders SET status='delivered',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status=?");$u->execute([$orderId,$status]);
-            if($u->rowCount()){$e=$this->db->prepare('INSERT INTO order_events(order_id,event_type,note) VALUES(?,?,?)');$e->execute([$orderId,'status_changed',$status.' → delivered (shipment completion)']);}
+            if($u->rowCount()){
+                $f=$this->db->prepare('INSERT INTO order_fulfillment_details(order_id,delivered_at) VALUES(?,CURRENT_TIMESTAMP) ON CONFLICT(order_id) DO UPDATE SET delivered_at=COALESCE(order_fulfillment_details.delivered_at,CURRENT_TIMESTAMP),updated_at=CURRENT_TIMESTAMP');$f->execute([$orderId]);
+                $e=$this->db->prepare('INSERT INTO order_events(order_id,event_type,note) VALUES(?,?,?)');$e->execute([$orderId,'status_changed',$status.' → delivered (shipment completion)']);
+            }
         }elseif($this->allShipped($orderId) && in_array($status,['paid','preparing','ready'],true)){
             $u=$this->db->prepare("UPDATE orders SET status='shipped',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status=?");$u->execute([$orderId,$status]);
-            if($u->rowCount()){$e=$this->db->prepare('INSERT INTO order_events(order_id,event_type,note) VALUES(?,?,?)');$e->execute([$orderId,'status_changed',$status.' → shipped (all packages shipped)']);}
+            if($u->rowCount()){
+                $f=$this->db->prepare('INSERT INTO order_fulfillment_details(order_id,shipped_at) VALUES(?,CURRENT_TIMESTAMP) ON CONFLICT(order_id) DO UPDATE SET shipped_at=COALESCE(order_fulfillment_details.shipped_at,CURRENT_TIMESTAMP),updated_at=CURRENT_TIMESTAMP');$f->execute([$orderId]);
+                $e=$this->db->prepare('INSERT INTO order_events(order_id,event_type,note) VALUES(?,?,?)');$e->execute([$orderId,'status_changed',$status.' → shipped (all packages shipped)']);
+            }
         }
     }
 }
