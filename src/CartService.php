@@ -16,6 +16,7 @@ final class CartService
         $quantity=max(1,min(24,$quantity));
         $box=$this->builder->build($size,$selections);
         $key=hash('sha256',$size.'|'.json_encode($this->selectionMap($box),JSON_THROW_ON_ERROR));
+        $this->invalidateCheckoutAttempt($session);
         $session['cart'] ??= [];
         if(isset($session['cart'][$key])){
             $session['cart'][$key]['quantity']=min(24,(int)$session['cart'][$key]['quantity']+$quantity);
@@ -36,6 +37,7 @@ final class CartService
         $quantity=max(1,min(24,$quantity));
         $box=$this->presets->buildBySlug($slug);
         $key=hash('sha256','preset|'.$box['preset_id']);
+        $this->invalidateCheckoutAttempt($session);
         $session['cart'] ??= [];
         if(isset($session['cart'][$key])){
             $session['cart'][$key]['quantity']=min(24,(int)$session['cart'][$key]['quantity']+$quantity);
@@ -51,14 +53,23 @@ final class CartService
 
     public function remove(array &$session,string $key): void
     {
+        if(isset($session['cart'][$key])) $this->invalidateCheckoutAttempt($session);
         unset($session['cart'][$key]);
     }
 
     public function setQuantity(array &$session,string $key,int $quantity): void
     {
         if(!isset($session['cart'][$key])) return;
-        if($quantity<=0){unset($session['cart'][$key]);return;}
-        $session['cart'][$key]['quantity']=min(24,$quantity);
+        $current=(int)$session['cart'][$key]['quantity'];
+        $next=$quantity<=0?0:min(24,$quantity);
+        if($next!==$current) $this->invalidateCheckoutAttempt($session);
+        if($next<=0){unset($session['cart'][$key]);return;}
+        $session['cart'][$key]['quantity']=$next;
+    }
+
+    public function invalidateCheckoutAttempt(array &$session): void
+    {
+        unset($session['checkout_attempt_token'],$session['active_order_id'],$session['fulfillment']);
     }
 
     public function summary(array $session,?string $code=null): array
