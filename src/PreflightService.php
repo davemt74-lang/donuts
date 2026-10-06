@@ -23,7 +23,7 @@ final class PreflightService
             $db=Database::connection();
             $db->query('SELECT 1');
             $checks[]=$this->check('database',true,'Database connection');
-            $required=['pack_sizes','flavors','users','orders','notification_outbox','notification_email_content','auth_rate_limits','admin_users','password_reset_tokens','saved_boxes','order_payment_details','refund_records','cancellation_requests','order_fulfillment_details','order_consents','order_payment_reconciliation','inventory_reservation_leases','newsletter_consent_events','admin_audit_log','customer_privacy_events','operational_events'];
+            $required=['pack_sizes','flavors','users','orders','notification_outbox','notification_email_content','auth_rate_limits','admin_users','password_reset_tokens','saved_boxes','order_payment_details','refund_records','cancellation_requests','order_fulfillment_details','order_consents','order_payment_reconciliation','inventory_reservation_leases','newsletter_consent_events','admin_audit_log','customer_privacy_events','operational_events','scheduled_jobs','scheduled_job_runs'];
             foreach($required as $table){
                 $checks[]=$this->check('table_'.$table,$this->tableExists($db,$table),'Required table '.$table);
             }
@@ -58,6 +58,14 @@ final class PreflightService
             $checks[]=$this->check('observability_log_dir',is_dir($logDir)&&is_writable($logDir),'storage/logs must be writable');
             $alertEmail=trim((string)\env('ALERT_EMAIL',''));
             $checks[]=$this->check('alert_email',$alertEmail===''||filter_var($alertEmail,FILTER_VALIDATE_EMAIL)!==false,'ALERT_EMAIL must be blank or a valid email address');
+            foreach([
+                'job_notifications_interval'=>(int)\env('JOB_NOTIFICATIONS_INTERVAL_MINUTES','5'),
+                'job_reservations_interval'=>(int)\env('JOB_RESERVATIONS_INTERVAL_MINUTES','5'),
+                'job_operations_interval'=>(int)\env('JOB_OPERATIONS_INTERVAL_MINUTES','5'),
+                'job_backup_interval'=>(int)\env('JOB_BACKUP_INTERVAL_MINUTES','1440'),
+            ] as $name=>$minutes){
+                $checks[]=$this->check($name,$minutes>=1 && $minutes<=10080,strtoupper(str_replace('_',' ',$name)).' must be between 1 and 10080 minutes');
+            }
             $transport=strtolower((string)\env('MAIL_TRANSPORT','log'));
             $checks[]=$this->check('mail_transport',in_array($transport,['smtp','mail'],true),'Production MAIL_TRANSPORT must be smtp or mail');
             $checks[]=$this->check('mail_from',filter_var((string)\env('MAIL_FROM',''),FILTER_VALIDATE_EMAIL)!==false,'MAIL_FROM must be a valid email address');
