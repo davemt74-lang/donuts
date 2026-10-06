@@ -25,9 +25,9 @@ php scripts/migrate.php
 php -S 127.0.0.1:8080 -t public
 ```
 
-The default database is SQLite. Set `DB_DSN`, `DB_USER`, and `DB_PASS` to use MySQL in production.
+The certified database runtime is SQLite. The current migration set intentionally targets SQLite for local and production deployment.
 
-Admin product management is protected by `ADMIN_PASSWORD`.
+Administrator access is database-backed. On a fresh install, create the first Super Admin at `/setup-admin.php` after running migrations.
 
 
 ## Production
@@ -37,6 +37,7 @@ See `DEPLOYMENT.md`. Before launch, run:
 ```bash
 php scripts/migrate.php
 php scripts/preflight.php
+php scripts/release-audit.php
 ```
 
 The production web root must be `public/`.
