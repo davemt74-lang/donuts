@@ -23,6 +23,16 @@ final class PreflightService
             $db=Database::connection();
             $db->query('SELECT 1');
             $checks[]=$this->check('database',true,'Database connection');
+            if($db->getAttribute(PDO::ATTR_DRIVER_NAME)==='sqlite'){
+                $busy=(int)$db->query('PRAGMA busy_timeout')->fetchColumn();
+                $journal=strtolower((string)$db->query('PRAGMA journal_mode')->fetchColumn());
+                $cache=(int)$db->query('PRAGMA cache_size')->fetchColumn();
+                $checks[]=$this->check('sqlite_busy_timeout',$busy>=5000,'SQLite busy timeout must be at least 5000ms');
+                $checks[]=$this->check('sqlite_cache_size',$cache<=-20000,'SQLite cache size must reserve at least about 20MB');
+                if((string)\env('DB_DSN','')!=='sqlite::memory:'){
+                    $checks[]=$this->check('sqlite_wal',$journal==='wal','File-backed SQLite must use WAL journal mode');
+                }
+            }
             $required=['pack_sizes','flavors','users','orders','notification_outbox','notification_email_content','auth_rate_limits','admin_users','password_reset_tokens','saved_boxes','order_payment_details','refund_records','cancellation_requests','order_fulfillment_details','order_consents','order_payment_reconciliation','inventory_reservation_leases','newsletter_consent_events','admin_audit_log','customer_privacy_events','operational_events','scheduled_jobs','scheduled_job_runs','schema_migrations','shipping_methods','pickup_zip_codes','fulfillment_settings','tax_settings','order_tax_details','support_tickets','support_messages'];
             foreach($required as $table){
                 $checks[]=$this->check('table_'.$table,$this->tableExists($db,$table),'Required table '.$table);
