@@ -90,6 +90,11 @@ final class ProductionSchedulingService
         $bestByDate=trim((string)$bestByDate)?:null;
         if($bestByDate!==null && strtotime($bestByDate)===false) throw new \InvalidArgumentException('Best-by date is invalid.');
         if($bestByDate!==null && $bestByDate<gmdate('Y-m-d')) throw new \InvalidArgumentException('Best-by date cannot be in the past.');
+        $labelService=new BatchLabelService($this->db);$label=null;$producedAt=gmdate('Y-m-d H:i:s');
+        if($labelService->enabled()){
+            $label=$labelService->prepare((int)$work['flavor_id'],$producedAt,$bestByDate);
+            $bestByDate=$label['best_by_date'];
+        }
         try{(new ProductionQaService($this->db))->assertReadyForCompletion($id);}
         catch(\PDOException $e){
             $m=strtolower($e->getMessage());
@@ -98,10 +103,11 @@ final class ProductionSchedulingService
 
         $this->db->beginTransaction();
         try{
-            $b=$this->db->prepare("INSERT INTO production_batches(batch_code,flavor_id,produced_at,best_by_date,quantity_produced,quantity_remaining,status,notes,created_by) VALUES(?,?,CURRENT_TIMESTAMP,?,?,?,'active',?,?)");
+            $b=$this->db->prepare("INSERT INTO production_batches(batch_code,flavor_id,produced_at,best_by_date,quantity_produced,quantity_remaining,status,notes,created_by) VALUES(?,?,?,?,?,?,'active',?,?)");
             $notes='Completed from production work order '.$work['work_order_number'].($work['notes']!==''?' — '.$work['notes']:'');
-            $b->execute([$batchCode,(int)$work['flavor_id'],$bestByDate,$actualQuantity,$actualQuantity,$notes,$adminId]);
+            $b->execute([$batchCode,(int)$work['flavor_id'],$producedAt,$bestByDate,$actualQuantity,$actualQuantity,$notes,$adminId]);
             $batchId=(int)$this->db->lastInsertId();
+            if($label!==null)$labelService->snapshot($batchId,$label);
 
             try{(new RecipeService($this->db))->snapshotBatch($batchId);}catch(\PDOException $e){
                 $m=strtolower($e->getMessage());

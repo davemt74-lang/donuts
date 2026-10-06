@@ -336,3 +336,9 @@ Only active, unexpired production batches count as safe stock. Held, recalled, e
 Use **Admin → Cycle Counts** to reconcile physical finished-goods inventory by production batch. The system records the pre-count quantity, physical quantity, variance reason, operator, and timestamp.
 
 Positive adjustments cannot exceed the batch quantity still legally available after current order assignments and prior dispositions, so cycle counts cannot recreate already-consumed stock. Batches that count to zero are moved to depleted automatically.
+
+
+## Automatic shelf-life dating and batch labels
+Every newly created production batch uses the flavor's **published, complete Food Compliance profile**. If the operator leaves Best By blank, the system derives it from the published shelf-life days. An operator may choose an earlier date, but never a date beyond the published shelf-life limit.
+
+At batch creation, ingredients, allergens, storage instructions, net weight, label version, shelf life, produced date, and best-by date are snapshotted permanently. Later compliance edits do not rewrite historical production labels. Print the immutable label from **Admin → Batches → Print batch label**.

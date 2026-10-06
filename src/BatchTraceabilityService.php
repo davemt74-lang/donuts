@@ -17,6 +17,7 @@ final class BatchTraceabilityService
         $bestBy=trim((string)($data['best_by_date']??''))?:null;
         $qty=(int)($data['quantity_produced']??0);
         $notes=mb_substr(trim((string)($data['notes']??'')),0,4000);
+        $labelService=new BatchLabelService($this->db);$label=null;
         if(!preg_match('/^[A-Z0-9][A-Z0-9._-]{2,63}$/',$code)) throw new \InvalidArgumentException('Batch code must be 3–64 letters, numbers, dots, dashes or underscores.');
         if(!$this->flavorExists($flavorId)) throw new \InvalidArgumentException('Flavor not found.');
         $producedTs=$produced!==''?strtotime($produced):false;
@@ -25,11 +26,16 @@ final class BatchTraceabilityService
         if($bestBy!==null && strtotime($bestBy)===false) throw new \InvalidArgumentException('Best-by date is invalid.');
         if($bestBy!==null && $bestBy<gmdate('Y-m-d',$producedTs)) throw new \InvalidArgumentException('Best-by date cannot be before production date.');
         if($qty<=0) throw new \InvalidArgumentException('Produced quantity must be greater than zero.');
+        if($labelService->enabled()){
+            $label=$labelService->prepare($flavorId,$produced,$bestBy);
+            $bestBy=$label['best_by_date'];
+        }
         $this->db->beginTransaction();
         try{
             $s=$this->db->prepare("INSERT INTO production_batches(batch_code,flavor_id,produced_at,best_by_date,quantity_produced,quantity_remaining,status,notes,created_by) VALUES(?,?,?,?,?,?,'active',?,?)");
             $s->execute([$code,$flavorId,$produced,$bestBy,$qty,$qty,$notes,$adminId]);
             $id=(int)$this->db->lastInsertId();
+            if($label!==null)$labelService->snapshot($id,$label);
             try{(new RecipeService($this->db))->snapshotBatch($id);}catch(\PDOException $e){
                 $message=strtolower($e->getMessage());
                 if(!str_contains($message,'flavor_recipes') && !str_contains($message,'batch_recipe_requirements')) throw $e;
