@@ -2,7 +2,7 @@
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
 use FudgeDonuts\{ContentService,Database};
-if(empty($_SESSION['admin'])){header('Location: /admin.php');exit;}
+require_admin_roles(['super_admin','admin']);
 $svc=new ContentService(Database::connection());$error='';
 if($_SERVER['REQUEST_METHOD']==='POST'){verify_csrf($_POST['_csrf']??null);try{foreach((array)($_POST['content']??[]) as $k=>$v)$svc->set((string)$k,trim((string)$v));header('Location: /admin-content.php');exit;}catch(Throwable $e){$error=$e->getMessage();}}
 $fields=['hero_title','hero_subtitle','story_title','story_body','seo_title','seo_description','contact_email','faq_shipping','faq_allergens','faq_gifts'];
