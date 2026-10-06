@@ -41,7 +41,7 @@ if(isset($_POST['logout'])){
     header('Location: /admin.php');exit;
 }
 if(empty($_SESSION['admin'])){
-?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/assets/app.css"><title>Admin · Fudge Donuts</title></head><body class="admin-body"><main class="admin-login"><div class="admin-login-card"><p class="eyebrow">Fudge Donuts</p><h1>Store Admin</h1><p>Sign in to manage sales, orders, products and fulfillment.</p><?php if($error):?><div class="notice error"><?=htmlspecialchars($error)?></div><?php endif;?><form method="post" class="admin-form"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>"><label>Email<input type="email" name="email" required autocomplete="username"></label><label>Password<input type="password" name="password" required autocomplete="current-password"></label><button class="button" name="login">Sign in</button></form></div></main></body></html><?php exit;
+?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="<?=htmlspecialchars(asset_url('/assets/app.css'))?>"><title>Admin · Fudge Donuts</title></head><body class="admin-body"><main class="admin-login"><div class="admin-login-card"><p class="eyebrow">Fudge Donuts</p><h1>Store Admin</h1><p>Sign in to manage sales, orders, products and fulfillment.</p><?php if($error):?><div class="notice error"><?=htmlspecialchars($error)?></div><?php endif;?><form method="post" class="admin-form"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>"><label>Email<input type="email" name="email" required autocomplete="username"></label><label>Password<input type="password" name="password" required autocomplete="current-password"></label><button class="button" name="login">Sign in</button></form></div></main></body></html><?php exit;
 }
 require_admin_roles(['super_admin','admin']);
 
@@ -51,7 +51,7 @@ $change=$dashboard->percentChange($data['last_30_days']['revenue_cents'],$data['
 $maxRevenue=max(1,...array_map(fn($d)=>(int)$d['revenue_cents'],$data['daily_sales']));
 $adminUser=$adminAuth->admin((int)$_SESSION['admin_id']);
 $mailStats=(new NotificationService($db))->stats();$supportStats=(new SupportService($db))->stats();$opsService=new ObservabilityService($db);$opsHealth=$opsService->health();$opsStats=$opsService->stats();
-?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dashboard · Fudge Donuts Admin</title><link rel="stylesheet" href="/assets/app.css"></head><body class="admin-body">
+?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dashboard · Fudge Donuts Admin</title><link rel="stylesheet" href="<?=htmlspecialchars(asset_url('/assets/app.css'))?>"></head><body class="admin-body">
 <a class="skip-link" href="#admin-main">Skip to admin content</a>
 <header class="admin-topbar">
   <a class="admin-brand" href="/admin.php">Fudge Donuts <span>Admin</span></a>
