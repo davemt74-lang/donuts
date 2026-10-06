@@ -66,6 +66,7 @@ ALTER TABLE refund_records ADD COLUMN gift_card_amount_cents INTEGER NOT NULL DE
 ALTER TABLE refund_records ADD COLUMN stripe_amount_cents INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE order_payment_reconciliation ADD COLUMN external_tender_cents INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE order_payment_reconciliation ADD COLUMN calculated_tax_cents INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE order_tax_details ADD COLUMN calculated_tax_cents INTEGER NOT NULL DEFAULT 0;
 
 CREATE INDEX IF NOT EXISTS idx_gift_card_purchases_status ON gift_card_purchases(status,created_at);
 CREATE INDEX IF NOT EXISTS idx_gift_cards_status ON gift_cards(status,balance_cents);
