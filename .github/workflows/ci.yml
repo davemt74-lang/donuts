@@ -106,3 +106,5 @@ jobs:
           DB_DSN=sqlite:storage/ci-migrate.sqlite php scripts/post-deploy-check.php
       - name: Section 44
         run: php -d zend.assertions=1 -d assert.exception=1 tests/section44.php
+      - name: Section 45
+        run: php -d zend.assertions=1 -d assert.exception=1 tests/section45.php
