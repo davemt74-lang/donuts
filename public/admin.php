@@ -2,7 +2,7 @@
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
 
-use FudgeDonuts\{AdminAuditService,AdminAuthService,AdminDashboardService,Database,NotificationService,SecurityService};
+use FudgeDonuts\{AdminAuditService,AdminAuthService,AdminDashboardService,Database,NotificationService,ObservabilityService,SecurityService};
 
 $db=Database::connection();
 $adminAuth=new AdminAuthService($db);$audit=new AdminAuditService($db);
@@ -48,11 +48,11 @@ $data=$dashboard->snapshot();
 $change=$dashboard->percentChange($data['last_30_days']['revenue_cents'],$data['previous_30_days']['revenue_cents']);
 $maxRevenue=max(1,...array_map(fn($d)=>(int)$d['revenue_cents'],$data['daily_sales']));
 $adminUser=$adminAuth->admin((int)$_SESSION['admin_id']);
-$mailStats=(new NotificationService($db))->stats();
+$mailStats=(new NotificationService($db))->stats();$opsService=new ObservabilityService($db);$opsHealth=$opsService->health();$opsStats=$opsService->stats();
 ?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dashboard · Fudge Donuts Admin</title><link rel="stylesheet" href="/assets/app.css"></head><body class="admin-body">
 <header class="admin-topbar">
   <a class="admin-brand" href="/admin.php">Fudge Donuts <span>Admin</span></a>
-  <nav><a class="active" href="/admin.php">Dashboard</a><a href="/admin-flavors.php">Flavors</a><a href="/admin-packs.php">Packs</a><a href="/admin-orders.php">Orders</a><a href="/admin-inventory.php">Inventory</a><a href="/admin-promotions.php">Promotions</a><a href="/admin-content.php">Content</a><a href="/admin-reports.php">Reports</a><a href="/admin-notifications.php">Email</a><a href="/admin-marketing.php">Marketing</a><a href="/admin-audit.php">Audit</a><?php if(admin_has_role(['super_admin'])):?><a href="/admin-backups.php">Backups</a><a href="/admin-users.php">Administrators</a><?php endif;?></nav>
+  <nav><a class="active" href="/admin.php">Dashboard</a><a href="/admin-flavors.php">Flavors</a><a href="/admin-packs.php">Packs</a><a href="/admin-orders.php">Orders</a><a href="/admin-inventory.php">Inventory</a><a href="/admin-promotions.php">Promotions</a><a href="/admin-content.php">Content</a><a href="/admin-reports.php">Reports</a><a href="/admin-notifications.php">Email</a><a href="/admin-marketing.php">Marketing</a><a href="/admin-audit.php">Audit</a><a href="/admin-operations.php">Operations</a><?php if(admin_has_role(['super_admin'])):?><a href="/admin-backups.php">Backups</a><a href="/admin-users.php">Administrators</a><?php endif;?></nav>
   <form method="post"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>"><button class="link" name="logout">Sign out</button></form>
 </header>
 <main class="admin-shell">
@@ -113,10 +113,11 @@ $mailStats=(new NotificationService($db))->stats();
     <section class="dashboard-panel"><div class="panel-head"><div><p class="eyebrow">Marketing</p><h2>Promotions</h2></div><a href="/admin-promotions.php">Manage →</a></div><ol class="rank-list"><?php if(!$data['promotions']):?><li class="empty-cell">No promotions configured.</li><?php endif;?><?php foreach($data['promotions'] as $p):?><li><span><?=htmlspecialchars($p['name'])?><small><?=htmlspecialchars($p['code']??'Automatic')?></small></span><strong><?=(int)$p['usage_count']?> uses</strong></li><?php endforeach;?></ol></section>
   </div>
 
+  <?php if($opsHealth['status']!=='ok'):?><section class="dashboard-panel ops-dashboard-alert"><div><p class="eyebrow">Operations</p><h2>Store health is <?=htmlspecialchars($opsHealth['status'])?></h2><p><?=(int)$opsStats['error']?> open errors · <?=(int)$opsStats['critical']?> critical · <?=(int)$opsHealth['payment_review']?> payment review.</p></div><a class="button" href="/admin-operations.php">Review operations</a></section><?php endif;?>
   <?php if((int)$mailStats['failed']>0):?><section class="dashboard-panel email-dashboard-alert"><div><p class="eyebrow">Email delivery</p><h2><?=(int)$mailStats['failed']?> failed message<?=((int)$mailStats['failed']===1?'':'s')?> need attention</h2><p>Transactional messages have reached the retry limit.</p></div><a class="button" href="/admin-notifications.php?status=failed">Review failures</a></section><?php endif;?>
   <section class="dashboard-panel quick-panel">
     <div class="panel-head"><div><p class="eyebrow">Quick actions</p><h2>Manage the store</h2></div></div>
-    <div class="quick-action-grid"><a href="/admin-orders.php"><strong>Orders</strong><span>Process new orders and update fulfillment.</span></a><a href="/admin-packs.php"><strong>Packs</strong><span>Pricing, curated boxes and flavor eligibility.</span></a><a href="/admin-inventory.php"><strong>Inventory</strong><span>Stock levels, reservations and sell-outs.</span></a><a href="/admin-promotions.php"><strong>Promotions</strong><span>Discounts, coupon codes and quantity offers.</span></a><a href="/admin-content.php"><strong>Website content</strong><span>Homepage, FAQ and SEO content.</span></a><a href="/admin-reports.php"><strong>Reports</strong><span>Detailed sales analytics and CSV export.</span></a><a href="/admin-notifications.php"><strong>Email delivery</strong><span><?=(int)$mailStats['failed']?> failed · <?=(int)$mailStats['pending']?> pending.</span></a></div>
+    <div class="quick-action-grid"><a href="/admin-orders.php"><strong>Orders</strong><span>Process new orders and update fulfillment.</span></a><a href="/admin-packs.php"><strong>Packs</strong><span>Pricing, curated boxes and flavor eligibility.</span></a><a href="/admin-inventory.php"><strong>Inventory</strong><span>Stock levels, reservations and sell-outs.</span></a><a href="/admin-promotions.php"><strong>Promotions</strong><span>Discounts, coupon codes and quantity offers.</span></a><a href="/admin-content.php"><strong>Website content</strong><span>Homepage, FAQ and SEO content.</span></a><a href="/admin-reports.php"><strong>Reports</strong><span>Detailed sales analytics and CSV export.</span></a><a href="/admin-notifications.php"><strong>Email delivery</strong><span><?=(int)$mailStats['failed']?> failed · <?=(int)$mailStats['pending']?> pending.</span></a><a href="/admin-operations.php"><strong>Operations</strong><span><?=htmlspecialchars(strtoupper($opsHealth['status']))?> · <?=(int)$opsStats['open']?> open events.</span></a></div>
   </section>
 </main>
 </body></html>

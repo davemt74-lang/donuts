@@ -23,7 +23,7 @@ final class PreflightService
             $db=Database::connection();
             $db->query('SELECT 1');
             $checks[]=$this->check('database',true,'Database connection');
-            $required=['pack_sizes','flavors','users','orders','notification_outbox','notification_email_content','auth_rate_limits','admin_users','password_reset_tokens','saved_boxes','order_payment_details','refund_records','cancellation_requests','order_fulfillment_details','order_consents','order_payment_reconciliation','inventory_reservation_leases','newsletter_consent_events','admin_audit_log','customer_privacy_events'];
+            $required=['pack_sizes','flavors','users','orders','notification_outbox','notification_email_content','auth_rate_limits','admin_users','password_reset_tokens','saved_boxes','order_payment_details','refund_records','cancellation_requests','order_fulfillment_details','order_consents','order_payment_reconciliation','inventory_reservation_leases','newsletter_consent_events','admin_audit_log','customer_privacy_events','operational_events'];
             foreach($required as $table){
                 $checks[]=$this->check('table_'.$table,$this->tableExists($db,$table),'Required table '.$table);
             }
@@ -52,6 +52,12 @@ final class PreflightService
             $checks[]=$this->check('backup_max_files',$backupMax>=2 && $backupMax<=500,'BACKUP_MAX_FILES must be between 2 and 500');
             $backupDir=dirname(__DIR__).'/storage/backups';if(!is_dir($backupDir))@mkdir($backupDir,0770,true);
             $checks[]=$this->check('backup_dir',is_dir($backupDir)&&is_writable($backupDir),'storage/backups must be writable');
+            $obsDays=(int)\env('OBSERVABILITY_RETENTION_DAYS','90');
+            $checks[]=$this->check('observability_retention_days',$obsDays>=7 && $obsDays<=730,'OBSERVABILITY_RETENTION_DAYS must be between 7 and 730');
+            $logDir=dirname(__DIR__).'/storage/logs';if(!is_dir($logDir))@mkdir($logDir,0770,true);
+            $checks[]=$this->check('observability_log_dir',is_dir($logDir)&&is_writable($logDir),'storage/logs must be writable');
+            $alertEmail=trim((string)\env('ALERT_EMAIL',''));
+            $checks[]=$this->check('alert_email',$alertEmail===''||filter_var($alertEmail,FILTER_VALIDATE_EMAIL)!==false,'ALERT_EMAIL must be blank or a valid email address');
             $transport=strtolower((string)\env('MAIL_TRANSPORT','log'));
             $checks[]=$this->check('mail_transport',in_array($transport,['smtp','mail'],true),'Production MAIL_TRANSPORT must be smtp or mail');
             $checks[]=$this->check('mail_from',filter_var((string)\env('MAIL_FROM',''),FILTER_VALIDATE_EMAIL)!==false,'MAIL_FROM must be a valid email address');
