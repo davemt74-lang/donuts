@@ -18,7 +18,26 @@ foreach($inventory->expiredLeases(200) as $lease){
     $sessionId=trim((string)($lease['stripe_checkout_session_id']??''));
     try{
         if($status==='paid'){
-            $inventory->commitOrder($orderId);$committed++;continue;
+            try{
+                $loyalty->commitRedemption($orderId);
+                $giftApplication=$giftCards->applicationForOrder($orderId);
+                if($giftApplication && $giftApplication['status']==='reserved')$giftCards->redeemForOrder($orderId);
+                $order=$orders->find($orderId);$taxService=new TaxService($db);
+                if($giftApplication)$taxService->recordCollected($orderId,$taxService->calculatedForOrder($orderId));
+                else $taxService->recordCollected($orderId,(int)$order['tax_cents']);
+                $inventory->commitOrder($orderId);
+                (new PromotionService($db))->redeemOrder($orderId);
+                try{$loyalty->earnForOrder($orderId);}catch(Throwable $e){\FudgeDonuts\ObservabilityService::captureThrowable($e,dirname(__DIR__),'loyalty_earn_recovery_failure');}
+                try{(new CostAccountingService($db))->snapshotOrder($orderId);}catch(Throwable $e){\FudgeDonuts\ObservabilityService::captureThrowable($e,dirname(__DIR__),'cost_snapshot_failure');}
+                if((env('ANALYTICS_ENABLED','0')??'0')==='1'){try{(new AnalyticsService($db))->recordPurchase($orderId);}catch(Throwable){}}
+                (new NotificationService($db))->queueOrderConfirmation($orders->find($orderId));
+                $committed++;continue;
+            }catch(Throwable $e){
+                $orders->markSettlementReview($orderId,'Paid order side-effect recovery failed.');
+                $inventory->holdForReview($orderId);$held++;
+                \FudgeDonuts\ObservabilityService::captureThrowable($e,dirname(__DIR__),'paid_order_recovery_failure');
+                continue;
+            }
         }
         if($status==='payment_review'){
             $inventory->holdForReview($orderId);$held++;continue;
