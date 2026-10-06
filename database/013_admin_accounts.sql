@@ -13,3 +13,8 @@ CREATE TABLE IF NOT EXISTS admin_users (
   FOREIGN KEY(created_by) REFERENCES admin_users(id) ON DELETE SET NULL
 );
 CREATE INDEX IF NOT EXISTS idx_admin_users_active ON admin_users(active);
+
+CREATE TABLE IF NOT EXISTS installation_state (
+  state_key VARCHAR(64) PRIMARY KEY,
+  completed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
