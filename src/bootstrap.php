@@ -33,6 +33,14 @@ if($environment==='production'){
     ini_set('log_errors','1');
 }
 
+spl_autoload_register(static function (string $class): void {
+    $prefix='FudgeDonuts\\';
+    if(!str_starts_with($class,$prefix)) return;
+    $relative=substr($class,strlen($prefix));
+    $path=__DIR__.'/'.str_replace('\\','/',$relative).'.php';
+    if(is_file($path)) require $path;
+});
+
 ini_set('session.use_strict_mode','1');
 ini_set('session.use_only_cookies','1');
 ini_set('session.cache_limiter','');
@@ -54,15 +62,15 @@ session_set_cookie_params([
     'httponly'=>true,
     'samesite'=>'Lax',
 ]);
-session_start();
-
-spl_autoload_register(static function (string $class): void {
-    $prefix='FudgeDonuts\\';
-    if(!str_starts_with($class,$prefix)) return;
-    $relative=substr($class,strlen($prefix));
-    $path=__DIR__.'/'.str_replace('\\','/',$relative).'.php';
-    if(is_file($path)) require $path;
-});
+$requestMethod=(string)($_SERVER['REQUEST_METHOD']??'GET');
+$requestUri=(string)($_SERVER['REQUEST_URI']??'/');
+$hasSessionCookie=isset($_COOKIE[session_name()]);
+$skipSession=PHP_SAPI!=='cli' && \FudgeDonuts\PerformanceService::canSkipSession($requestMethod,$requestUri,$hasSessionCookie);
+if($skipSession){
+    $_SESSION=[];
+}else{
+    session_start();
+}
 
 \FudgeDonuts\SecurityService::applyHeaders();
 
@@ -87,8 +95,8 @@ if($sessionExpired) session_regenerate_id(true);
 $authenticated=!empty($_SESSION['admin_id']) || !empty($_SESSION['user_id']);
 if(PHP_SAPI!=='cli'){
     \FudgeDonuts\PerformanceService::apply(
-        (string)($_SERVER['REQUEST_METHOD']??'GET'),
-        (string)($_SERVER['REQUEST_URI']??'/'),
+        $requestMethod,
+        $requestUri,
         $authenticated
     );
 }
