@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
-use FudgeDonuts\{AnalyticsService,CostAccountingService,Database,GiftCardService,InventoryService,NotificationService,OrderService,PaymentRepository,PromotionService,StripeService,TaxService};
+use FudgeDonuts\{AnalyticsService,CostAccountingService,Database,GiftCardService,InventoryService,LoyaltyService,NotificationService,OrderService,PaymentRepository,PromotionService,StripeService,TaxService};
 
 $payload=file_get_contents('php://input')?:'';
 $signature=(string)($_SERVER['HTTP_STRIPE_SIGNATURE']??'');
@@ -16,7 +16,7 @@ $isNew=$payments->recordEvent('stripe',(string)$event['id'],(string)$event['type
 if(!$isNew){http_response_code(200);echo 'ok';exit;}
 
 $object=$event['data']['object']??[];
-$orderService=new OrderService($db);$giftCards=new GiftCardService($db,(string)env('APP_KEY',''));
+$orderService=new OrderService($db);$giftCards=new GiftCardService($db,(string)env('APP_KEY',''));$loyalty=new LoyaltyService($db);
 if(is_array($object) && !empty($object['id'])){
     $giftPurchase=$giftCards->purchaseByStripeSession((string)$object['id']);
     if($giftPurchase){
@@ -49,6 +49,14 @@ if(is_array($object) && !empty($object['id'])){
         if($matched){
             $payments->markCompletedByProviderSession((string)$object['id']);
             if($orderId){
+                try{$loyalty->commitRedemption($orderId);}
+                catch(Throwable $e){
+                    $orderService->markSettlementReview($orderId,'Rewards redemption failed after Stripe settlement.');
+                    (new InventoryService($db))->holdForReview($orderId);
+                    \FudgeDonuts\ObservabilityService::captureThrowable($e,dirname(__DIR__),'loyalty_redemption_failure');
+                    $payments->markReviewByProviderSession((string)$object['id']);
+                    $payments->markEventProcessed('stripe',(string)$event['id']);http_response_code(200);echo 'ok';exit;
+                }
                 $taxService=new TaxService($db);
                 if($application && $application['status']==='reserved'){
                     try{$giftCards->redeemForOrder($orderId);}
@@ -66,6 +74,7 @@ if(is_array($object) && !empty($object['id'])){
                 (new InventoryService($db))->commitOrder($orderId);
                 (new PromotionService($db))->redeemOrder($orderId);
                 (new NotificationService($db))->queueOrderConfirmation($orderService->find($orderId));
+                try{$loyalty->earnForOrder($orderId);}catch(Throwable $e){\FudgeDonuts\ObservabilityService::captureThrowable($e,dirname(__DIR__),'loyalty_earn_failure');}
                 try{(new CostAccountingService($db))->snapshotOrder($orderId);}catch(Throwable $e){
                     \FudgeDonuts\ObservabilityService::captureThrowable($e,dirname(__DIR__),'cost_snapshot_failure');
                 }
@@ -84,6 +93,7 @@ if(is_array($object) && !empty($object['id'])){
         if($orderId){
             (new InventoryService($db))->releaseOrder($orderId);
             $giftCards->releaseForOrder($orderId);
+            $loyalty->releaseForOrder($orderId);
         }
     }
 }
