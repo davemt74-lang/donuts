@@ -61,7 +61,7 @@ final class ReleaseAuditService
             'pack_sizes','flavors','users','addresses','orders','order_items','payment_sessions','payment_events',
             'shipping_methods','pickup_zip_codes','flavor_inventory','inventory_reservations','notification_outbox',
             'discount_rules','site_content','admin_users','password_reset_tokens','saved_boxes','order_payment_details',
-            'refund_records','cancellation_requests','order_fulfillment_details','order_consents','order_payment_reconciliation','inventory_reservation_leases','newsletter_consent_events','admin_audit_log','customer_privacy_events','operational_events',
+            'refund_records','cancellation_requests','order_fulfillment_details','order_consents','order_payment_reconciliation','inventory_reservation_leases','newsletter_consent_events','admin_audit_log','customer_privacy_events','operational_events','scheduled_jobs','scheduled_job_runs',
         ];
     }
 
