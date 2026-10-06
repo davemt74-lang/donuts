@@ -2,10 +2,10 @@
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
 
-use FudgeDonuts\{AdminAuthService,AdminDashboardService,Database,NotificationService,SecurityService};
+use FudgeDonuts\{AdminAuditService,AdminAuthService,AdminDashboardService,Database,NotificationService,SecurityService};
 
 $db=Database::connection();
-$adminAuth=new AdminAuthService($db);
+$adminAuth=new AdminAuthService($db);$audit=new AdminAuditService($db);
 if(!$adminAuth->isInstalled()){header('Location: /setup-admin.php');exit;}
 
 $error='';
@@ -18,6 +18,7 @@ if(isset($_POST['login'])){
         $adminUser=$adminAuth->authenticate($email,(string)($_POST['password']??''));
         if(!$adminUser){
             $security->recordLoginFailure('admin',$email,5,1800);
+            $audit->record(null,'login_failed','admin',$email,'Administrator sign-in failed.',[],[],$email);
             $error='Email or password is incorrect.';
         }else{
             $security->clearLoginFailures('admin',$email);
@@ -31,6 +32,8 @@ if(isset($_POST['login'])){
 }
 if(isset($_POST['logout'])){
     verify_csrf($_POST['_csrf']??null);
+    $logoutAdminId=!empty($_SESSION['admin_id'])?(int)$_SESSION['admin_id']:null;
+    if($logoutAdminId)$audit->record($logoutAdminId,'logout','admin',$logoutAdminId,'Administrator signed out.');
     unset($_SESSION['admin'],$_SESSION['admin_id'],$_SESSION['admin_role']);
     session_regenerate_id(true);
     header('Location: /admin.php');exit;
@@ -49,7 +52,7 @@ $mailStats=(new NotificationService($db))->stats();
 ?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dashboard · Fudge Donuts Admin</title><link rel="stylesheet" href="/assets/app.css"></head><body class="admin-body">
 <header class="admin-topbar">
   <a class="admin-brand" href="/admin.php">Fudge Donuts <span>Admin</span></a>
-  <nav><a class="active" href="/admin.php">Dashboard</a><a href="/admin-flavors.php">Flavors</a><a href="/admin-packs.php">Packs</a><a href="/admin-orders.php">Orders</a><a href="/admin-inventory.php">Inventory</a><a href="/admin-promotions.php">Promotions</a><a href="/admin-content.php">Content</a><a href="/admin-reports.php">Reports</a><a href="/admin-notifications.php">Email</a><a href="/admin-marketing.php">Marketing</a><?php if(admin_has_role(['super_admin'])):?><a href="/admin-users.php">Administrators</a><?php endif;?></nav>
+  <nav><a class="active" href="/admin.php">Dashboard</a><a href="/admin-flavors.php">Flavors</a><a href="/admin-packs.php">Packs</a><a href="/admin-orders.php">Orders</a><a href="/admin-inventory.php">Inventory</a><a href="/admin-promotions.php">Promotions</a><a href="/admin-content.php">Content</a><a href="/admin-reports.php">Reports</a><a href="/admin-notifications.php">Email</a><a href="/admin-marketing.php">Marketing</a><a href="/admin-audit.php">Audit</a><?php if(admin_has_role(['super_admin'])):?><a href="/admin-users.php">Administrators</a><?php endif;?></nav>
   <form method="post"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>"><button class="link" name="logout">Sign out</button></form>
 </header>
 <main class="admin-shell">
