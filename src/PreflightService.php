@@ -23,7 +23,7 @@ final class PreflightService
             $db=Database::connection();
             $db->query('SELECT 1');
             $checks[]=$this->check('database',true,'Database connection');
-            $required=['pack_sizes','flavors','users','orders','notification_outbox','auth_rate_limits','admin_users','password_reset_tokens','saved_boxes','order_payment_details','refund_records','cancellation_requests','order_fulfillment_details','order_consents'];
+            $required=['pack_sizes','flavors','users','orders','notification_outbox','notification_email_content','auth_rate_limits','admin_users','password_reset_tokens','saved_boxes','order_payment_details','refund_records','cancellation_requests','order_fulfillment_details','order_consents'];
             foreach($required as $table){
                 $checks[]=$this->check('table_'.$table,$this->tableExists($db,$table),'Required table '.$table);
             }
@@ -43,6 +43,12 @@ final class PreflightService
             $checks[]=$this->check('stripe_secret',str_starts_with((string)\env('STRIPE_SECRET_KEY',''),'sk_'),'Stripe secret key required');
             $checks[]=$this->check('stripe_webhook',str_starts_with((string)\env('STRIPE_WEBHOOK_SECRET',''),'whsec_'),'Stripe webhook secret required');
             $checks[]=$this->check('app_url',str_starts_with((string)\env('APP_URL',''),'https://'),'Production APP_URL must use HTTPS');
+            $transport=strtolower((string)\env('MAIL_TRANSPORT','log'));
+            $checks[]=$this->check('mail_transport',in_array($transport,['smtp','mail'],true),'Production MAIL_TRANSPORT must be smtp or mail');
+            $checks[]=$this->check('mail_from',filter_var((string)\env('MAIL_FROM',''),FILTER_VALIDATE_EMAIL)!==false,'MAIL_FROM must be a valid email address');
+            if($transport==='smtp'){
+                $checks[]=$this->check('smtp_host',trim((string)\env('SMTP_HOST',''))!=='','SMTP_HOST is required for SMTP delivery');
+            }
         }
         return $checks;
     }
