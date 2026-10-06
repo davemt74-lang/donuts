@@ -14,5 +14,7 @@ assert(count($m->applyPending())===0);
 file_put_contents($dir.'/001_first.sql',"CREATE TABLE alpha(id INTEGER PRIMARY KEY,value TEXT,changed TEXT);\n");
 $status=$m->status();assert($status['drift']===1);
 $blocked=false;try{$m->applyPending();}catch(RuntimeException){$blocked=true;}assert($blocked);
+file_put_contents($dir.'/001_first.sql',"CREATE TABLE alpha(id INTEGER PRIMARY KEY,value TEXT);\n");unlink($dir.'/002_second.sql');
+assert($m->status()['drift']===1);
 foreach(glob($dir.'/*.sql')?:[] as $f)unlink($f);@rmdir($dir);
 echo "Section 43 checks passed\n";
