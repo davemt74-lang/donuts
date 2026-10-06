@@ -4,7 +4,16 @@ require dirname(__DIR__).'/src/bootstrap.php';
 use FudgeDonuts\{AdminAuditService,AdminService,Database,FulfillmentService,NotificationService,RefundService,StripeService,TaxService};
 require_admin_roles(['super_admin','admin','fulfillment']);
 $db=Database::connection();$admin=new AdminService($db);$audit=new AdminAuditService($db);$refunds=new RefundService($db);$fulfillment=new FulfillmentService($db);$id=(int)($_GET['id']??$_POST['id']??0);$order=$admin->order($id);
-if(!$order){http_response_code(404);exit('Order not found');}
+if(!$order){
+    \FudgeDonuts\HttpResponseService::send(
+        404,
+        'Order not found.',
+        'The order may have been removed from this view or the link may be outdated.',
+        [['label'=>'Back to orders','href'=>'/admin-orders.php']],
+        null,
+        true
+    );
+}
 $error='';$notice='';
 if($_SERVER['REQUEST_METHOD']==='POST'){
  verify_csrf($_POST['_csrf']??null);
