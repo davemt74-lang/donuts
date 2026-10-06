@@ -23,6 +23,26 @@ final class StripeService
         return $this->request('/v1/refunds',$params,$idempotencyKey);
     }
 
+    public function retrieveCheckoutSession(string $sessionId): array
+    {
+        if($this->secretKey==='') throw new \RuntimeException('Stripe secret key is not configured.');
+        if(!preg_match('/^cs_[A-Za-z0-9_]+$/',$sessionId)) throw new \InvalidArgumentException('Invalid Stripe Checkout session ID.');
+        $ch=curl_init($this->apiBase.'/v1/checkout/sessions/'.rawurlencode($sessionId));
+        curl_setopt_array($ch,[
+            CURLOPT_RETURNTRANSFER=>true,
+            CURLOPT_HTTPHEADER=>['Authorization: Bearer '.$this->secretKey],
+            CURLOPT_TIMEOUT=>20,
+        ]);
+        $body=curl_exec($ch);$status=(int)curl_getinfo($ch,CURLINFO_RESPONSE_CODE);$error=curl_error($ch);curl_close($ch);
+        if($body===false || $error!=='') throw new \RuntimeException('Stripe request failed: '.$error);
+        $decoded=json_decode((string)$body,true);
+        if($status<200 || $status>=300 || !is_array($decoded)){
+            $message=is_array($decoded)?($decoded['error']['message']??'Stripe request failed'):'Stripe request failed';
+            throw new \RuntimeException((string)$message);
+        }
+        return $decoded;
+    }
+
     public function verifyWebhook(string $payload,string $signatureHeader,int $tolerance=300,?int $now=null): bool
     {
         if($this->webhookSecret==='') return false;

@@ -9,12 +9,17 @@ final class OrderService
 {
     public function __construct(private readonly PDO $db) {}
 
-    public function create(?int $userId,array $cart,array $checkout,array $fulfillment): array
+    public function create(?int $userId,array $cart,array $checkout,array $fulfillment,?string $checkoutAttemptToken=null): array
     {
         if(empty($cart['items'])) throw new \InvalidArgumentException('Cart is empty.');
         $shipping=(int)$fulfillment['price_cents'];
         $total=(int)$cart['total_cents']+$shipping;
-        $fingerprint=hash('sha256',json_encode([$userId,$cart,$checkout,$fulfillment],JSON_THROW_ON_ERROR));
+        $checkoutAttemptToken=trim((string)$checkoutAttemptToken);
+        if($checkoutAttemptToken==='') $checkoutAttemptToken=bin2hex(random_bytes(32));
+        if(strlen($checkoutAttemptToken)<32 || strlen($checkoutAttemptToken)>160 || !preg_match('/^[A-Za-z0-9_-]+$/',$checkoutAttemptToken)){
+            throw new \InvalidArgumentException('Invalid checkout attempt token.');
+        }
+        $fingerprint=hash('sha256','checkout-attempt|'.$checkoutAttemptToken);
         $existing=$this->db->prepare('SELECT id FROM orders WHERE checkout_fingerprint=?');
         $existing->execute([$fingerprint]);
         if($id=$existing->fetchColumn()) return $this->find((int)$id);

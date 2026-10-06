@@ -6,10 +6,15 @@ if(empty($_SESSION['checkout'])){header('Location: /checkout.php');exit;}
 $db=Database::connection();$catalog=new CatalogRepository($db);
 $summary=(new CartService(new PackBuilderService($catalog),new DiscountService($db),new PresetPackService($catalog)))->summary($_SESSION,$_SESSION['coupon']??null);
 $c=$_SESSION['checkout'];$shipping=new ShippingService($db);$methods=$shipping->methodsFor($c['postal_code'],$summary['total_cents']);$error='';
+$_SESSION['checkout_attempt_token'] ??= bin2hex(random_bytes(32));
 if($_SERVER['REQUEST_METHOD']==='POST'){
  verify_csrf($_POST['_csrf']??null);
  try{
    $method=$shipping->quote((string)($_POST['fulfillment_method']??''),$c['postal_code'],$summary['total_cents']);
+   if(($method['code']??'')!==(string)(($_SESSION['fulfillment']['code']??''))){
+       unset($_SESSION['checkout_attempt_token'],$_SESSION['active_order_id']);
+       $_SESSION['checkout_attempt_token']=bin2hex(random_bytes(32));
+   }
    $_SESSION['fulfillment']=$method;
    header('Location: /checkout-review.php?ready=1');exit;
  }catch(Throwable $e){$error=$e->getMessage();}
