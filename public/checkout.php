@@ -2,11 +2,11 @@
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
 
-use FudgeDonuts\{AuthService,CartService,CatalogRepository,CheckoutService,Database,DiscountService,PackBuilderService};
+use FudgeDonuts\{AuthService,CartService,CatalogRepository,CheckoutService,Database,DiscountService,PackBuilderService,PresetPackService};
 
 $db=Database::connection();
 $catalog=new CatalogRepository($db);
-$cart=new CartService(new PackBuilderService($catalog),new DiscountService($db));
+$cart=new CartService(new PackBuilderService($catalog),new DiscountService($db),new PresetPackService($catalog));
 $summary=$cart->summary($_SESSION,$_SESSION['coupon']??null);
 if(!$summary['items']){header('Location: /cart.php');exit;}
 $auth=new AuthService($db);

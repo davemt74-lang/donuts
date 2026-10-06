@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
-use FudgeDonuts\{CartService,CatalogRepository,Database,DiscountService,PackBuilderService,ShippingService};
+use FudgeDonuts\{CartService,CatalogRepository,Database,DiscountService,PackBuilderService,PresetPackService,ShippingService};
 if(empty($_SESSION['checkout'])){header('Location: /checkout.php');exit;}
 $db=Database::connection();$catalog=new CatalogRepository($db);
-$summary=(new CartService(new PackBuilderService($catalog),new DiscountService($db)))->summary($_SESSION,$_SESSION['coupon']??null);
+$summary=(new CartService(new PackBuilderService($catalog),new DiscountService($db),new PresetPackService($catalog)))->summary($_SESSION,$_SESSION['coupon']??null);
 $c=$_SESSION['checkout'];$shipping=new ShippingService($db);$methods=$shipping->methodsFor($c['postal_code'],$summary['total_cents']);$error='';
 if($_SERVER['REQUEST_METHOD']==='POST'){
  verify_csrf($_POST['_csrf']??null);

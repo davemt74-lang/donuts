@@ -10,6 +10,7 @@ $db = Database::connection();
 $catalog = new CatalogRepository($db);
 $content = new ContentService($db);
 $packs = $catalog->packs();
+$presets = $catalog->presets();
 $flavors = $catalog->flavors();
 ?><!doctype html>
 <html lang="en">
@@ -21,9 +22,11 @@ $flavors = $catalog->flavors();
   <div><p class="eyebrow">Small batch · rich fudge center</p><h1><?=htmlspecialchars($content->get('hero_title'))?></h1><p><?=htmlspecialchars($content->get('hero_subtitle'))?></p><a class="button" href="#shop">Shop the boxes</a></div>
   <img src="/images/hero.png" alt="Assorted Fudge Donuts">
 </section>
-<section id="shop" class="section"><p class="eyebrow">Choose your box</p><h2>Built for sharing. Or not.</h2><div class="grid packs">
+<section id="shop" class="section"><p class="eyebrow">Choose your box</p><h2>Curated or completely yours.</h2>
+<div class="grid packs"><?php foreach($presets as $preset):?><article class="card preset-card"><?php if($preset['image_path']):?><img src="<?=htmlspecialchars($preset['image_path'])?>" alt=""><?php endif;?><p class="eyebrow">Curated <?=(int)$preset['size']?> pack</p><h3><?=htmlspecialchars($preset['name'])?></h3><p><?=htmlspecialchars($preset['description'])?></p><p>From <?=money((int)$preset['base_price_cents'])?></p><a class="button secondary" href="/preset.php?slug=<?=urlencode($preset['slug'])?>">Choose this box</a></article><?php endforeach;?></div>
+<h2 class="subsection-title">Build your own</h2><div class="grid packs">
 <?php foreach ($packs as $pack): ?>
-<article class="card"><h3><?=htmlspecialchars($pack['name'])?></h3><p>From <?=money((int)$pack['base_price_cents'])?></p><a class="button secondary" href="/builder.php?size=<?=(int)$pack['size']?>">Build <?=htmlspecialchars($pack['name'])?></a></article>
+<article class="card"><p class="eyebrow">Custom box</p><h3><?=htmlspecialchars($pack['name'])?></h3><p>Start at <?=money((int)$pack['base_price_cents'])?>, then choose every flavor.</p><a class="button secondary" href="/builder.php?size=<?=(int)$pack['size']?>">Build <?=htmlspecialchars($pack['name'])?></a></article>
 <?php endforeach; ?>
 </div></section>
 <section id="flavors" class="section alt"><p class="eyebrow">Current flavors</p><h2>Pick your favorites</h2><div class="grid flavors">

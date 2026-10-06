@@ -2,14 +2,14 @@
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
 
-use FudgeDonuts\{CartService,CatalogRepository,Database,DiscountService,InventoryService,OrderService,PackBuilderService,PaymentRepository,ShippingService,StripeService};
+use FudgeDonuts\{CartService,CatalogRepository,Database,DiscountService,InventoryService,OrderService,PackBuilderService,PaymentRepository,PresetPackService,ShippingService,StripeService};
 
 if($_SERVER['REQUEST_METHOD']!=='POST'){header('Location: /checkout-review.php');exit;}
 verify_csrf($_POST['_csrf']??null);
 if(empty($_SESSION['checkout'])||empty($_SESSION['fulfillment'])){header('Location: /checkout.php');exit;}
 
 $db=Database::connection();$catalog=new CatalogRepository($db);
-$cart=(new CartService(new PackBuilderService($catalog),new DiscountService($db)))->summary($_SESSION,$_SESSION['coupon']??null);
+$cart=(new CartService(new PackBuilderService($catalog),new DiscountService($db),new PresetPackService($catalog)))->summary($_SESSION,$_SESSION['coupon']??null);
 $shipping=(new ShippingService($db))->quote((string)$_SESSION['fulfillment']['code'],(string)$_SESSION['checkout']['postal_code'],$cart['total_cents']);
 $inventory=new InventoryService($db);$inventory->validateCart($cart);
 $orderService=new OrderService($db);
