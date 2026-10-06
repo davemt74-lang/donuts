@@ -6,7 +6,7 @@ namespace FudgeDonuts;
 final class SeoService
 {
     private const INDEXABLE_PATHS=[
-        '/','/index.php','/flavor.php','/preset.php','/builder.php','/story.php','/faq.php','/policy.php','/contact.php','/sitemap.php','/robots.php'
+        '/','/index.php','/flavor.php','/preset.php','/builder.php','/story.php','/faq.php','/policy.php','/contact.php','/sitemap.php','/robots.php','/robots.txt'
     ];
     public function __construct(private readonly CatalogRepository $catalog,private string $baseUrl)
     {
