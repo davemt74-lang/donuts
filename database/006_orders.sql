@@ -1,6 +1,7 @@
 CREATE TABLE IF NOT EXISTS orders (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   order_number VARCHAR(40) NOT NULL UNIQUE,
+  checkout_fingerprint VARCHAR(64) NOT NULL UNIQUE,
   user_id INTEGER NULL,
   status VARCHAR(32) NOT NULL DEFAULT 'pending_payment',
   email VARCHAR(190) NOT NULL,
