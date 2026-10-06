@@ -83,20 +83,30 @@ final class IngredientTraceabilityService
     {
         $batch=$this->productionBatch($batchId);
         if($batch['status']==='recalled') throw new \InvalidArgumentException('Recalled production batches cannot accept ingredient links.');
+        if($this->batchHasShippedOrders($batchId)) throw new \InvalidArgumentException('Ingredient provenance cannot be changed after a linked production batch has shipped.');
         $lot=$this->lot($lotId);
         if($lot['status']!=='active') throw new \InvalidArgumentException('Only active ingredient lots can be linked.');
-        if(strtotime((string)$lot['received_at'])>time()) throw new \InvalidArgumentException('Future-dated ingredient lots cannot be linked.');
+        $receivedTs=strtotime((string)$lot['received_at']);
+        $batchTs=strtotime((string)$batch['produced_at']);
+        if($receivedTs===false || $receivedTs>time()) throw new \InvalidArgumentException('Future-dated ingredient lots cannot be linked.');
+        if($batchTs!==false && $receivedTs>$batchTs) throw new \InvalidArgumentException('Ingredient lot was received after this production batch was produced.');
         if(!empty($lot['best_by_date']) && (string)$lot['best_by_date']<gmdate('Y-m-d')) throw new \InvalidArgumentException('Expired ingredient lots cannot be linked.');
         if($quantity!==null && $quantity<=0) throw new \InvalidArgumentException('Ingredient quantity used must be greater than zero.');
         $unit=mb_substr(trim($unit),0,32);
+        if($quantity!==null && $lot['quantity_received']!==null){
+            $receivedUnit=trim((string)$lot['quantity_unit']);
+            if($receivedUnit!=='' && $unit!==$receivedUnit) throw new \InvalidArgumentException('Ingredient usage unit must match the received lot unit.');
+            $q=$this->db->prepare('SELECT COALESCE(SUM(quantity_used),0) FROM production_batch_ingredients WHERE ingredient_lot_id=? AND batch_id<>?');
+            $q->execute([$lotId,$batchId]);$used=(float)$q->fetchColumn();
+            if($used+$quantity>(float)$lot['quantity_received']+0.000001) throw new \InvalidArgumentException('Ingredient usage exceeds the received lot quantity.');
+        }
         $s=$this->db->prepare('INSERT INTO production_batch_ingredients(batch_id,ingredient_lot_id,quantity_used,quantity_unit,linked_by) VALUES(?,?,?,?,?) ON CONFLICT(batch_id,ingredient_lot_id) DO UPDATE SET quantity_used=excluded.quantity_used,quantity_unit=excluded.quantity_unit,linked_by=excluded.linked_by,linked_at=CURRENT_TIMESTAMP');
         $s->execute([$batchId,$lotId,$quantity,$unit,$adminId]);
     }
 
     public function unlinkBatch(int $batchId,int $lotId): void
     {
-        $q=$this->db->prepare("SELECT COUNT(*) FROM order_batch_assignments a JOIN orders o ON o.id=a.order_id WHERE a.batch_id=? AND o.status IN ('shipped','delivered','completed')");
-        $q->execute([$batchId]);if((int)$q->fetchColumn()>0) throw new \InvalidArgumentException('Ingredient provenance cannot be removed after a linked production batch has shipped.');
+        if($this->batchHasShippedOrders($batchId)) throw new \InvalidArgumentException('Ingredient provenance cannot be removed after a linked production batch has shipped.');
         $s=$this->db->prepare('DELETE FROM production_batch_ingredients WHERE batch_id=? AND ingredient_lot_id=?');$s->execute([$batchId,$lotId]);
     }
 
@@ -141,6 +151,12 @@ final class IngredientTraceabilityService
         $out['expired_active']=(int)$this->db->query("SELECT COUNT(*) FROM ingredient_lots WHERE status='active' AND best_by_date IS NOT NULL AND best_by_date<date('now')")->fetchColumn();
         $out['unlinked_batches']=(int)$this->db->query("SELECT COUNT(*) FROM production_batches b WHERE NOT EXISTS(SELECT 1 FROM production_batch_ingredients pbi WHERE pbi.batch_id=b.id)")->fetchColumn();
         return $out;
+    }
+
+    private function batchHasShippedOrders(int $batchId): bool
+    {
+        $q=$this->db->prepare("SELECT COUNT(*) FROM order_batch_assignments a JOIN orders o ON o.id=a.order_id WHERE a.batch_id=? AND o.status IN ('shipped','delivered','completed')");
+        $q->execute([$batchId]);return (int)$q->fetchColumn()>0;
     }
 
     private function productionBatch(int $id): array
