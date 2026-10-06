@@ -164,6 +164,9 @@ final class GiftCardService
     public function refundForOrder(int $orderId,int $amountCents,string $eventKey): int
     {
         if($amountCents<=0)return 0;
+        $existing=$this->db->prepare("SELECT amount_cents FROM gift_card_ledger WHERE event_key=? AND entry_type='refund'");
+        $existing->execute([$eventKey]);$existingAmount=$existing->fetchColumn();
+        if($existingAmount!==false)return (int)$existingAmount;
         $this->db->beginTransaction();
         try{
             $s=$this->db->prepare("SELECT * FROM order_gift_card_applications WHERE order_id=? AND status='redeemed'");$s->execute([$orderId]);$a=$s->fetch();
@@ -174,7 +177,7 @@ final class GiftCardService
             $newBalance=$balance+$amountCents;
             $u=$this->db->prepare("UPDATE gift_cards SET balance_cents=?,status='active',updated_at=CURRENT_TIMESTAMP WHERE id=?");$u->execute([$newBalance,(int)$a['gift_card_id']]);
             $x=$this->db->prepare('UPDATE order_gift_card_applications SET refunded_cents=refunded_cents+?,updated_at=CURRENT_TIMESTAMP WHERE order_id=?');$x->execute([$amountCents,$orderId]);
-            $l=$this->db->prepare("INSERT OR IGNORE INTO gift_card_ledger(gift_card_id,order_id,entry_type,amount_cents,balance_after_cents,event_key,note) VALUES(?,?,'refund',?,?,?,'Refund restored to original gift card.')");
+            $l=$this->db->prepare("INSERT INTO gift_card_ledger(gift_card_id,order_id,entry_type,amount_cents,balance_after_cents,event_key,note) VALUES(?,?,'refund',?,?,?,'Refund restored to original gift card.')");
             $l->execute([(int)$a['gift_card_id'],$orderId,$amountCents,$newBalance,$eventKey]);
             $this->db->commit();return $amountCents;
         }catch(\Throwable $e){if($this->db->inTransaction())$this->db->rollBack();throw $e;}
