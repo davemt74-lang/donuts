@@ -288,3 +288,9 @@ Define production formulas in **Admin → Recipes** before creating new producti
 For BOM-controlled batches, Admin → Batches shows expected vs linked ingredient quantities. **Auto-allocate supplier lots (FEFO)** uses the earliest eligible best-by/received lots first, respects received quantities and units, and refuses partial allocation when enough valid supplier inventory does not exist.
 
 A BOM-controlled batch with missing required ingredient provenance is blocked from downstream order assignment until coverage is complete.
+
+
+## Supplier purchasing
+Manage approved vendors in **Admin → Suppliers** and purchase orders in **Admin → Purchase Orders**. Supplier items define the canonical ingredient name, unit, unit cost, lead time, and minimum order quantity.
+
+Receiving a purchase-order line creates the canonical ingredient lot in the supplier traceability ledger in the same database transaction. Partial receipts are supported, over-receipts are blocked, duplicate supplier lot codes roll back cleanly, and the PO moves through Ordered → Partially Received → Received automatically.
