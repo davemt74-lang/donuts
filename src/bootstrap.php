@@ -2,6 +2,12 @@
 declare(strict_types=1);
 
 error_reporting(E_ALL);
+$maintenanceLock=dirname(__DIR__).'/storage/maintenance.lock';
+if(PHP_SAPI!=='cli' && is_file($maintenanceLock)){
+    http_response_code(503);
+    header('Retry-After: 60');
+    exit('Store maintenance in progress.');
+}
 if ((getenv('APP_ENV') ?: 'development') === 'production') {
     ini_set('display_errors','0');
     ini_set('log_errors','1');

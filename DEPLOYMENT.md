@@ -37,3 +37,22 @@
 - `public/images/flavor-mint-chocolate.png`
 
 Never expose `.env`, database files, Stripe secrets, or writable storage through the web root.
+
+
+## Database backups
+Schedule this at least daily:
+
+```bash
+php scripts/backup-database.php scheduled
+```
+
+Backups are stored outside the web root in `storage/backups/`, verified with SQLite `PRAGMA integrity_check`, and accompanied by SHA-256 metadata. Configure `BACKUP_RETENTION_DAYS` and `BACKUP_MAX_FILES`.
+
+## Database restore
+Restores are CLI-only:
+
+```bash
+php scripts/restore-database.php --file=store-YYYYMMDD-HHMMSS-xxxxxx.sqlite --confirm=RESTORE
+```
+
+The restore command creates a pre-restore backup, enables maintenance mode, checkpoints and closes SQLite, validates the staged database, swaps it into place, runs a final integrity check, and only then removes maintenance mode.
