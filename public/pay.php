@@ -14,6 +14,7 @@ $shipping=(new ShippingService($db))->quote((string)$_SESSION['fulfillment']['co
 $inventory=new InventoryService($db);$inventory->validateCart($cart);
 $orderService=new OrderService($db);
 $order=$orderService->create(!empty($_SESSION['user_id'])?(int)$_SESSION['user_id']:null,$cart,$_SESSION['checkout'],$shipping);
+$order=$orderService->preparePaymentAttempt((int)$order['id']);
 $payments=new PaymentRepository($db);
 $payment=$payments->createSession(!empty($_SESSION['user_id'])?(int)$_SESSION['user_id']:null,(int)$order['total_cents'],['order_id'=>$order['id'],'order_number'=>$order['order_number']]);
 
@@ -39,6 +40,7 @@ try{
   header('Location: '.(string)$session['url'],true,303);exit;
 }catch(Throwable $e){
   $inventory->releaseOrder((int)$order['id']);
-  $orderService->markPaymentFailedByStripeSession((string)($session['id']??''),'Stripe checkout initialization failed');
+  $payments->markFailed((int)$payment['id'],'Stripe checkout initialization failed');
+  $orderService->markPaymentInitializationFailed((int)$order['id'],'Stripe checkout initialization failed');
   http_response_code(503);echo 'Payment checkout could not be started. Please try again.';
 }

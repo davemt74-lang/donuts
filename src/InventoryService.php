@@ -37,13 +37,23 @@ final class InventoryService
                 $s=$this->db->prepare('SELECT track_inventory,stock_on_hand,reserved FROM flavor_inventory WHERE flavor_id=?');
                 $s->execute([$flavorId]);$row=$s->fetch();
                 if(!$row || !(int)$row['track_inventory']) continue;
+                $existing=$this->db->prepare('SELECT id,quantity,status FROM inventory_reservations WHERE order_id=? AND flavor_id=?');
+                $existing->execute([$orderId,$flavorId]);$reservation=$existing->fetch();
+                if($reservation && $reservation['status']==='committed') throw new \RuntimeException('Inventory for this order has already been committed.');
+                if($reservation && $reservation['status']==='reserved') continue;
+
                 $available=(int)$row['stock_on_hand']-(int)$row['reserved'];
                 if($available<$qty) throw new \InvalidArgumentException('Inventory changed before payment. Please review your cart.');
                 $u=$this->db->prepare('UPDATE flavor_inventory SET reserved=reserved+?,updated_at=CURRENT_TIMESTAMP WHERE flavor_id=?');
                 $u->execute([$qty,$flavorId]);
-                $i=$this->db->prepare("INSERT INTO inventory_reservations(order_id,flavor_id,quantity,status) VALUES(?,?,?,'reserved') ON CONFLICT(order_id,flavor_id) DO NOTHING");
-                $i->execute([$orderId,$flavorId,$qty]);
-                if($i->rowCount()!==1) throw new \RuntimeException('Inventory already reserved for this order.');
+                if($reservation){
+                    $i=$this->db->prepare("UPDATE inventory_reservations SET quantity=?,status='reserved',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='released'");
+                    $i->execute([$qty,(int)$reservation['id']]);
+                    if($i->rowCount()!==1) throw new \RuntimeException('Inventory reservation changed before retry.');
+                }else{
+                    $i=$this->db->prepare("INSERT INTO inventory_reservations(order_id,flavor_id,quantity,status) VALUES(?,?,?,'reserved')");
+                    $i->execute([$orderId,$flavorId,$qty]);
+                }
             }
             $this->db->commit();
         }catch(\Throwable $e){if($this->db->inTransaction())$this->db->rollBack();throw $e;}
