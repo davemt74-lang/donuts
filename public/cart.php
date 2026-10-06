@@ -32,7 +32,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
     header('Location: /cart.php');exit;
 }
 $summary=$cart->summary($_SESSION,$_SESSION['coupon']??null);
-?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Your Cart · Fudge Donuts</title><link rel="stylesheet" href="<?=htmlspecialchars(asset_url('/assets/app.css'))?>"></head><body>
+?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Your Cart · Fudge Donuts</title><link rel="stylesheet" href="<?=htmlspecialchars(asset_url('/assets/app.css'))?>"><?=analytics_script()?></head><body>
 <a class="skip-link" href="#main-content">Skip to main content</a>
 <header class="nav"><a class="brand" href="/">Fudge Donuts</a><nav><a href="/">Shop</a></nav></header>
 <main id="main-content" tabindex="-1" class="section"><p class="eyebrow">Your order</p><h1>Cart</h1><?php if(!empty($_SESSION['flash'])):?><div class="notice error" role="alert"><?=htmlspecialchars((string)$_SESSION['flash'])?></div><?php unset($_SESSION['flash']);endif;?>

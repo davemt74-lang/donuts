@@ -4,7 +4,7 @@ require dirname(__DIR__) . '/src/bootstrap.php';
 
 $box = $_SESSION['pending_box'] ?? null;
 if (!is_array($box)) { header('Location: /'); exit; }
-?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Review Your Box · Fudge Donuts</title><link rel="stylesheet" href="<?=htmlspecialchars(asset_url('/assets/app.css'))?>"></head><body>
+?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Review Your Box · Fudge Donuts</title><link rel="stylesheet" href="<?=htmlspecialchars(asset_url('/assets/app.css'))?>"><?=analytics_script()?></head><body>
 <header class="nav"><a class="brand" href="/">Fudge Donuts</a></header>
 <main class="section narrow"><p class="eyebrow">Your custom box</p><h1>Review your <?=$box['size']?> pack</h1><?php if(!empty($_SESSION['builder_flash'])):?><div class="notice error"><?=htmlspecialchars((string)$_SESSION['builder_flash'])?></div><?php unset($_SESSION['builder_flash']);endif;?>
 <div class="review-list"><?php foreach($box['items'] as $item):?><div class="review-line"><img src="<?=htmlspecialchars($item['image_path'])?>" alt=""><div><strong><?=htmlspecialchars($item['name'])?></strong><small>Quantity <?=$item['quantity']?></small></div><span><?=(int)$item['line_surcharge_cents']>0?'+'.money((int)$item['line_surcharge_cents']):'Included'?></span></div><?php endforeach;?></div>

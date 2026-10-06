@@ -33,7 +33,7 @@ final class PreflightService
                     $checks[]=$this->check('sqlite_wal',$journal==='wal','File-backed SQLite must use WAL journal mode');
                 }
             }
-            $required=['pack_sizes','flavors','users','orders','notification_outbox','notification_email_content','auth_rate_limits','admin_users','password_reset_tokens','saved_boxes','order_payment_details','refund_records','cancellation_requests','order_fulfillment_details','order_consents','order_payment_reconciliation','inventory_reservation_leases','newsletter_consent_events','admin_audit_log','customer_privacy_events','operational_events','scheduled_jobs','scheduled_job_runs','schema_migrations','shipping_methods','pickup_zip_codes','fulfillment_settings','tax_settings','order_tax_details','support_tickets','support_messages'];
+            $required=['pack_sizes','flavors','users','orders','notification_outbox','notification_email_content','auth_rate_limits','admin_users','password_reset_tokens','saved_boxes','order_payment_details','refund_records','cancellation_requests','order_fulfillment_details','order_consents','order_payment_reconciliation','inventory_reservation_leases','newsletter_consent_events','admin_audit_log','customer_privacy_events','operational_events','scheduled_jobs','scheduled_job_runs','schema_migrations','shipping_methods','pickup_zip_codes','fulfillment_settings','tax_settings','order_tax_details','support_tickets','support_messages','analytics_visitors','analytics_events','order_attribution'];
             foreach($required as $table){
                 $checks[]=$this->check('table_'.$table,$this->tableExists($db,$table),'Required table '.$table);
             }
@@ -92,6 +92,10 @@ final class PreflightService
             }catch(\Throwable $e){
                 $checks[]=$this->check('tax_settings',false,'Tax settings: '.$e->getMessage());
             }
+            $analyticsEnabled=(string)\env('ANALYTICS_ENABLED','0');
+            $checks[]=$this->check('analytics_enabled',in_array($analyticsEnabled,['0','1'],true),'ANALYTICS_ENABLED must be 0 or 1');
+            $analyticsDays=(int)\env('ANALYTICS_RETENTION_DAYS','180');
+            $checks[]=$this->check('analytics_retention_days',$analyticsDays>=30 && $analyticsDays<=730,'ANALYTICS_RETENTION_DAYS must be between 30 and 730');
             $supportEmail=trim((string)\env('SUPPORT_EMAIL',''));
             $checks[]=$this->check('support_email',$supportEmail===''||filter_var($supportEmail,FILTER_VALIDATE_EMAIL)!==false,'SUPPORT_EMAIL must be blank or a valid email address');
             $transport=strtolower((string)\env('MAIL_TRANSPORT','log'));

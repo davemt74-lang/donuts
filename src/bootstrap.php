@@ -120,6 +120,12 @@ function asset_url(string $path): string
     return \FudgeDonuts\PerformanceService::assetUrl($path,dirname(__DIR__));
 }
 
+function analytics_script(): string
+{
+    if((env('ANALYTICS_ENABLED','0')??'0')!=='1') return '';
+    return '<script src="'.htmlspecialchars(asset_url('/assets/analytics.js'),ENT_QUOTES).'" defer></script>';
+}
+
 function csrf_token(): string
 {
     if(empty($_SESSION['_csrf'])) $_SESSION['_csrf']=bin2hex(random_bytes(32));

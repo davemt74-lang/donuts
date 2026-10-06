@@ -2,7 +2,7 @@
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
 
-use FudgeDonuts\{CartService,CatalogRepository,Database,DiscountService,InventoryService,OrderService,PackBuilderService,PaymentRepository,PresetPackService,ShippingService,StripeService,TaxService};
+use FudgeDonuts\{AnalyticsService,CartService,CatalogRepository,Database,DiscountService,InventoryService,OrderService,PackBuilderService,PaymentRepository,PresetPackService,ShippingService,StripeService,TaxService};
 
 if($_SERVER['REQUEST_METHOD']!=='POST'){header('Location: /checkout-review.php');exit;}
 verify_csrf($_POST['_csrf']??null);
@@ -24,6 +24,9 @@ $order=$orderService->create(
     (string)$_SESSION['checkout_attempt_token']
 );
 $_SESSION['active_order_id']=(int)$order['id'];
+if((env('ANALYTICS_ENABLED','0')??'0')==='1' && !empty($_COOKIE['fd_analytics'])){
+    try{(new AnalyticsService($db))->attributeOrder((int)$order['id'],(string)$_COOKIE['fd_analytics']);}catch(Throwable){}
+}
 
 $base=rtrim((string)env('APP_URL','http://127.0.0.1:8080'),'/');
 $payments=new PaymentRepository($db);$taxService=new TaxService($db);
