@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
-use FudgeDonuts\{AdminAuditService,AdminService,Database,FulfillmentService,NotificationService,RefundService,StripeService,TaxService};
+use FudgeDonuts\{AdminAuditService,AdminService,Database,FulfillmentService,GiftCardService,NotificationService,RefundService,StripeService,TaxService};
 require_admin_roles(['super_admin','admin','fulfillment']);
 $db=Database::connection();$admin=new AdminService($db);$audit=new AdminAuditService($db);$refunds=new RefundService($db);$fulfillment=new FulfillmentService($db);$id=(int)($_GET['id']??$_POST['id']??0);$order=$admin->order($id);
 if(!$order){
@@ -31,17 +31,32 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
      $beforeFulfillment=$fulfillment->details($id);$afterFulfillment=$fulfillment->save($id,$_POST);$audit->record((int)$_SESSION['admin_id'],'fulfillment_updated','order',$id,'Order fulfillment details updated.',$beforeFulfillment,$afterFulfillment);$order=$admin->order($id);(new NotificationService($db))->queueFulfillmentUpdate($order,$fulfillment->details($id));$notice='Fulfillment details saved.';
    }elseif($action==='refund'){
      require_admin_roles(['super_admin','admin']);
-     $amount=(int)$_POST['amount_cents'];$rid=$refunds->create($id,$amount,(string)($_POST['reason']??''),(int)$_SESSION['admin_id']);
+     $amount=(int)$_POST['amount_cents'];$rid=$refunds->create($id,$amount,(string)($_POST['reason']??''),(int)$_SESSION['admin_id']);$refund=$refunds->refund($rid);
+     $providerRefundId=null;$stripeCompleted=false;
      try{
-       if(empty($order['stripe_payment_intent_id'])) throw new RuntimeException('Stripe payment intent is not available for this order.');
-       $result=(new StripeService((string)env('STRIPE_SECRET_KEY',''),(string)env('STRIPE_WEBHOOK_SECRET','')))->createRefund([
-         'payment_intent'=>(string)$order['stripe_payment_intent_id'],
-         'amount'=>(string)$amount,
-         'metadata[order_id]'=>(string)$id,
-         'metadata[refund_id]'=>(string)$rid,
-       ],'refund_'.$rid);
-       $refunds->markSucceeded($rid,(string)$result['id']);$audit->record((int)$_SESSION['admin_id'],'refund_issued','order',$id,'Stripe refund issued.',['status'=>$order['status']],['refund_id'=>$rid,'amount_cents'=>$amount,'stripe_refund_id'=>(string)$result['id']]);$notice='Refund completed.';
-     }catch(Throwable $e){$refunds->markFailed($rid,$e->getMessage());throw $e;}
+       if((int)$refund['stripe_amount_cents']>0){
+         if(empty($order['stripe_payment_intent_id'])) throw new RuntimeException('Stripe payment intent is not available for the Stripe portion of this refund.');
+         $result=(new StripeService((string)env('STRIPE_SECRET_KEY',''),(string)env('STRIPE_WEBHOOK_SECRET','')))->createRefund([
+           'payment_intent'=>(string)$order['stripe_payment_intent_id'],
+           'amount'=>(string)$refund['stripe_amount_cents'],
+           'metadata[order_id]'=>(string)$id,
+           'metadata[refund_id]'=>(string)$rid,
+         ],'refund_'.$rid);
+         $providerRefundId=(string)$result['id'];$stripeCompleted=true;
+       }
+       if((int)$refund['gift_card_amount_cents']>0){
+         (new GiftCardService($db,(string)env('APP_KEY','')))->refundForOrder($id,(int)$refund['gift_card_amount_cents'],'refund:'.$rid);
+       }
+       $refunds->markSucceeded($rid,$providerRefundId);
+       $audit->record((int)$_SESSION['admin_id'],'refund_issued','order',$id,'Refund issued to original tender(s).',['status'=>$order['status']],[
+         'refund_id'=>$rid,'amount_cents'=>$amount,'stripe_amount_cents'=>(int)$refund['stripe_amount_cents'],
+         'gift_card_amount_cents'=>(int)$refund['gift_card_amount_cents'],'stripe_refund_id'=>$providerRefundId
+       ]);$notice='Refund completed.';
+     }catch(Throwable $e){
+       if($stripeCompleted && (int)$refund['gift_card_amount_cents']>0)$refunds->markReview($rid,$providerRefundId,'Stripe refund succeeded but gift card restoration requires review: '.$e->getMessage());
+       else $refunds->markFailed($rid,$e->getMessage());
+       throw $e;
+     }
    }elseif($action==='cancel_resolution'){
      $requestId=(int)$_POST['request_id'];$resolution=(string)$_POST['resolution'];$refunds->resolveCancellation($requestId,$resolution,(int)$_SESSION['admin_id']);
      if($resolution==='approved' && in_array($order['status'],['pending_payment','paid','preparing'],true)){$admin->transitionOrder($id,'cancelled','Customer cancellation request approved.');}
@@ -63,6 +78,6 @@ $refundRows=$refunds->forOrder($id);$cancel=$refunds->pendingCancellation($id);$
 <?php if($cancel):?><section class="dashboard-panel alert-panel"><h2>Cancellation request</h2><p><?=htmlspecialchars($cancel['reason']?:'No reason provided.')?></p><form method="post" class="actions"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>"><input type="hidden" name="id" value="<?=$id?>"><input type="hidden" name="action" value="cancel_resolution"><input type="hidden" name="request_id" value="<?=(int)$cancel['id']?>"><button class="button secondary" name="resolution" value="declined">Decline</button><button class="button" name="resolution" value="approved">Approve cancellation</button></form></section><?php endif;?>
 <section class="dashboard-panel"><h2>Fulfillment details</h2><form method="post" class="admin-form"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>"><input type="hidden" name="id" value="<?=$id?>"><input type="hidden" name="action" value="fulfillment"><?php if($order['fulfillment_type']==='shipping'):?><input name="carrier" placeholder="Carrier" value="<?=htmlspecialchars((string)$fulfillmentDetails['carrier'])?>"><input name="tracking_number" placeholder="Tracking number" value="<?=htmlspecialchars((string)$fulfillmentDetails['tracking_number'])?>"><input name="tracking_url" placeholder="https://…" value="<?=htmlspecialchars((string)$fulfillmentDetails['tracking_url'])?>"><?php else:?><textarea name="pickup_instructions" placeholder="Pickup instructions"><?=htmlspecialchars((string)$fulfillmentDetails['pickup_instructions'])?></textarea><label>Pickup ready at<input type="datetime-local" name="pickup_ready_at" value="<?=htmlspecialchars((string)$fulfillmentDetails['pickup_ready_at'])?>"></label><?php endif;?><button class="button secondary">Save fulfillment details</button></form></section>
 <section class="dashboard-grid dashboard-secondary"><div class="dashboard-panel"><h2>Update status</h2><form method="post" class="admin-form"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>"><input type="hidden" name="id" value="<?=$id?>"><input type="hidden" name="action" value="status"><select name="status"><option>preparing</option><option>ready</option><option>shipped</option><option>delivered</option><option>completed</option><option>cancelled</option></select><textarea name="note" placeholder="Internal note"></textarea><button class="button secondary">Update status</button></form></div>
-<div class="dashboard-panel"><h2>Refund</h2><p>Refundable balance: <strong><?=money($refundable)?></strong></p><?php if($refundable>0 && admin_has_role(['super_admin','admin'])):?><form method="post" class="admin-form"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>"><input type="hidden" name="id" value="<?=$id?>"><input type="hidden" name="action" value="refund"><input type="number" min="1" max="<?=$refundable?>" name="amount_cents" value="<?=$refundable?>" required><input name="reason" placeholder="Refund reason"><button class="button">Issue Stripe refund</button></form><?php endif;?></div></section>
-<?php if($refundRows):?><section class="dashboard-panel"><h2>Refund history</h2><table><thead><tr><th>Amount</th><th>Status</th><th>Reason</th><th>Date</th></tr></thead><tbody><?php foreach($refundRows as $r):?><tr><td><?=money((int)$r['amount_cents'])?></td><td><?=htmlspecialchars($r['status'])?></td><td><?=htmlspecialchars($r['reason'])?></td><td><?=htmlspecialchars($r['created_at'])?></td></tr><?php endforeach;?></tbody></table></section><?php endif;?>
+<div class="dashboard-panel"><h2>Refund</h2><p>Refundable balance: <strong><?=money($refundable)?></strong></p><?php if($refundable>0 && admin_has_role(['super_admin','admin'])):?><form method="post" class="admin-form"><input type="hidden" name="_csrf" value="<?=htmlspecialchars(csrf_token())?>"><input type="hidden" name="id" value="<?=$id?>"><input type="hidden" name="action" value="refund"><input type="number" min="1" max="<?=$refundable?>" name="amount_cents" value="<?=$refundable?>" required><input name="reason" placeholder="Refund reason"><button class="button">Issue refund to original tender</button></form><?php endif;?></div></section>
+<?php if($refundRows):?><section class="dashboard-panel"><h2>Refund history</h2><table><thead><tr><th>Amount</th><th>Tender</th><th>Status</th><th>Reason</th><th>Date</th></tr></thead><tbody><?php foreach($refundRows as $r):?><tr><td><?=money((int)$r['amount_cents'])?></td><td><?php if((int)($r['gift_card_amount_cents']??0)>0):?>Gift card <?=money((int)$r['gift_card_amount_cents'])?><?php endif;?><?php if((int)($r['stripe_amount_cents']??0)>0):?><?=((int)($r['gift_card_amount_cents']??0)>0?' + ':'')?>Stripe <?=money((int)$r['stripe_amount_cents'])?><?php endif;?></td><td><?=htmlspecialchars($r['status'])?></td><td><?=htmlspecialchars($r['reason'])?></td><td><?=htmlspecialchars($r['created_at'])?></td></tr><?php endforeach;?></tbody></table></section><?php endif;?>
 </main></body></html>
