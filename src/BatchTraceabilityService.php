@@ -82,7 +82,7 @@ final class BatchTraceabilityService
         $s->execute([$orderId]);return $s->fetchAll();
     }
 
-    public function assignOrder(int $orderId,array $rawAssignments,int $adminId): void
+    public function assignOrder(int $orderId,array $rawAssignments,int $adminId,string $mode='manual'): void
     {
         $order=$this->order($orderId);
         if(!in_array($order['status'],['preparing','ready'],true)) throw new \InvalidArgumentException('Batch assignment is only available while an order is preparing or ready.');
@@ -90,6 +90,7 @@ final class BatchTraceabilityService
         $needed=$this->requiredFlavorQuantities($orderId);
         if(!$needed) throw new \InvalidArgumentException('Order has no traceable flavor quantities.');
 
+        if(!in_array($mode,['manual','fefo'],true)) throw new \InvalidArgumentException('Invalid batch allocation mode.');
         $assignments=[];$provided=[];
         foreach($rawAssignments as $batchId=>$rawQty){
             $batchId=(int)$batchId;$qty=(int)$rawQty;if($batchId<=0||$qty<=0)continue;
@@ -115,10 +116,18 @@ final class BatchTraceabilityService
         try{
             $ins=$this->db->prepare('INSERT INTO order_batch_assignments(order_id,batch_id,quantity,assigned_by) VALUES(?,?,?,?)');
             $dec=$this->db->prepare("UPDATE production_batches SET quantity_remaining=quantity_remaining-?,status=CASE WHEN quantity_remaining-?=0 THEN 'depleted' ELSE status END,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='active' AND quantity_remaining>=?");
+            $eventAllocation=[];
             foreach($assignments as $a){
                 $qty=(int)$a['qty'];$bid=(int)$a['batch']['id'];
                 $dec->execute([$qty,$qty,$bid,$qty]);if($dec->rowCount()!==1) throw new \RuntimeException('A production batch changed during assignment.');
                 $ins->execute([$orderId,$bid,$qty,$adminId]);
+                $eventAllocation[]=['batch_id'=>$bid,'quantity'=>$qty,'flavor_id'=>(int)$a['batch']['flavor_id']];
+            }
+            try{
+                $ev=$this->db->prepare('INSERT INTO finished_goods_allocation_events(order_id,mode,allocation_json,assigned_by) VALUES(?,?,?,?)');
+                $ev->execute([$orderId,$mode,json_encode($eventAllocation,JSON_THROW_ON_ERROR),$adminId]);
+            }catch(\PDOException $e){
+                if(!str_contains(strtolower($e->getMessage()),'finished_goods_allocation_events')) throw $e;
             }
             $this->db->commit();
         }catch(\Throwable $e){if($this->db->inTransaction())$this->db->rollBack();throw $e;}
