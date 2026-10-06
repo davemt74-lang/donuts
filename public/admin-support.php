@@ -30,7 +30,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
 $status=trim((string)($_GET['status']??''));
 try{$rows=$svc->queue($status?:null);}catch(Throwable $e){$error=$e->getMessage();$status='';$rows=$svc->queue();}
 $stats=$svc->stats();$ticket=$id?$svc->ticket($id):null;$admins=$auth->all();
-?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Support · Fudge Donuts Admin</title><link rel="stylesheet" href="/assets/app.css"></head><body class="admin-body">
+?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Support · Fudge Donuts Admin</title><link rel="stylesheet" href="<?=htmlspecialchars(asset_url('/assets/app.css'))?>"></head><body class="admin-body">
 <header class="admin-topbar"><a class="admin-brand" href="/admin.php">Fudge Donuts <span>Admin</span></a><nav><a href="/admin.php">Dashboard</a><a href="/admin-orders.php">Orders</a><a class="active" href="/admin-support.php">Support</a><a href="/admin-reports.php">Reports</a><a href="/admin-operations.php">Operations</a></nav></header>
 <main class="admin-shell"><div class="admin-page-head"><div><p class="eyebrow">Customer care</p><h1>Support Queue</h1><p class="admin-welcome">Order-linked customer conversations and service requests.</p></div></div>
 <?php if($error):?><div class="notice error"><?=htmlspecialchars($error)?></div><?php endif;?><?php if($notice):?><div class="notice"><?=htmlspecialchars($notice)?></div><?php endif;?>
