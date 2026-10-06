@@ -9,6 +9,14 @@ final class BatchLabelService
 {
     public function __construct(private readonly PDO $db) {}
 
+    public function enabled(): bool
+    {
+        try{
+            $s=$this->db->prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='production_batch_compliance_snapshots'");
+            $s->execute();return (bool)$s->fetchColumn();
+        }catch(\Throwable){return false;}
+    }
+
     public function prepare(int $flavorId,string $producedAt,?string $requestedBestBy=null): array
     {
         $producedTs=strtotime($producedAt);
