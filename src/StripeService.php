@@ -17,6 +17,12 @@ final class StripeService
         return $this->request('/v1/checkout/sessions',$params,$idempotencyKey);
     }
 
+    public function createRefund(array $params,string $idempotencyKey): array
+    {
+        if($this->secretKey==='') throw new \RuntimeException('Stripe secret key is not configured.');
+        return $this->request('/v1/refunds',$params,$idempotencyKey);
+    }
+
     public function verifyWebhook(string $payload,string $signatureHeader,int $tolerance=300,?int $now=null): bool
     {
         if($this->webhookSecret==='') return false;
