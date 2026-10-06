@@ -79,3 +79,22 @@ The production scheduler should match these defaults:
 - `backup-database.php scheduled`: every 24 hours
 
 The matching `JOB_*_INTERVAL_MINUTES` values are used for stale-worker detection. Admin → Operations shows last success, failure streaks, active runs and stale jobs. Overlapping copies of the same worker are blocked automatically.
+
+
+## Safe migrations and release certification
+Database migrations are tracked by filename and SHA-256 checksum. Never edit or delete an applied migration; add a new migration instead.
+
+Before deployment:
+
+```bash
+php scripts/migrate.php --status
+php scripts/migrate.php
+```
+
+Production migration runs create a verified pre-migration database backup whenever pending migrations exist and refuse to run concurrently. After activating a release:
+
+```bash
+php scripts/post-deploy-check.php
+```
+
+The post-deploy check verifies migration state, SQLite integrity, required application files/tables, and operational health, then writes `storage/release-certification.json`.
