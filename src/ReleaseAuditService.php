@@ -50,7 +50,7 @@ final class ReleaseAuditService
     {
         return [
             'public/index.php','public/cart.php','public/checkout.php','public/pay.php','public/stripe-webhook.php',
-            'public/admin.php','public/setup-admin.php','public/health.php','public/sitemap.php','public/order-status.php',
+            'public/admin.php','public/admin-audit.php','public/setup-admin.php','public/health.php','public/sitemap.php','public/order-status.php',
             'scripts/migrate.php','scripts/preflight.php','scripts/send-notifications.php','scripts/recover-reservations.php','DEPLOYMENT.md',
         ];
     }
@@ -61,7 +61,7 @@ final class ReleaseAuditService
             'pack_sizes','flavors','users','addresses','orders','order_items','payment_sessions','payment_events',
             'shipping_methods','pickup_zip_codes','flavor_inventory','inventory_reservations','notification_outbox',
             'discount_rules','site_content','admin_users','password_reset_tokens','saved_boxes','order_payment_details',
-            'refund_records','cancellation_requests','order_fulfillment_details','order_consents','order_payment_reconciliation','inventory_reservation_leases',
+            'refund_records','cancellation_requests','order_fulfillment_details','order_consents','order_payment_reconciliation','inventory_reservation_leases','admin_audit_log',
         ];
     }
 
