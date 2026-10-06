@@ -28,3 +28,15 @@ php -S 127.0.0.1:8080 -t public
 The default database is SQLite. Set `DB_DSN`, `DB_USER`, and `DB_PASS` to use MySQL in production.
 
 Admin product management is protected by `ADMIN_PASSWORD`.
+
+
+## Production
+
+See `DEPLOYMENT.md`. Before launch, run:
+
+```bash
+php scripts/migrate.php
+php scripts/preflight.php
+```
+
+The production web root must be `public/`.

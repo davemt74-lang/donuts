@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Disallow: /admin.php
+Disallow: /admin-orders.php
+Disallow: /admin-settings.php
+Disallow: /admin-inventory.php
+Disallow: /admin-promotions.php
+Disallow: /admin-content.php
+Disallow: /admin-reports.php
+Disallow: /checkout.php
+Disallow: /checkout-review.php
+Disallow: /pay.php
+Sitemap: /sitemap.php
