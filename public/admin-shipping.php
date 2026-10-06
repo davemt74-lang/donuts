@@ -28,7 +28,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
     }catch(Throwable $e){$error=$e->getMessage();}
 }
 $methods=$svc->methods();$zips=$svc->pickupZips();$settings=$svc->settings();
-?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Shipping & Pickup · Fudge Donuts Admin</title><link rel="stylesheet" href="/assets/app.css"></head><body class="admin-body">
+?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Shipping & Pickup · Fudge Donuts Admin</title><link rel="stylesheet" href="<?=htmlspecialchars(asset_url('/assets/app.css'))?>"></head><body class="admin-body">
 <header class="admin-topbar"><a class="admin-brand" href="/admin.php">Fudge Donuts <span>Admin</span></a><nav><a href="/admin.php">Dashboard</a><a href="/admin-orders.php">Orders</a><a href="/admin-inventory.php">Inventory</a><a class="active" href="/admin-shipping.php">Shipping</a><a href="/admin-promotions.php">Promotions</a><a href="/admin-content.php">Content</a><a href="/admin-reports.php">Reports</a><a href="/admin-operations.php">Operations</a></nav></header>
 <main class="admin-shell">
 <div class="admin-page-head"><div><p class="eyebrow">Fulfillment</p><h1>Shipping & Local Pickup</h1><p class="admin-welcome">Manage customer-facing delivery rates, pickup eligibility, ETAs and instructions.</p></div></div>
