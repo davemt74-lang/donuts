@@ -61,13 +61,17 @@ if((string)$order['status']==='pending_payment' && !empty($order['stripe_checkou
     $order=$orderService->preparePaymentAttempt((int)$order['id']);
 }
 
+$holdMinutes=max(30,min(120,(int)env('CHECKOUT_HOLD_MINUTES','30')));
+$expiresAtUnix=time()+($holdMinutes*60);
+$expiresAtDb=gmdate('Y-m-d H:i:s',$expiresAtUnix);
+
 $payment=$payments->createSession(!empty($_SESSION['user_id'])?(int)$_SESSION['user_id']:null,(int)$order['total_cents'],[
     'order_id'=>$order['id'],
     'order_number'=>$order['order_number'],
     'checkout_attempt'=>hash('sha256',(string)$_SESSION['checkout_attempt_token']),
 ]);
 
-$inventory->reserveOrder((int)$order['id'],$cart);
+$inventory->reserveOrder((int)$order['id'],$cart,$expiresAtDb);
 try{
   $session=$stripe->createCheckoutSession([
     'mode'=>'payment',
@@ -77,6 +81,7 @@ try{
     'client_reference_id'=>$order['order_number'],
     'metadata[order_id]'=>(string)$order['id'],
     'automatic_tax[enabled]'=>'true',
+    'expires_at'=>(string)$expiresAtUnix,
     'line_items[0][quantity]'=>'1',
     'line_items[0][price_data][currency]'=>'usd',
     'line_items[0][price_data][unit_amount]'=>(string)$order['total_cents'],

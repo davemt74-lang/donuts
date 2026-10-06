@@ -28,9 +28,10 @@ final class InventoryService
         }
     }
 
-    public function reserveOrder(int $orderId,array $cart): void
+    public function reserveOrder(int $orderId,array $cart,?string $expiresAt=null): void
     {
         $needed=$this->flavorNeeds($cart);
+        $expiresAt=$expiresAt?:gmdate('Y-m-d H:i:s',time()+1800);
         $this->db->beginTransaction();
         try{
             foreach($needed as $flavorId=>$qty){
@@ -55,6 +56,8 @@ final class InventoryService
                     $i->execute([$orderId,$flavorId,$qty]);
                 }
             }
+            $lease=$this->db->prepare("INSERT INTO inventory_reservation_leases(order_id,expires_at,status) VALUES(?,?,'active') ON CONFLICT(order_id) DO UPDATE SET expires_at=excluded.expires_at,status='active',updated_at=CURRENT_TIMESTAMP");
+            $lease->execute([$orderId,$expiresAt]);
             $this->db->commit();
         }catch(\Throwable $e){if($this->db->inTransaction())$this->db->rollBack();throw $e;}
     }
@@ -69,6 +72,7 @@ final class InventoryService
                 $u->execute([(int)$r['quantity'],(int)$r['quantity'],(int)$r['flavor_id']]);
             }
             $u=$this->db->prepare("UPDATE inventory_reservations SET status='committed',updated_at=CURRENT_TIMESTAMP WHERE order_id=? AND status='reserved'");$u->execute([$orderId]);
+            $l=$this->db->prepare("UPDATE inventory_reservation_leases SET status='committed',updated_at=CURRENT_TIMESTAMP WHERE order_id=?");$l->execute([$orderId]);
             $this->db->commit();$this->syncSoldOut();
         }catch(\Throwable $e){if($this->db->inTransaction())$this->db->rollBack();throw $e;}
     }
@@ -82,8 +86,35 @@ final class InventoryService
                 $u=$this->db->prepare('UPDATE flavor_inventory SET reserved=MAX(0,reserved-?),updated_at=CURRENT_TIMESTAMP WHERE flavor_id=?');$u->execute([(int)$r['quantity'],(int)$r['flavor_id']]);
             }
             $u=$this->db->prepare("UPDATE inventory_reservations SET status='released',updated_at=CURRENT_TIMESTAMP WHERE order_id=? AND status='reserved'");$u->execute([$orderId]);
+            $l=$this->db->prepare("UPDATE inventory_reservation_leases SET status='released',updated_at=CURRENT_TIMESTAMP WHERE order_id=?");$l->execute([$orderId]);
             $this->db->commit();$this->syncSoldOut();
         }catch(\Throwable $e){if($this->db->inTransaction())$this->db->rollBack();throw $e;}
+    }
+
+    public function holdForReview(int $orderId): void
+    {
+        $s=$this->db->prepare("UPDATE inventory_reservation_leases SET status='review_hold',updated_at=CURRENT_TIMESTAMP WHERE order_id=? AND status='active'");
+        $s->execute([$orderId]);
+    }
+
+    public function expiredLeases(int $limit=100): array
+    {
+        $limit=max(1,min(500,$limit));
+        return $this->db->query("SELECT l.*,o.status order_status,o.stripe_checkout_session_id FROM inventory_reservation_leases l JOIN orders o ON o.id=l.order_id WHERE l.status='active' AND l.expires_at<=CURRENT_TIMESTAMP ORDER BY l.expires_at ASC LIMIT {$limit}")->fetchAll();
+    }
+
+    public function lease(int $orderId): ?array
+    {
+        $s=$this->db->prepare('SELECT * FROM inventory_reservation_leases WHERE order_id=?');$s->execute([$orderId]);return $s->fetch()?:null;
+    }
+
+    public function reservationStats(): array
+    {
+        $stats=['active'=>0,'expired'=>0,'review_hold'=>0];
+        $rows=$this->db->query("SELECT status,COUNT(*) count FROM inventory_reservation_leases WHERE status IN ('active','review_hold') GROUP BY status")->fetchAll();
+        foreach($rows as $row) $stats[(string)$row['status']]=(int)$row['count'];
+        $stats['expired']=(int)$this->db->query("SELECT COUNT(*) FROM inventory_reservation_leases WHERE status='active' AND expires_at<=CURRENT_TIMESTAMP")->fetchColumn();
+        return $stats;
     }
 
     public function setInventory(int $flavorId,bool $track,int $stock,int $lowThreshold): void

@@ -3,7 +3,7 @@ declare(strict_types=1);
 $root=dirname(__DIR__);putenv('DB_DSN=sqlite::memory:');require $root.'/src/bootstrap.php';
 use FudgeDonuts\{Database,InventoryService,OrderService,PaymentRepository};
 $db=Database::connection();
-foreach(['001_catalog.sql','004_payments.sql','006_orders.sql','007_inventory.sql','020_payment_reconciliation.sql'] as $f)$db->exec((string)file_get_contents($root.'/database/'.$f));
+foreach(['001_catalog.sql','004_payments.sql','006_orders.sql','007_inventory.sql','020_payment_reconciliation.sql','021_inventory_reservation_leases.sql'] as $f)$db->exec((string)file_get_contents($root.'/database/'.$f));
 
 $fid=(int)$db->query("SELECT id FROM flavors WHERE slug='smores'")->fetchColumn();
 $db->exec("UPDATE flavor_inventory SET track_inventory=1,stock_on_hand=10,reserved=0 WHERE flavor_id={$fid}");

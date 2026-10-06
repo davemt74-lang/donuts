@@ -21,9 +21,11 @@
 9. Run `php scripts/release-audit.php`; every required check must pass. Missing image assets are reported as warnings until uploaded.
 10. Configure Stripe's webhook endpoint as `/stripe-webhook.php`.
 11. Schedule `php scripts/send-notifications.php` every few minutes.
-12. Upload storefront images into `public/images/`.
-13. Verify `/health.php` returns HTTP 200.
-14. Trigger the **Release Package** workflow to generate the deploy ZIP and SHA-256 manifest.
+12. Schedule `php scripts/recover-reservations.php` every 5 minutes so abandoned Stripe sessions cannot strand inventory.
+13. Set `CHECKOUT_HOLD_MINUTES` between 30 and 120 (30 is the default).
+14. Upload storefront images into `public/images/`.
+15. Verify `/health.php` returns HTTP 200.
+16. Trigger the **Release Package** workflow to generate the deploy ZIP and SHA-256 manifest.
 
 ## Canonical image paths
 - `public/images/hero.png`

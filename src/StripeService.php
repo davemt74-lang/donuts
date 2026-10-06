@@ -23,6 +23,13 @@ final class StripeService
         return $this->request('/v1/refunds',$params,$idempotencyKey);
     }
 
+    public function expireCheckoutSession(string $sessionId): array
+    {
+        if($this->secretKey==='') throw new \RuntimeException('Stripe secret key is not configured.');
+        if(!preg_match('/^cs_[A-Za-z0-9_]+$/',$sessionId)) throw new \InvalidArgumentException('Invalid Stripe Checkout session ID.');
+        return $this->request('/v1/checkout/sessions/'.rawurlencode($sessionId).'/expire',[],'expire_'.hash('sha256',$sessionId));
+    }
+
     public function retrieveCheckoutSession(string $sessionId): array
     {
         if($this->secretKey==='') throw new \RuntimeException('Stripe secret key is not configured.');
