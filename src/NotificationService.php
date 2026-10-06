@@ -24,6 +24,21 @@ final class NotificationService
         $this->queue((string)$order['email'],$subject,$body,'order-status:'.$order['id'].':'.$status);
     }
 
+    public function queueFulfillmentUpdate(array $order,array $details): void
+    {
+        $status=ucwords(str_replace('_',' ',(string)$order['status']));
+        $subject='Order '.$order['order_number'].': '.$status;
+        $parts=["Your Fudge Donuts order {$order['order_number']} is now {$status}."];
+        if(!empty($details['carrier']) || !empty($details['tracking_number'])){
+            $parts[]='Carrier: '.trim((string)$details['carrier']);
+            $parts[]='Tracking: '.trim((string)$details['tracking_number']);
+        }
+        if(!empty($details['tracking_url'])) $parts[]='Track your order: '.$details['tracking_url'];
+        if(!empty($details['pickup_instructions'])) $parts[]='Pickup instructions: '.$details['pickup_instructions'];
+        if(!empty($details['pickup_ready_at'])) $parts[]='Pickup ready: '.$details['pickup_ready_at'];
+        $this->queue((string)$order['email'],$subject,implode("\n\n",$parts),'fulfillment:'.$order['id'].':'.$order['status'].':'.hash('sha256',json_encode($details)));
+    }
+
     public function queuePasswordReset(string $email,string $firstName,string $url,string $expiresAt): void
     {
         $subject='Reset your Fudge Donuts password';
