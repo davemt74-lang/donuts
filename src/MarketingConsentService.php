@@ -24,6 +24,7 @@ final class MarketingConsentService
             $s->execute([$email]);
             $id=$this->subscriberId($email);
             $this->record($id,'subscribe',$source);
+            $this->syncAccountPreference($email,true);
             $this->db->commit();
         }catch(\Throwable $e){if($this->db->inTransaction())$this->db->rollBack();throw $e;}
     }
@@ -37,6 +38,7 @@ final class MarketingConsentService
             $s->execute([$email]);
             $id=$this->subscriberId($email);
             $this->record($id,'unsubscribe',$source);
+            $this->syncAccountPreference($email,false);
             $this->db->commit();
         }catch(\Throwable $e){if($this->db->inTransaction())$this->db->rollBack();throw $e;}
     }
@@ -101,6 +103,16 @@ final class MarketingConsentService
     {
         $source=preg_replace('/[^a-zA-Z0-9_.:-]+/','_',trim($source))??'';
         return substr($source!==''?$source:'unknown',0,80);
+    }
+
+    private function syncAccountPreference(string $email,bool $enabled): void
+    {
+        try{
+            $s=$this->db->prepare('UPDATE users SET marketing_opt_in=?,updated_at=CURRENT_TIMESTAMP WHERE lower(email)=?');
+            $s->execute([$enabled?1:0,$email]);
+        }catch(\Throwable){
+            // Newsletter-only installs/tests may not have the account table loaded.
+        }
     }
 
     private function subscriberId(string $email): int
