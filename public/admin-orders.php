@@ -1,12 +1,12 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__).'/src/bootstrap.php';
-use FudgeDonuts\{AdminService,Database};
+use FudgeDonuts\{AdminService,Database,NotificationService};
 if(empty($_SESSION['admin'])){header('Location: /admin.php');exit;}
 $admin=new AdminService(Database::connection());$error='';
 if($_SERVER['REQUEST_METHOD']==='POST'){
  verify_csrf($_POST['_csrf']??null);
- try{$admin->transitionOrder((int)($_POST['order_id']??0),(string)($_POST['status']??''),(string)($_POST['note']??''));header('Location: /admin-orders.php');exit;}catch(Throwable $e){$error=$e->getMessage();}
+ try{$id=(int)($_POST['order_id']??0);$status=(string)($_POST['status']??'');$admin->transitionOrder($id,$status,(string)($_POST['note']??''));$order=$admin->order($id);if($order)(new NotificationService(Database::connection()))->queueStatusUpdate($order,$status);header('Location: /admin-orders.php');exit;}catch(Throwable $e){$error=$e->getMessage();}
 }
 $orders=$admin->orders();
 ?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/assets/app.css"><title>Orders · Admin</title></head><body>
