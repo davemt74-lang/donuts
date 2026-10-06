@@ -342,3 +342,11 @@ Positive adjustments cannot exceed the batch quantity still legally available af
 Every newly created production batch uses the flavor's **published, complete Food Compliance profile**. If the operator leaves Best By blank, the system derives it from the published shelf-life days. An operator may choose an earlier date, but never a date beyond the published shelf-life limit.
 
 At batch creation, ingredients, allergens, storage instructions, net weight, label version, shelf life, produced date, and best-by date are snapshotted permanently. Later compliance edits do not rewrite historical production labels. Print the immutable label from **Admin → Batches → Print batch label**.
+
+
+## Packaging inventory
+Configure boxes, wrappers, labels, ribbon, liners, and other fulfillment supplies in **Admin → Packaging**. Each active pack size has a packaging bill of materials (BOM) that defines units required per box.
+
+When an order moves **Paid → Preparing**, required packaging is reserved atomically and removed from available stock. **Preparing → Ready/Shipped** consumes that reservation; cancelling/refunding while still Preparing releases it. Both single-order and batch fulfillment stop safely if packaging is unavailable.
+
+The packaging supply plan combines current available stock, paid-order demand, reorder points, and reorder quantities to produce a replenishment recommendation.
