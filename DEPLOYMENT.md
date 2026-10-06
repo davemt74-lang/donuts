@@ -128,3 +128,7 @@ Set `SUPPORT_EMAIL` to the internal mailbox that should receive new-ticket alert
 Admin → Orders supports atomic batch transitions from **Paid → Preparing** and **Preparing → Ready**. Shipping transitions remain individual so carrier and tracking information can be attached safely.
 
 Fulfillment operators can print per-order packing slips, print the ready local-pickup sheet, and export ready shipping orders as CSV. Customer-controlled CSV fields are neutralized against spreadsheet formula execution.
+
+
+## Accessibility
+The launch-critical storefront flow includes skip navigation, visible keyboard focus, labeled form controls, assistive live regions for the pack builder, 44px interactive targets, and reduced-motion support. Keep these semantics intact when changing templates or shared CSS; Section 50 CI checks the critical regressions.
