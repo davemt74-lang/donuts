@@ -23,9 +23,20 @@
 11. Schedule `php scripts/send-notifications.php` every few minutes.
 12. Schedule `php scripts/recover-reservations.php` every 5 minutes so abandoned Stripe sessions cannot strand inventory.
 13. Set `CHECKOUT_HOLD_MINUTES` between 30 and 120 (30 is the default).
-14. Upload storefront images into `public/images/`.
-15. Verify `/health.php` returns HTTP 200.
-16. Trigger the **Release Package** workflow to generate the deploy ZIP and SHA-256 manifest.
+14. Schedule `php scripts/backup-database.php scheduled` at least daily. Backups are integrity-checked and retained under `storage/backups/`.
+15. Set `BACKUP_RETENTION_DAYS` and `BACKUP_MAX_FILES` for retention.
+16. Upload storefront images into `public/images/`.
+17. Verify `/health.php` returns HTTP 200.
+18. Trigger the **Release Package** workflow to generate the deploy ZIP and SHA-256 manifest.
+
+## Restore procedure
+Restores are CLI-only. First identify a verified backup in Admin → Backups, then run:
+
+```bash
+php scripts/restore-database.php --file=store-YYYYMMDD-HHMMSS-xxxxxx.sqlite --confirm=RESTORE
+```
+
+The restore command creates a fresh pre-restore backup, enables the maintenance lock, checkpoints SQLite, verifies the staged database, swaps it into place, performs a final integrity check, and removes maintenance mode only after completion.
 
 ## Canonical image paths
 - `public/images/hero.png`
