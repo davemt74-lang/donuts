@@ -85,11 +85,17 @@ final class CustomerDirectoryService
         $s=$this->db->prepare('SELECT id,email,first_name,last_name,marketing_opt_in,created_at,updated_at FROM users WHERE lower(email)=?');
         $s->execute([$email]);$account=$s->fetch()?:null;
 
-        $orders=$this->rows('SELECT id,order_number,status,total_cents,fulfillment_name,first_name,last_name,created_at FROM orders WHERE lower(email)=? ORDER BY id DESC LIMIT 100',[$email]);
+        if($account){
+            $orders=$this->rows('SELECT id,order_number,status,total_cents,fulfillment_name,first_name,last_name,created_at FROM orders WHERE user_id=? OR (user_id IS NULL AND lower(email)=?) ORDER BY id DESC LIMIT 100',[(int)$account['id'],$email]);
+            $support=$this->safeRows('SELECT id,ticket_number,subject,status,priority,updated_at FROM support_tickets WHERE user_id=? OR (user_id IS NULL AND lower(email)=?) ORDER BY id DESC LIMIT 100',[(int)$account['id'],$email]);
+            $privacy=$this->safeRows('SELECT action,details,created_at FROM customer_privacy_events WHERE user_id=? OR email_hash=? ORDER BY id DESC LIMIT 100',[(int)$account['id'],hash('sha256',$email)]);
+        }else{
+            $orders=$this->rows('SELECT id,order_number,status,total_cents,fulfillment_name,first_name,last_name,created_at FROM orders WHERE user_id IS NULL AND lower(email)=? ORDER BY id DESC LIMIT 100',[$email]);
+            $support=$this->safeRows('SELECT id,ticket_number,subject,status,priority,updated_at FROM support_tickets WHERE user_id IS NULL AND lower(email)=? ORDER BY id DESC LIMIT 100',[$email]);
+            $privacy=$this->safeRows('SELECT action,details,created_at FROM customer_privacy_events WHERE email_hash=? ORDER BY id DESC LIMIT 100',[hash('sha256',$email)]);
+        }
         $addresses=$account?$this->rows('SELECT id,label,first_name,last_name,line1,line2,city,region,postal_code,country,phone,is_default FROM addresses WHERE user_id=? ORDER BY is_default DESC,id DESC',[(int)$account['id']]):[];
-        $support=$this->safeRows('SELECT id,ticket_number,subject,status,priority,updated_at FROM support_tickets WHERE lower(email)=? ORDER BY id DESC LIMIT 100',[$email]);
         $marketing=$this->safeRow('SELECT email,status,created_at,updated_at FROM newsletter_subscribers WHERE lower(email)=?',[$email]);
-        $privacy=$this->safeRows('SELECT action,details,created_at FROM customer_privacy_events WHERE email_hash=? ORDER BY id DESC LIMIT 100',[hash('sha256',$email)]);
 
         $lifetime=0;$revenueOrders=0;
         foreach($orders as $order){
