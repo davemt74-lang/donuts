@@ -70,6 +70,12 @@ final class OrderService
         }
     }
 
+    public function idByStripeSession(string $sessionId): ?int
+    {
+        $s=$this->db->prepare('SELECT id FROM orders WHERE stripe_checkout_session_id=?');$s->execute([$sessionId]);
+        $id=$s->fetchColumn();return $id===false?null:(int)$id;
+    }
+
     public function find(int $id): array
     {
         $s=$this->db->prepare('SELECT * FROM orders WHERE id=?');$s->execute([$id]);$order=$s->fetch();
