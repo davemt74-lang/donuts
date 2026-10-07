@@ -52,16 +52,67 @@ jobs:
           find dist/Fudge-Donuts-WebRoot -maxdepth 1 -type f -name '*.php' -print0 \
             | xargs -0 sed -i 's#dirname(__DIR__)#__DIR__#g'
 
-          # Internal application folders must not be web-browsable on Apache/cPanel.
-          cat >> dist/Fudge-Donuts-WebRoot/.htaccess <<'HTACCESS'
+          # Shared-host root entrypoint: if the host prefers index.html over
+          # index.php, this forwards into the PHP first-run/storefront path.
+          cat > dist/Fudge-Donuts-WebRoot/index.html <<'HTML'
+          <!doctype html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8">
+            <meta http-equiv="refresh" content="0;url=index.php">
+            <meta name="robots" content="noindex">
+            <title>Fudge Donuts</title>
+            <script>window.location.replace('index.php');</script>
+          </head>
+          <body><p><a href="index.php">Continue to Fudge Donuts</a></p></body>
+          </html>
+          HTML
 
-          # Direct-webroot deploy protection.
+          # Use a conservative deployment .htaccess. Do not require Options or
+          # DirectoryIndex overrides, which some shared hosts reject with HTTP 500.
+          cat > dist/Fudge-Donuts-WebRoot/.htaccess <<'HTACCESS'
           <IfModule mod_rewrite.c>
             RewriteEngine On
+            RewriteRule ^robots\.txt$ robots.php [L]
             RewriteRule ^(?:src|database|scripts|storage|public)(?:/|$) - [F,L,NC]
+          </IfModule>
+
+          <IfModule mod_headers.c>
+            Header always set X-Content-Type-Options "nosniff"
+            Header always set X-Frame-Options "DENY"
+            Header always set Referrer-Policy "strict-origin-when-cross-origin"
+          </IfModule>
+
+          <IfModule mod_authz_core.c>
+            <FilesMatch "^\.">
+              Require all denied
+            </FilesMatch>
+          </IfModule>
+          <IfModule !mod_authz_core.c>
+            <FilesMatch "^\.">
+              Order allow,deny
+              Deny from all
+            </FilesMatch>
+          </IfModule>
+
+          <IfModule mod_deflate.c>
+            AddOutputFilterByType DEFLATE text/html text/plain text/css application/javascript application/json application/xml image/svg+xml
+          </IfModule>
+
+          <IfModule mod_expires.c>
+            ExpiresActive On
+            ExpiresByType text/css "access plus 1 year"
+            ExpiresByType application/javascript "access plus 1 year"
+            ExpiresByType font/woff2 "access plus 1 year"
+            ExpiresByType image/avif "access plus 7 days"
+            ExpiresByType image/webp "access plus 7 days"
+            ExpiresByType image/png "access plus 7 days"
+            ExpiresByType image/jpeg "access plus 7 days"
+            ExpiresByType image/svg+xml "access plus 7 days"
           </IfModule>
           HTACCESS
 
+          test -f dist/Fudge-Donuts-WebRoot/index.html
           test -f dist/Fudge-Donuts-WebRoot/index.php
           test -f dist/Fudge-Donuts-WebRoot/install.php
           test -f dist/Fudge-Donuts-WebRoot/src/bootstrap.php
@@ -96,6 +147,7 @@ jobs:
           sha256sum Fudge-Donuts-Deploy.zip > Fudge-Donuts-Deploy-SHA256.txt
 
           # The archive must extract directly into the domain root.
+          unzip -Z1 Fudge-Donuts-Deploy.zip | grep -qx 'index.html'
           unzip -Z1 Fudge-Donuts-Deploy.zip | grep -qx 'index.php'
           unzip -Z1 Fudge-Donuts-Deploy.zip | grep -qx 'install.php'
           unzip -Z1 Fudge-Donuts-Deploy.zip | grep -qx 'src/bootstrap.php'
