@@ -55,6 +55,11 @@ assert(!str_contains(strtolower($page),'stripe'));
 assert(!str_contains(strtolower($page),'app_key'));
 assert(!str_contains(strtolower($page),'security key'));
 
+$adminPage=(string)file_get_contents($root.'/public/admin.php');
+assert(str_contains($adminPage,"Location: /install.php"));
+$legacyPage=(string)file_get_contents($root.'/public/setup-admin.php');
+assert(str_contains($legacyPage,"Location: /install.php"));
+
 Database::disconnect();
 @unlink($dbFile);@unlink($dbFile.'-wal');@unlink($dbFile.'-shm');
 echo "Basic web installer checks passed\n";
