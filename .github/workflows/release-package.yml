@@ -30,11 +30,37 @@ jobs:
           php scripts/release-audit.php
           php scripts/post-deploy-check.php
 
-      - name: Build deploy package
+      - name: Stage deploy package
         run: |
           rm -f .env
+          rm -rf dist/Fudge-Donuts
           mkdir -p dist/Fudge-Donuts
-          rsync -a ./ dist/Fudge-Donuts/             --exclude '.git'             --exclude '.github'             --exclude 'dist'             --exclude '.env'             --exclude 'storage/*.sqlite'             --exclude 'storage/*.sqlite-*'
+          rsync -a ./ dist/Fudge-Donuts/ \
+            --exclude '.git' \
+            --exclude '.github' \
+            --exclude 'dist' \
+            --exclude '.env' \
+            --exclude 'storage/*.sqlite' \
+            --exclude 'storage/*.sqlite-*'
+
+      - name: Packaged fresh install acceptance
+        run: |
+          rm -rf dist/Fudge-Donuts/storage
+          DB_DSN=sqlite:storage/release-install-smoke.sqlite OBSERVABILITY_ENABLED=0 php -S 127.0.0.1:8101 -t dist/Fudge-Donuts/public > /tmp/fudge-release-install.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
+          sleep 1
+          (
+            cd dist/Fudge-Donuts
+            DB_DSN=sqlite:storage/release-install-smoke.sqlite INSTALL_BASE_URL=http://127.0.0.1:8101 OBSERVABILITY_ENABLED=0 php scripts/install-smoke.php
+          )
+          kill $SERVER_PID 2>/dev/null || true
+          wait $SERVER_PID 2>/dev/null || true
+          trap - EXIT
+          rm -rf dist/Fudge-Donuts/storage
+
+      - name: Build deploy archive
+        run: |
           cd dist
           zip -rq Fudge-Donuts-Deploy.zip Fudge-Donuts
           sha256sum Fudge-Donuts-Deploy.zip > Fudge-Donuts-Deploy-SHA256.txt
