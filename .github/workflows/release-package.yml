@@ -121,7 +121,10 @@ jobs:
           test -f dist/Fudge-Donuts-WebRoot/assets/app.css
           test ! -e dist/Fudge-Donuts-WebRoot/Fudge-Donuts
           grep -q "require __DIR__ .*'/src/bootstrap.php'" dist/Fudge-Donuts-WebRoot/index.php
-          grep -q "Direct-webroot deploy protection" dist/Fudge-Donuts-WebRoot/.htaccess
+          grep -q "url=index.php" dist/Fudge-Donuts-WebRoot/index.html
+          ! grep -q '^Options ' dist/Fudge-Donuts-WebRoot/.htaccess
+          ! grep -q '^DirectoryIndex ' dist/Fudge-Donuts-WebRoot/.htaccess
+          grep -Fq 'RewriteRule ^(?:src|database|scripts|storage|public)' dist/Fudge-Donuts-WebRoot/.htaccess
 
       - name: Packaged fresh install acceptance
         run: |
