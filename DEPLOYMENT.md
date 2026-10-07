@@ -12,7 +12,7 @@
 ## Basic web install
 1. Copy the repository to the server with the web root pointed at `public/`.
 2. Make sure PHP 8.1+ with PDO SQLite is available and the application can write to `storage/`.
-3. Open `/install.php` in the browser.
+3. Visit the domain root (`/`). A fresh deployment automatically redirects to `/install.php`.
 4. The installer creates the SQLite database, applies every migration, and shows the first-administrator form.
 5. Create the first administrator. The installer then locks itself and redirects to Admin.
 
