@@ -4,9 +4,15 @@ require dirname(__DIR__).'/src/bootstrap.php';
 
 use FudgeDonuts\{AdminAuditService,AdminAuthService,AdminDashboardService,CheckoutRecoveryService,Database,DisputeService,GiftCardService,NotificationService,ObservabilityService,ReviewService,SecurityService,SupportService};
 
-$db=Database::connection();
-$adminAuth=new AdminAuthService($db);$audit=new AdminAuditService($db);
-if(!$adminAuth->isInstalled()){header('Location: /install.php');exit;}
+try{
+    $db=Database::connection();
+    $adminAuth=new AdminAuthService($db);
+    if(!$adminAuth->isInstalled()){header('Location: /install.php');exit;}
+}catch(\PDOException){
+    header('Location: /install.php');
+    exit;
+}
+$audit=new AdminAuditService($db);
 
 $error='';
 if(isset($_POST['login'])){
