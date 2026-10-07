@@ -1,16 +1,17 @@
 name: Release Package
 
 on:
-  workflow_dispatch:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - build/direct-webroot-deploy-20261006
 
 jobs:
   package:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: 4e89bd2f1f7c2595d1bfb1fa928a0be0efe2ceb1
 
       - uses: shivammathur/setup-php@v2
         with:
