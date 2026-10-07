@@ -1,16 +1,17 @@
 name: Release Package
 
 on:
-  workflow_dispatch:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - build/basic-installer-deploy-20261006
 
 jobs:
   package:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: fa5249eb442d163b76318b2894e2c45454d0fe05
 
       - uses: shivammathur/setup-php@v2
         with:
