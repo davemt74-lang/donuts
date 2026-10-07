@@ -1,16 +1,17 @@
 name: Release Package
 
 on:
-  workflow_dispatch:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - build/shared-host-root-entry-final-20261006
 
 jobs:
   package:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: 62918007e6d82d59b0ad99a6c717f549d5970d9a
 
       - uses: shivammathur/setup-php@v2
         with:
