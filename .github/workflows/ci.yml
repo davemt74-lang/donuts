@@ -14,6 +14,8 @@ jobs:
           extensions: pdo_sqlite
       - name: Syntax
         run: find src public scripts tests -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Basic web installer
+        run: php -d zend.assertions=1 -d assert.exception=1 tests/installer.php
       - name: Section 2
         run: php -d zend.assertions=1 -d assert.exception=1 tests/section2.php
       - name: Section 3
