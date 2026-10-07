@@ -30,40 +30,79 @@ jobs:
           php scripts/release-audit.php
           php scripts/post-deploy-check.php
 
-      - name: Stage deploy package
+      - name: Stage direct web-root package
         run: |
           rm -f .env
-          rm -rf dist/Fudge-Donuts
-          mkdir -p dist/Fudge-Donuts
-          rsync -a ./ dist/Fudge-Donuts/ \
-            --exclude '.git' \
-            --exclude '.github' \
-            --exclude 'dist' \
-            --exclude '.env' \
-            --exclude 'storage/*.sqlite' \
-            --exclude 'storage/*.sqlite-*'
+          rm -rf dist/Fudge-Donuts-WebRoot
+          mkdir -p dist/Fudge-Donuts-WebRoot
+
+          # Public web files live directly at the extraction root.
+          rsync -a public/ dist/Fudge-Donuts-WebRoot/
+
+          # Keep the canonical application tree beside the web files.
+          # The duplicate public/ tree is intentional: runtime asset versioning
+          # resolves against <app-root>/public while requests use /assets, /images, etc.
+          rsync -a src/ dist/Fudge-Donuts-WebRoot/src/
+          rsync -a database/ dist/Fudge-Donuts-WebRoot/database/
+          rsync -a scripts/ dist/Fudge-Donuts-WebRoot/scripts/
+          rsync -a public/ dist/Fudge-Donuts-WebRoot/public/
+
+          # The source public/*.php files live one level below the app root.
+          # In the direct web-root package they live at the app root itself.
+          find dist/Fudge-Donuts-WebRoot -maxdepth 1 -type f -name '*.php' -print0 \
+            | xargs -0 sed -i 's#dirname(__DIR__)#__DIR__#g'
+
+          # Internal application folders must not be web-browsable on Apache/cPanel.
+          cat >> dist/Fudge-Donuts-WebRoot/.htaccess <<'HTACCESS'
+
+          # Direct-webroot deploy protection.
+          <IfModule mod_rewrite.c>
+            RewriteEngine On
+            RewriteRule ^(?:src|database|scripts|storage|public)(?:/|$) - [F,L,NC]
+          </IfModule>
+          HTACCESS
+
+          test -f dist/Fudge-Donuts-WebRoot/index.php
+          test -f dist/Fudge-Donuts-WebRoot/install.php
+          test -f dist/Fudge-Donuts-WebRoot/src/bootstrap.php
+          test -f dist/Fudge-Donuts-WebRoot/database/001_catalog.sql
+          test -f dist/Fudge-Donuts-WebRoot/public/assets/app.css
+          test -f dist/Fudge-Donuts-WebRoot/assets/app.css
+          test ! -e dist/Fudge-Donuts-WebRoot/Fudge-Donuts
+          grep -q "require __DIR__ .*'/src/bootstrap.php'" dist/Fudge-Donuts-WebRoot/index.php
+          grep -q "Direct-webroot deploy protection" dist/Fudge-Donuts-WebRoot/.htaccess
 
       - name: Packaged fresh install acceptance
         run: |
-          rm -rf dist/Fudge-Donuts/storage
-          DB_DSN=sqlite:storage/release-install-smoke.sqlite OBSERVABILITY_ENABLED=0 php -S 127.0.0.1:8101 -t dist/Fudge-Donuts/public > /tmp/fudge-release-install.log 2>&1 &
+          rm -rf dist/Fudge-Donuts-WebRoot/storage
+          DB_DSN=sqlite:storage/release-install-smoke.sqlite OBSERVABILITY_ENABLED=0 php -S 127.0.0.1:8101 -t dist/Fudge-Donuts-WebRoot > /tmp/fudge-release-install.log 2>&1 &
           SERVER_PID=$!
           trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
           sleep 1
           (
-            cd dist/Fudge-Donuts
+            cd dist/Fudge-Donuts-WebRoot
             DB_DSN=sqlite:storage/release-install-smoke.sqlite INSTALL_BASE_URL=http://127.0.0.1:8101 OBSERVABILITY_ENABLED=0 php scripts/install-smoke.php
           )
           kill $SERVER_PID 2>/dev/null || true
           wait $SERVER_PID 2>/dev/null || true
           trap - EXIT
-          rm -rf dist/Fudge-Donuts/storage
+          rm -rf dist/Fudge-Donuts-WebRoot/storage
 
-      - name: Build deploy archive
+      - name: Build direct web-root deploy archive
         run: |
-          cd dist
-          zip -rq Fudge-Donuts-Deploy.zip Fudge-Donuts
+          cd dist/Fudge-Donuts-WebRoot
+          zip -rq ../Fudge-Donuts-Deploy.zip .
+          cd ..
           sha256sum Fudge-Donuts-Deploy.zip > Fudge-Donuts-Deploy-SHA256.txt
+
+          # The archive must extract directly into the domain root.
+          unzip -Z1 Fudge-Donuts-Deploy.zip | grep -qx 'index.php'
+          unzip -Z1 Fudge-Donuts-Deploy.zip | grep -qx 'install.php'
+          unzip -Z1 Fudge-Donuts-Deploy.zip | grep -qx 'src/bootstrap.php'
+          if unzip -Z1 Fudge-Donuts-Deploy.zip | grep -q '^Fudge-Donuts/'; then
+            echo 'Unexpected wrapper directory in deploy ZIP.' >&2
+            exit 1
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
