@@ -7,6 +7,27 @@ final class InstallerService
 {
     public function __construct(private readonly string $root) {}
 
+    public function needsInstallation(): bool
+    {
+        if(!extension_loaded('pdo_sqlite')) return true;
+
+        $dsn=(string)\env('DB_DSN','sqlite:storage/store.sqlite');
+        if(!str_starts_with($dsn,'sqlite:')) return false;
+
+        $path=$this->sqlitePath($dsn);
+        if($path!==null && !is_file($path)) return true;
+
+        try{
+            $db=Database::connection();
+            if($db->getAttribute(\PDO::ATTR_DRIVER_NAME)!=='sqlite') return false;
+            $table=$db->query("SELECT name FROM sqlite_master WHERE type='table' AND name='admin_users'")->fetchColumn();
+            if(!$table) return true;
+            return (int)$db->query('SELECT COUNT(*) FROM admin_users')->fetchColumn()===0;
+        }catch(\Throwable){
+            return true;
+        }
+    }
+
     public function requirements(): array
     {
         $storage=$this->root.'/storage';
@@ -21,6 +42,14 @@ final class InstallerService
             ['name'=>'Migrations','ok'=>is_dir($this->root.'/database'),
              'message'=>is_dir($this->root.'/database')?'database migrations are available':'database/ is missing'],
         ];
+    }
+
+    private function sqlitePath(string $dsn): ?string
+    {
+        $path=substr($dsn,7);
+        if($path==='' || $path===':memory:') return null;
+        if(str_starts_with($path,'/') || preg_match('/^[A-Za-z]:[\\\\\/]/',$path)===1) return $path;
+        return $this->root.'/'.ltrim($path,'/\\\\');
     }
 
     public function prepareDatabase(): array
