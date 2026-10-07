@@ -10,7 +10,7 @@
 - writable `storage/`
 
 ## Basic web install
-1. Upload `Fudge-Donuts-Deploy.zip` into the domain's existing web root and extract it there. The ZIP is intentionally flat: `index.php`, `install.php`, `assets/`, `src/`, `database/`, and the other application folders extract directly into that directory. Do not point the domain at `public/` and do not move files after extraction.
+1. Upload `Fudge-Donuts-Deploy.zip` into the domain's existing web root and extract it there. The ZIP is intentionally flat: `index.html`, `index.php`, `install.php`, `assets/`, `src/`, `database/`, and the other application folders extract directly into that directory. `index.html` is a compatibility forwarder to `index.php` for shared hosts that prefer HTML index files. Do not point the domain at `public/` and do not move files after extraction.
 2. Make sure PHP 8.1+ with PDO SQLite is available and the application can create/write `storage/`.
 3. Visit the domain root (`/`). A fresh deployment automatically redirects to `/install.php`.
 4. The installer creates the SQLite database, applies every migration, and shows the first-administrator form.
