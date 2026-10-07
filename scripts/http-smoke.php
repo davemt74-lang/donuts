@@ -90,12 +90,16 @@ smokePage($base,'Customer support','/contact.php',200,'How can we help?');
 
 $adminCount=(int)$db->query('SELECT COUNT(*) FROM admin_users')->fetchColumn();
 if($adminCount===0){
-    smokePage($base,'Admin setup','/setup-admin.php',200,'Create your administrator');
+    smokePage($base,'Web installer','/install.php',200,'Create the first administrator');
+    $legacy=smokePage($base,'Legacy setup redirect','/setup-admin.php',302);
+    smokeAssert(smokeHeader($legacy,'location')==='/install.php','Legacy setup must redirect to installer.');
     $admin=smokePage($base,'Admin install redirect','/admin.php',302);
-    smokeAssert(smokeHeader($admin,'location')==='/setup-admin.php','Uninstalled Admin must redirect to setup.');
+    smokeAssert(smokeHeader($admin,'location')==='/install.php','Uninstalled Admin must redirect to installer.');
 }else{
-    $setup=smokePage($base,'Locked Admin setup','/setup-admin.php',302);
-    smokeAssert(smokeHeader($setup,'location')==='/admin.php','Installed setup route must redirect to Admin.');
+    $installer=smokePage($base,'Locked web installer','/install.php',302);
+    smokeAssert(smokeHeader($installer,'location')==='/admin.php','Installed web installer must redirect to Admin.');
+    $legacy=smokePage($base,'Locked legacy setup','/setup-admin.php',302);
+    smokeAssert(smokeHeader($legacy,'location')==='/install.php','Legacy setup must continue to route through installer.');
     smokePage($base,'Admin login','/admin.php',200,'Store Admin');
 }
 

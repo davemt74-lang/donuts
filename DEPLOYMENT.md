@@ -9,23 +9,25 @@
 - HTTPS
 - writable `storage/`
 
-## Deploy
+## Basic web install
 1. Copy the repository to the server with the web root pointed at `public/`.
-2. Copy `.env.example` to `.env` and set production values.
-3. Set `APP_ENV=production` and an HTTPS `APP_URL`.
-4. Configure a long random `APP_KEY`.
-5. Configure Stripe secret and webhook signing keys.
-6. Run `php scripts/migrate.php`.
-7. Open `/setup-admin.php` once and create the first Super Admin. The setup route locks itself after creation.
-8. Run `php scripts/preflight.php`; every check must pass.
-9. Run `php scripts/release-audit.php`; every required check must pass. Missing image assets are reported as warnings until uploaded.
-10. Configure Stripe's webhook endpoint as `/stripe-webhook.php`.
-11. Schedule `php scripts/send-notifications.php` every few minutes.
-12. Schedule `php scripts/recover-reservations.php` every 5 minutes so abandoned Stripe sessions cannot strand inventory.
-13. Set `CHECKOUT_HOLD_MINUTES` between 30 and 120 (30 is the default).
-14. Upload storefront images into `public/images/`.
-15. Verify `/health.php` returns HTTP 200.
-16. Trigger the **Release Package** workflow to generate the deploy ZIP and SHA-256 manifest.
+2. Make sure PHP 8.1+ with PDO SQLite is available and the application can write to `storage/`.
+3. Open `/install.php` in the browser.
+4. The installer creates the SQLite database, applies every migration, and shows the first-administrator form.
+5. Create the first administrator. The installer then locks itself and redirects to Admin.
+
+The legacy `/setup-admin.php` route redirects to `/install.php`.
+
+## Production follow-up
+After the basic install, configure any production-only application, mail, payment, URL, and scheduled-job settings you intend to use. Then run:
+
+```bash
+php scripts/preflight.php
+php scripts/release-audit.php
+php scripts/post-deploy-check.php
+```
+
+Upload storefront images into `public/images/`, verify `/health.php` returns HTTP 200, and use the **Release Package** workflow to generate the deploy ZIP and SHA-256 manifest.
 
 ## Canonical image paths
 - `public/images/hero.png`
