@@ -6,7 +6,7 @@ use FudgeDonuts\{AdminAuditService,AdminAuthService,AdminDashboardService,Checko
 
 $db=Database::connection();
 $adminAuth=new AdminAuthService($db);$audit=new AdminAuditService($db);
-if(!$adminAuth->isInstalled()){header('Location: /setup-admin.php');exit;}
+if(!$adminAuth->isInstalled()){header('Location: /install.php');exit;}
 
 $error='';
 if(isset($_POST['login'])){
