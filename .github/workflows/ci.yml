@@ -16,6 +16,14 @@ jobs:
         run: find src public scripts tests -name '*.php' -print0 | xargs -0 -n1 php -l
       - name: Basic web installer
         run: php -d zend.assertions=1 -d assert.exception=1 tests/installer.php
+      - name: Fresh install browser flow
+        run: |
+          rm -rf storage
+          DB_DSN=sqlite:storage/ci-fresh-install.sqlite OBSERVABILITY_ENABLED=0 php -S 127.0.0.1:8100 -t public > /tmp/fudge-install-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
+          sleep 1
+          DB_DSN=sqlite:storage/ci-fresh-install.sqlite INSTALL_BASE_URL=http://127.0.0.1:8100 OBSERVABILITY_ENABLED=0 php scripts/install-smoke.php
       - name: Section 2
         run: php -d zend.assertions=1 -d assert.exception=1 tests/section2.php
       - name: Section 3

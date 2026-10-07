@@ -11,6 +11,7 @@ require $root.'/src/bootstrap.php';
 use FudgeDonuts\{AdminAuthService,Database,InstallerService};
 
 $installer=new InstallerService($root);
+assert($installer->needsInstallation()===true);
 $requirements=$installer->requirements();
 assert(count(array_filter($requirements,static fn(array $row): bool => !$row['ok']))===0);
 
@@ -33,6 +34,7 @@ $id=$auth->createFirstAdmin([
 ]);
 assert($id>0);
 assert($auth->isInstalled()===true);
+assert($installer->needsInstallation()===false);
 assert((string)$db->query("SELECT role FROM admin_users WHERE id=".(int)$id)->fetchColumn()==='super_admin');
 
 $locked=false;
@@ -55,6 +57,8 @@ assert(!str_contains(strtolower($page),'stripe'));
 assert(!str_contains(strtolower($page),'app_key'));
 assert(!str_contains(strtolower($page),'security key'));
 
+$indexPage=(string)file_get_contents($root.'/public/index.php');
+assert(str_contains($indexPage,"Location: /install.php"));
 $adminPage=(string)file_get_contents($root.'/public/admin.php');
 assert(str_contains($adminPage,"Location: /install.php"));
 $legacyPage=(string)file_get_contents($root.'/public/setup-admin.php');

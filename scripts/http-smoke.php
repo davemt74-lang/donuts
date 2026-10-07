@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 require dirname(__DIR__).'/src/bootstrap.php';
 
-use FudgeDonuts\Database;
+use FudgeDonuts\{AdminAuthService,Database};
 
 $base=rtrim((string)env('SMOKE_BASE_URL',env('APP_URL','http://127.0.0.1:8099')),'/');
 if(!extension_loaded('curl')) throw new RuntimeException('cURL extension is required for HTTP smoke tests.');
@@ -58,6 +58,16 @@ function smokePage(string $base,string $name,string $path,int $status,string $ne
 }
 
 $db=Database::connection();
+$adminAuth=new AdminAuthService($db);
+if(!$adminAuth->isInstalled()){
+    $adminAuth->createFirstAdmin([
+        'first_name'=>'Smoke',
+        'last_name'=>'Admin',
+        'email'=>'smoke-admin@example.com',
+        'password'=>'SmokeAdmin123',
+        'password_confirmation'=>'SmokeAdmin123',
+    ]);
+}
 $slug=(string)$db->query("SELECT slug FROM flavors WHERE active=1 ORDER BY sort_order,id LIMIT 1")->fetchColumn();
 smokeAssert($slug!=='','Smoke test requires at least one active flavor.');
 
@@ -88,20 +98,11 @@ smokeAssert(str_contains(strtolower(smokeHeader($checkout,'cache-control')),'no-
 
 smokePage($base,'Customer support','/contact.php',200,'How can we help?');
 
-$adminCount=(int)$db->query('SELECT COUNT(*) FROM admin_users')->fetchColumn();
-if($adminCount===0){
-    smokePage($base,'Web installer','/install.php',200,'Create the first administrator');
-    $legacy=smokePage($base,'Legacy setup redirect','/setup-admin.php',302);
-    smokeAssert(smokeHeader($legacy,'location')==='/install.php','Legacy setup must redirect to installer.');
-    $admin=smokePage($base,'Admin install redirect','/admin.php',302);
-    smokeAssert(smokeHeader($admin,'location')==='/install.php','Uninstalled Admin must redirect to installer.');
-}else{
-    $installer=smokePage($base,'Locked web installer','/install.php',302);
-    smokeAssert(smokeHeader($installer,'location')==='/admin.php','Installed web installer must redirect to Admin.');
-    $legacy=smokePage($base,'Locked legacy setup','/setup-admin.php',302);
-    smokeAssert(smokeHeader($legacy,'location')==='/install.php','Legacy setup must continue to route through installer.');
-    smokePage($base,'Admin login','/admin.php',200,'Store Admin');
-}
+$installer=smokePage($base,'Locked web installer','/install.php',302);
+smokeAssert(smokeHeader($installer,'location')==='/admin.php','Installed web installer must redirect to Admin.');
+$legacy=smokePage($base,'Locked legacy setup','/setup-admin.php',302);
+smokeAssert(smokeHeader($legacy,'location')==='/install.php','Legacy setup must continue to route through installer.');
+smokePage($base,'Admin login','/admin.php',200,'Store Admin');
 
 $health=smokePage($base,'Health endpoint','/health.php',200);
 $data=json_decode($health['body'],true,512,JSON_THROW_ON_ERROR);

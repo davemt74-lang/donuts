@@ -6,6 +6,13 @@ use FudgeDonuts\CatalogRepository;
 use FudgeDonuts\ContentService;
 use FudgeDonuts\Database;
 use FudgeDonuts\SeoService;
+use FudgeDonuts\InstallerService;
+
+$installer=new InstallerService(dirname(__DIR__));
+if($installer->needsInstallation()){
+    header('Location: /install.php');
+    exit;
+}
 
 $db = Database::connection();
 $catalog = new CatalogRepository($db);
