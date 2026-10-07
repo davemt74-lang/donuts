@@ -1,16 +1,17 @@
 name: Release Package
 
 on:
-  workflow_dispatch:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - build/auto-installer-deploy-20261006
 
 jobs:
   package:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: 02f6cc43d503824e77d0a6a150b84d927309191f
 
       - uses: shivammathur/setup-php@v2
         with:
